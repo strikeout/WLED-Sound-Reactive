@@ -162,7 +162,7 @@ void getSample() {
   tmpSample = (int)expAdjF;
 
 /*---------DEBUG---------*/
-  DEBUGSR_PRINT("\t\t"); DEBUGSR_PRINT(sample);
+  DEBUGSR_PRINT("\t\t"); DEBUGSR_PRINT(tmpSample);
 /*-------END DEBUG-------*/
   micIn = abs(micIn);                             // And get the absolute value of each sample
 
