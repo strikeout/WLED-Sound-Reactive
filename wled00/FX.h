@@ -1136,7 +1136,7 @@ class WS2812FX {
     //  mode_2DCAElementary(void);
 
     uint16_t
-      GEQ_base(int, bool, bool, bool); //private???
+      GEQ_base(bool, bool, bool); //private???
 
     uint16_t
       _lengthRaw; //private? not in AC (anymore)
@@ -1410,7 +1410,7 @@ const char JSON_mode_names[] PROGMEM = R"=====([
 " ♪ Noisemeter@Fade rate,Width;!,!;!",
 " ♫ Freqwave@Time delay,Sound effect,Low bin,High bin,Pre-amp;;",
 " ♫ Freqmatrix@Time delay,Sound effect,Low bin,High bin,Sensivity;;",
-" ♫ 2D GEQ@Bar speed,Ripple decay,Bands;,,Peak Color;!",
+" ♫ 2D GEQ@Bar speed,Ripple decay;,,Peak Color;!",
 " ♫ Waterfall@!,Adjust color,,Select bin, Volume (minimum);!,!;!",
 " ♫ Freqpixels@Fade rate,Starting colour and # of pixels;;",
 " ♫ Binmap@;!,!;!",

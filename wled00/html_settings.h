@@ -204,7 +204,7 @@ onclick="H()">?</button></div><button type="button" onclick="B()">Back</button>
 <button type="submit">Save</button><hr><h2>Sound Input Settings</h2>Squelch: 
 <input name="SQ" type="number" min="0" max="255" required><br>Gain: <input 
 name="GN" type="number" min="0" max="255" required><br><i>
-Enter values between 0 and 255. To tune, start with Squelch=10 and Gain=40 and modify according to your setup
+Enter values between 0 and 255. To tune, start with Squelch=5..10 and Gain=15..40 and modify according to your setup
 </i><br>Automatic Gain Control (AGC): <input type="checkbox" name="AGC"><br><i>
 AGC is an expiremental feature</i><br><h2>Sound Input Pin Manager</h2>
 Microphone type: <select id="dme" name="DMM" onchange="enDM()"><option 
