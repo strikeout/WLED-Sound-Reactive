@@ -6045,7 +6045,7 @@ uint16_t WS2812FX::mode_blurz(void) {                    // Blurz. By Andrew Tul
   fade_out(SEGMENT.speed);
 
   uint16_t segLoc = random(SEGLEN);
-  leds[realPixelIndex(segLoc)] = color_blend(SEGCOLOR(1), color_from_palette(fftResult[SEGENV.aux0]*240/(SEGLEN-1), false, PALETTE_SOLID_WRAP, 0), fftResult[SEGENV.aux0]);
+  leds[realPixelIndex(segLoc)] = color_blend(SEGCOLOR(1), color_from_palette(fftResult[SEGENV.aux0 % 16]*240/(SEGLEN-1), false, PALETTE_SOLID_WRAP, 0), fftResult[SEGENV.aux0 % 16]);
   SEGENV.aux0++;
   SEGENV.aux0 = SEGENV.aux0 % 16;
 
@@ -6323,7 +6323,7 @@ uint16_t WS2812FX::mode_noisemove(void) {                 // Noisemove.    By: A
     locn = map(locn,7500,58000,0,SEGLEN-1);               // Map that to the length of the strand, and ensure we don't go over.
     locn = locn % (SEGLEN - 1);                           // Just to be bloody sure.
 
-    setPixelColor(locn, color_blend(SEGCOLOR(1), color_from_palette(i*64, false, PALETTE_SOLID_WRAP, 0), fftResult[i]*4));
+    setPixelColor(locn, color_blend(SEGCOLOR(1), color_from_palette(i*64, false, PALETTE_SOLID_WRAP, 0), fftResult[i % 16]*4));
 
   }
 

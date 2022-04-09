@@ -42,9 +42,9 @@ AudioSource *audioSource;
 
 //#define MAJORPEAK_SUPPRESS_NOISE      // define to activate a dirty hack that ignores the lowest + hightest FFT bins
 
-const i2s_port_t I2S_PORT = I2S_NUM_0;
-const int BLOCK_SIZE = 128;
-const int SAMPLE_RATE = 10240;                  // Base sample rate in Hz
+constexpr i2s_port_t I2S_PORT = I2S_NUM_0;
+constexpr int BLOCK_SIZE = 128;
+constexpr int SAMPLE_RATE = 10240;      // Base sample rate in Hz
 
 //Use userVar0 and userVar1 (API calls &U0=,&U1=, uint16_t)
 
@@ -55,7 +55,7 @@ const int SAMPLE_RATE = 10240;                  // Base sample rate in Hz
 #define UDP_SYNC_HEADER "00001"
 
 uint8_t maxVol = 10;                            // Reasonable value for constant volume for 'peak detector', as it won't always trigger
-uint8_t binNum;                                 // Used to select the bin for FFT based beat detection.
+uint8_t binNum = 8;                             // Used to select the bin for FFT based beat detection.
 uint8_t targetAgc = 60;                         // This is our setPoint at 20% of max for the adjusted output
 uint8_t myVals[32];                             // Used to store a pile of samples because WLED frame rate and WLED sample rate are not synchronized. Frame rate is too low.
 bool samplePeak = 0;                            // Boolean flag for peak. Responding routine must reset this flag
@@ -80,7 +80,7 @@ float weighting = 0.2;                          // Exponential filter weighting.
 
 
 // FFT Variables
-const uint16_t samples = 512;                   // This value MUST ALWAYS be a power of 2
+constexpr uint16_t samplesFFT = 512;            // Samples in an FFT batch - This value MUST ALWAYS be a power of 2
 unsigned int sampling_period_us;
 unsigned long microseconds;
 
@@ -89,9 +89,9 @@ double FFT_Magnitude = 0;
 uint16_t mAvg = 0;
 
 // These are the input and output vectors.  Input vectors receive computed results from FFT.
-double vReal[samples];
-double vImag[samples];
-double fftBin[samples];
+static double vReal[samplesFFT];
+static double vImag[samplesFFT];
+double fftBin[samplesFFT];
 
 // Try and normalize fftBin values to a max of 4096, so that 4096/16 = 256.
 // Oh, and bins 0,1,2 are no good, so we'll zero them out.
@@ -162,7 +162,7 @@ void getSample() {
   tmpSample = (int)expAdjF;
 
 /*---------DEBUG---------*/
-  DEBUGSR_PRINT("\t\t"); DEBUGSR_PRINT(sample);
+  DEBUGSR_PRINT("\t\t"); DEBUGSR_PRINT(tmpSample);
 /*-------END DEBUG-------*/
   micIn = abs(micIn);                             // And get the absolute value of each sample
 
@@ -276,7 +276,7 @@ void transmitAudioData() {
 
 
 // Create FFT object
-arduinoFFT FFT = arduinoFFT( vReal, vImag, samples, SAMPLE_RATE );
+arduinoFFT FFT = arduinoFFT( vReal, vImag, samplesFFT, SAMPLE_RATE );
 
 double fftAdd( int from, int to) {
   int i = from;
@@ -301,7 +301,7 @@ void FFTcode( void * parameter) {
     // Only run the FFT computing code if we're not in Receive mode
     if (audioSyncEnabled & (1 << 1))
       continue;
-    audioSource->getSamples(vReal, samples);
+    audioSource->getSamples(vReal, samplesFFT);
 
     // old code - Last sample in vReal is our current mic sample
     //micDataSm = (uint16_t)vReal[samples - 1]; // will do a this a bit later
@@ -309,7 +309,7 @@ void FFTcode( void * parameter) {
     // micDataSm = ((micData * 3) + micData)/4;
 
     double maxSample = 0.0;
-    for (int i=0; i < samples; i++)
+    for (int i=0; i < samplesFFT; i++)
     {
 	    // set imaginary parts to 0
       vImag[i] = 0;
@@ -359,8 +359,8 @@ void FFTcode( void * parameter) {
     xtemp[20] = vReal[20]; vReal[20] *= 0.7;
     xtemp[21] = vReal[21]; vReal[21] *= 0.8;
 
-    xtemp[22] = vReal[samples-2]; vReal[samples-2] =0.0;
-    xtemp[23] = vReal[samples-1]; vReal[samples-1] =0.0;
+    xtemp[22] = vReal[samplesFFT-2]; vReal[samplesFFT-2] =0.0;
+    xtemp[23] = vReal[samplesFFT-1]; vReal[samplesFFT-1] =0.0;
 #endif
 
     FFT.MajorPeak(&FFT_MajorPeak, &FFT_Magnitude);          // let the effects know which freq was most dominant
@@ -391,11 +391,11 @@ void FFTcode( void * parameter) {
     vReal[19] = xtemp[19];
     vReal[20] = xtemp[20];
     vReal[21] = xtemp[21];
-    vReal[samples-2] = xtemp[22];
-    vReal[samples-1] = xtemp[23];
+    vReal[samplesFFT-2] = xtemp[22];
+    vReal[samplesFFT-1] = xtemp[23];
 #endif
 
-    for (int i = 0; i < samples; i++) {                     // Values for bins 0 and 1 are WAY too large. Might as well start at 3.
+    for (int i = 0; i < samplesFFT; i++) {                     // Values for bins 0 and 1 are WAY too large. Might as well start at 3.
       double t = 0.0;
       t = fabs(vReal[i]);                                   // just to be sure - values in fft bins should be positive any way
       t = t / 16.0;                                         // Reduce magnitude. Want end result to be linear and ~4096 max.
@@ -406,7 +406,7 @@ void FFTcode( void * parameter) {
 /* This FFT post processing is a DIY endeavour. What we really need is someone with sound engineering expertise to do a great job here AND most importantly, that the animations look GREAT as a result.
  *
  *
- * Andrew's updated mapping of 256 bins down to the 16 result bins with Sample Freq = 10240, samples = 512 and some overlap.
+ * Andrew's updated mapping of 256 bins down to the 16 result bins with Sample Freq = 10240, samplesFFT = 512 and some overlap.
  * Based on testing, the lowest/Start frequency is 60 Hz (with bin 3) and a highest/End frequency of 5120 Hz in bin 255.
  * Now, Take the 60Hz and multiply by 1.320367784 to get the next frequency and so on until the end. Then detetermine the bins.
  * End frequency = Start frequency * multiplier ^ 16

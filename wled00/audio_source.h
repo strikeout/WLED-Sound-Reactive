@@ -167,20 +167,20 @@ public:
         if(_initialized) {
             esp_err_t err;
             size_t bytes_read = 0;        /* Counter variable to check if we actually got enough data */
-            I2S_datatype samples[num_samples]; /* Intermediary sample storage */
+            I2S_datatype newSamples[num_samples]; /* Intermediary sample storage */
 
             // Reset dc offset
             _dcOffset = 0.0f;
 
-            err = i2s_read(I2S_NUM_0, (void *)samples, sizeof(samples), &bytes_read, portMAX_DELAY);
+            err = i2s_read(I2S_NUM_0, (void *)newSamples, sizeof(newSamples), &bytes_read, portMAX_DELAY);
             if ((err != ESP_OK)){
                 Serial.printf("Failed to get samples: %d\n", err);
                 return;
             }
 
             // For correct operation, we need to read exactly sizeof(samples) bytes from i2s
-            if(bytes_read != sizeof(samples)) {
-                Serial.printf("Failed to get enough samples: wanted: %d read: %d\n", sizeof(samples), bytes_read);
+            if(bytes_read != sizeof(newSamples)) {
+                Serial.printf("Failed to get enough samples: wanted: %d read: %d\n", sizeof(newSamples), bytes_read);
                 return;
             }
 
@@ -188,25 +188,19 @@ public:
             for (int i = 0; i < num_samples; i++) {
                 // pre-shift samples down to 16bit
 #ifdef I2S_SAMPLE_DOWNSCALE_TO_16BIT
-                samples[i] >>= 16;
+                newSamples[i] >>= 16;
 #endif
-                // pre-processing of ADC samples
-                if (_mask == 0x0FFF) { // 0x0FFF means that we have 12bit unsigned data from ADC -> convert to signed
-                   samples[i] = samples[i] - 2048;
-                }
-                // From the old code.
-                // double sample = (double)abs((samples[i] >> _shift));
-                double sample = 0.0;
+                double currSample = 0.0;
                 if(_shift > 0)
-                  sample = (double) (samples[i] >> _shift);
+                  currSample = (double) (newSamples[i] >> _shift);
                 else {
                   if(_shift < 0)
-                    sample = (double) (samples[i] << (- _shift)); // need to "pump up" 12bit ADC to full 16bit as delivered by other digital mics
+                    currSample = (double) (newSamples[i] << (- _shift)); // need to "pump up" 12bit ADC to full 16bit as delivered by other digital mics
                   else
-                    sample = (double) samples[i];
+                    currSample = (double) newSamples[i];
                 }
-                buffer[i] = sample;
-                _dcOffset = ((_dcOffset * 31) + sample) / 32;
+                buffer[i] = currSample;
+                _dcOffset = ((_dcOffset * 31) + currSample) / 32;
             }
 
             // Update no-DC sample
@@ -336,7 +330,7 @@ public:
             .bits_per_sample = I2S_SAMPLE_RESOLUTION,
             .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
             .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
-            .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
+            .intr_alloc_flags = ESP_INTR_FLAG_LEVEL2,
             .dma_buf_count = 8,
             .dma_buf_len = _blockSize
         };
