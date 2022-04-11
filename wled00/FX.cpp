@@ -5872,7 +5872,7 @@ uint16_t WS2812FX::mode_puddlepeak(void) {                // Puddlepeak. By Andr
   uint16_t pos = random(SEGLEN);                          // Set a random starting position.
 
   binNum = SEGMENT.custom2;                               // Select a bin.
-  maxVol = SEGMENT.custom3/2;                             // Our volume comparator.
+  maxVol = SEGMENT.custom3/4;                             // Our volume comparator.
 
 
   fade_out(fadeVal);
@@ -6055,7 +6055,7 @@ uint16_t WS2812FX::mode_blurz(void) {                    // Blurz. By Andrew Tul
   fade_out(SEGMENT.speed);
 
   uint16_t segLoc = random(SEGLEN);
-  leds[realPixelIndex(segLoc)] = color_blend(SEGCOLOR(1), color_from_palette(fftResult[SEGENV.aux0 % 16]*240/(SEGLEN-1), false, PALETTE_SOLID_WRAP, 0), fftResult[SEGENV.aux0 % 16]);
+  leds[realPixelIndex(segLoc)] = color_blend(SEGCOLOR(1), color_from_palette(2*fftResult[SEGENV.aux0 % 16]*240/(SEGLEN-1), false, PALETTE_SOLID_WRAP, 0), 2*fftResult[SEGENV.aux0 % 16]);
   SEGENV.aux0++;
   SEGENV.aux0 = SEGENV.aux0 % 16;
 
@@ -6110,8 +6110,8 @@ uint16_t WS2812FX::mode_freqmap(void) {                   // Map FFT_MajorPeak t
   uint16_t locn = (log10(FFT_MajorPeak) - 1.78) * (float)SEGLEN/(3.71-1.78);  // log10 frequency range is from 1.78 to 3.71. Let's scale to SEGLEN.
 
   if (locn >=SEGLEN) locn = SEGLEN-1;
-  uint16_t pixCol = (log10((int)FFT_MajorPeak) - 1.78) * 255.0/(3.71-1.78);   // Scale log10 of frequency values to the 255 colour index.
-  uint16_t bright = (int)FFT_Magnitude>>7;
+  uint16_t pixCol = (log10f(FFT_MajorPeak) - 1.78) * 255.0/(3.71-1.78);   // Scale log10 of frequency values to the 255 colour index.
+  uint16_t bright = (int)FFT_Magnitude>>3;
 
   setPixelColor(locn, color_blend(SEGCOLOR(1), color_from_palette(SEGMENT.intensity+pixCol, false, PALETTE_SOLID_WRAP, 0), bright));
 
@@ -6192,8 +6192,8 @@ uint16_t WS2812FX::mode_freqpixels(void) {                // Freqpixel. By Andre
 
   for (int i=0; i < SEGMENT.intensity/32+1; i++) {
     uint16_t locn = random16(0,SEGLEN);
-    uint8_t pixCol = (log10((int)FFT_MajorPeak) - 1.78) * 255.0/(3.71-1.78);  // Scale log10 of frequency values to the 255 colour index.
-    setPixelColor(locn, color_blend(SEGCOLOR(1), color_from_palette(SEGMENT.intensity+pixCol, false, PALETTE_SOLID_WRAP, 0), (int)FFT_Magnitude>>8));
+    uint8_t pixCol = (log10f(FFT_MajorPeak) - 1.78) * 255.0/(3.71-1.78);  // Scale log10 of frequency values to the 255 colour index.
+    setPixelColor(locn, color_blend(SEGCOLOR(1), color_from_palette(SEGMENT.intensity+pixCol, false, PALETTE_SOLID_WRAP, 0), (int)FFT_Magnitude>>4));
   }
   return FRAMETIME;
 } // mode_freqpixels()
@@ -6362,13 +6362,13 @@ uint16_t WS2812FX::mode_rocktaves(void) {                 // Rocktaves. Same not
   }
 
   frTemp -=132;                                           // This should give us a base musical note of C3
-  frTemp = abs(frTemp * 2.1);                             // Fudge factors to compress octave range starting at 0 and going to 255;
+  frTemp = fabs(frTemp * 2.1);                            // Fudge factors to compress octave range starting at 0 and going to 255;
 
   // Serial.print(frTemp); Serial.print("\t"); Serial.print(volTemp); Serial.print("\t");Serial.print(octCount); Serial.print("\t"); Serial.println(FFT_Magnitude);
 
 //    leds[beatsin8(8+octCount*4,0,SEGLEN-1,0,octCount*8)] += CHSV((uint8_t)frTemp,255,volTemp);                 // Back and forth with different frequencies and phase shift depending on current octave.
 
-  leds[realPixelIndex(map(beatsin8(8+octCount*4,0,SEGLEN-1,0,octCount*8),0,255,0,SEGLEN))] += color_blend(SEGCOLOR(1), color_from_palette((uint8_t)frTemp, false, PALETTE_SOLID_WRAP, 0), volTemp);
+  leds[realPixelIndex(mapf(beatsin8(8+octCount*4,0,255,0,octCount*8),0,255,0,SEGLEN-1))] += color_blend(SEGCOLOR(1), color_from_palette((uint8_t)frTemp, false, PALETTE_SOLID_WRAP, 0), volTemp);
 
 
   setPixels(leds);
