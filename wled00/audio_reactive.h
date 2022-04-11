@@ -190,7 +190,9 @@ void getSample() {
   micIn = abs(micIn);                             // And get the absolute value of each sample
 
   sampleAdj = tmpSample * sampleGain / 40 + tmpSample / 16; // Adjust the gain.
-  sampleReal = sampleAdj;
+//  sampleReal = sampleAdj;
+  sampleReal = tmpSample;
+
   sampleAdj = fmin(sampleAdj, 255);                // Question: why are we limiting the value to 8 bits ???
   sample = (int)sampleAdj;                             // ONLY update sample ONCE!!!!
 
