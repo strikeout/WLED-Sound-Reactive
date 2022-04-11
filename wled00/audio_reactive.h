@@ -203,7 +203,7 @@ void getSample() {
       sampleMax = sampleMax * 0.9992;  // signal to zero --> 5-8sec
   if (sampleMax < 0.5) sampleMax = 0.0;
 
-  sampleAvg = ((sampleAvg * 15.0) + sampleReal) / 16.0;   // Smooth it out over the last 16 samples.
+  sampleAvg = ((sampleAvg * 15.0) + sampleAdj) / 16.0;   // Smooth it out over the last 16 samples.
 
 /*---------DEBUG---------*/
   DEBUGSR_PRINT("\t"); DEBUGSR_PRINT(sample);
