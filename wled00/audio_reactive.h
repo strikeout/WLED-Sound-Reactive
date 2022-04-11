@@ -57,11 +57,11 @@ constexpr int SAMPLE_RATE = 10240;      // Base sample rate in Hz
 uint8_t maxVol = 10;                            // Reasonable value for constant volume for 'peak detector', as it won't always trigger
 uint8_t binNum = 8;                             // Used to select the bin for FFT based beat detection.
 
-const float targetAgcStep0 = 112;               // first AGC setPoint  at 45% of max (peak level) for the adjusted output
+const float targetAgcStep0 = 96;               // first AGC setPoint  at 40% of max (peak level) for the adjusted output
 const float targetAgcStep1 = 208;               // second AGC setPoint at 80% of max (peak level) for the adjusted output
 
 #define AGC_LOW         20                      // AGC: low volume emergency zone
-#define AGC_TARGET_MIN  56                      // AGC: min 25% (below = too silent)
+#define AGC_TARGET_MIN  64                      // AGC: min 25% (below = too silent)
 #define AGC_TARGET_MAX  220                     // AGC: max 85% (above = too loud)
 #define AGC_HIGH        240                     // AGC: high volume emergency zone
 
@@ -190,7 +190,9 @@ void getSample() {
   micIn = abs(micIn);                             // And get the absolute value of each sample
 
   sampleAdj = tmpSample * sampleGain / 40 + tmpSample / 16; // Adjust the gain.
-  sampleReal = sampleAdj;
+//  sampleReal = sampleAdj;
+  sampleReal = tmpSample;
+
   sampleAdj = fmin(sampleAdj, 255);                // Question: why are we limiting the value to 8 bits ???
   sample = (int)sampleAdj;                             // ONLY update sample ONCE!!!!
 
@@ -201,7 +203,7 @@ void getSample() {
       sampleMax = sampleMax * 0.9992;  // signal to zero --> 5-8sec
   if (sampleMax < 0.5) sampleMax = 0.0;
 
-  sampleAvg = ((sampleAvg * 15.0) + sampleReal) / 16.0;   // Smooth it out over the last 16 samples.
+  sampleAvg = ((sampleAvg * 15.0) + sampleAdj) / 16.0;   // Smooth it out over the last 16 samples.
 
 /*---------DEBUG---------*/
   DEBUGSR_PRINT("\t"); DEBUGSR_PRINT(sample);
@@ -270,7 +272,7 @@ void agcAvg() {
       multAgcTemp = lastMultAgc + AGC_FOLLOW_FAST * (multAgcTemp - lastMultAgc);
     else { 
       if (tmpAgc < soundSquelch + AGC_LOW)                                          // lower emergy zone
-        multAgcTemp = lastMultAgc + AGC_FOLLOW_MED * (multAgcTemp - lastMultAgc);
+        multAgcTemp = lastMultAgc + AGC_FOLLOW_FAST * (multAgcTemp - lastMultAgc);
       else {
         if ((tmpAgc < soundSquelch + AGC_TARGET_MIN) || (tmpAgc > AGC_TARGET_MAX))   // outside "normal zone"
           multAgcTemp = lastMultAgc + AGC_FOLLOW * (multAgcTemp - lastMultAgc);
