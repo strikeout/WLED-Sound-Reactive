@@ -56,26 +56,43 @@ constexpr int SAMPLE_RATE = 10240;      // Base sample rate in Hz
 
 uint8_t maxVol = 10;                            // Reasonable value for constant volume for 'peak detector', as it won't always trigger
 uint8_t binNum = 8;                             // Used to select the bin for FFT based beat detection.
-uint8_t targetAgc = 60;                         // This is our setPoint at 20% of max for the adjusted output
+
+const float targetAgcStep0 = 112;               // first AGC setPoint  at 45% of max (peak level) for the adjusted output
+const float targetAgcStep1 = 208;               // second AGC setPoint at 80% of max (peak level) for the adjusted output
+
+#define AGC_LOW         20                      // AGC: low volume emergency zone
+#define AGC_TARGET_MIN  56                      // AGC: min 25% (below = too silent)
+#define AGC_TARGET_MAX  220                     // AGC: max 85% (above = too loud)
+#define AGC_HIGH        240                     // AGC: high volume emergency zone
+
+#define AGC_FOLLOW_SLOW 0.000244140625          // 1/4096 - slowly follow setpoint
+#define AGC_FOLLOW      0.0009765625            // 1/1024 - follow setpoint
+#define AGC_FOLLOW_MED  0.00390625              // 1/256  - follow setpoint faster
+#define AGC_FOLLOW_FAST 0.03125                 // 1/32   - quickly follow setpoint
+
+double sampleMax = 0;
+
 uint8_t myVals[32];                             // Used to store a pile of samples because WLED frame rate and WLED sample rate are not synchronized. Frame rate is too low.
 bool samplePeak = 0;                            // Boolean flag for peak. Responding routine must reset this flag
 bool udpSamplePeak = 0;                         // Boolean flag for peak. Set at the same tiem as samplePeak, but reset by transmitAudioData
 int delayMs = 10;                               // I don't want to sample too often and overload WLED
-int micIn;                                      // Current sample starts with negative values and large values, which is why it's 16 bit signed
+static int micIn = 0.0;                         // Current sample starts with negative values and large values, which is why it's 16 bit signed
 int sample;                                     // Current sample. Must only be updated ONCE!!!
-int tmpSample;                                  // An interim sample variable used for calculatioins.
-int sampleAdj;                                  // Gain adjusted sample value
+float sampleReal = 0.0;					                // "sample" as float, to provide bits that are lost otherwise. Needed for AGC.
+static float tmpSample;                         // An interim sample variable used for calculations.
+static float sampleAdj;                         // Gain adjusted sample value
 int sampleAgc;                                  // Our AGC sample
 uint16_t micData;                               // Analog input for FFT
 uint16_t micDataSm;                             // Smoothed mic data, as it's a bit twitchy
+float micDataReal = 0.0;                        // future support - this one has the full 24bit MicIn data - lowest 8bit after decimal point
 long timeOfPeak = 0;
 long lastTime = 0;
-float micLev = 0;                               // Used to convert returned value to have '0' as minimum. A leveller
-float multAgc;                                  // sample * multAgc = sampleAgc. Our multiplier
+static double micLev = 0.0;                     // Used to convert returned value to have '0' as minimum. A leveller
+float multAgc = 1.0;                            // sample * multAgc = sampleAgc. Our multiplier
 float sampleAvg = 0;                            // Smoothed Average
 double beat = 0;                                // beat Detection
 
-float expAdjF;                                  // Used for exponential filter.
+static float expAdjF;                           // Used for exponential filter.
 float weighting = 0.2;                          // Exponential filter weighting. Will be adjustable in a future release.
 
 
@@ -136,6 +153,7 @@ void getSample() {
 
   #ifdef WLED_DISABLE_SOUND
     micIn = inoise8(millis(), millis());          // Simulated analog read
+    micDataReal = micIn;
   #else
     micIn = micDataSm;      // micDataSm = ((micData * 3) + micData)/4;
 /*---------DEBUG---------*/
@@ -148,18 +166,23 @@ void getSample() {
     DEBUGSR_PRINT("\t\t"); DEBUGSR_PRINT(micIn);
 /*-------END DEBUG-------*/
   #endif
-  micLev = ((micLev * 31) + micIn) / 32;          // Smooth it out over the last 32 samples for automatic centering
+  // Note to self: the next line kills 80% of sample - "miclev" filter runs at "full arduino loop" speed, following the signal almost instantly!
+  //micLev = ((micLev * 31) + micIn) / 32;                // Smooth it out over the last 32 samples for automatic centering
+  micLev = ((micLev * 8191.0) + micDataReal) / 8192.0;                // takes a few seconds to "catch up" with the Mic Input
+  if(micIn < micLev) micLev = ((micLev * 63.0) + micDataReal) / 64.0; // align MicLev to lowest input signal
+
   micIn -= micLev;                                // Let's center it to 0 now
 /*---------DEBUG---------*/
   DEBUGSR_PRINT("\t\t"); DEBUGSR_PRINT(micIn);
 /*-------END DEBUG-------*/
 
 // Using an exponential filter to smooth out the signal. We'll add controls for this in a future release.
-  expAdjF = (weighting * micIn + (1.0-weighting) * expAdjF);
-  expAdjF = (expAdjF <= soundSquelch) ? 0: expAdjF;
+  float micInNoDC = fabs(micDataReal - micLev);
+  expAdjF = (weighting * micInNoDC + (1.0-weighting) * expAdjF);
+  expAdjF = (expAdjF <= soundSquelch) ? 0: expAdjF; // simple noise gate
 
   expAdjF = fabs(expAdjF);                          // Now (!) take the absolute value
-  tmpSample = (int)expAdjF;
+  tmpSample = expAdjF;
 
 /*---------DEBUG---------*/
   DEBUGSR_PRINT("\t\t"); DEBUGSR_PRINT(tmpSample);
@@ -167,10 +190,18 @@ void getSample() {
   micIn = abs(micIn);                             // And get the absolute value of each sample
 
   sampleAdj = tmpSample * sampleGain / 40 + tmpSample / 16; // Adjust the gain.
-  sampleAdj = min(sampleAdj, 255);                // Question: why are we limiting the value to 8 bits ???
-  sample = sampleAdj;                             // ONLY update sample ONCE!!!!
+  sampleReal = sampleAdj;
+  sampleAdj = fmin(sampleAdj, 255);                // Question: why are we limiting the value to 8 bits ???
+  sample = (int)sampleAdj;                             // ONLY update sample ONCE!!!!
 
-  sampleAvg = ((sampleAvg * 15) + sample) / 16;   // Smooth it out over the last 16 samples.
+  // keep "peak" sample, but decay value if current sample is below peak
+  if ((sampleMax < sampleReal) && (sampleReal > 0.5))
+      sampleMax = sampleReal;          // new peak
+  else
+      sampleMax = sampleMax * 0.9992;  // signal to zero --> 5-8sec
+  if (sampleMax < 0.5) sampleMax = 0.0;
+
+  sampleAvg = ((sampleAvg * 15.0) + sampleReal) / 16.0;   // Smooth it out over the last 16 samples.
 
 /*---------DEBUG---------*/
   DEBUGSR_PRINT("\t"); DEBUGSR_PRINT(sample);
@@ -200,30 +231,63 @@ void getSample() {
 } // getSample()
 
 /*
- * A simple averaging multiplier to automatically adjust sound sensitivity.
- */
-/*
  * A simple, but hairy, averaging multiplier to automatically adjust sound sensitivity.
- *    not sure if not sure "sample" or "sampleAvg" is the correct input signal for AGC
+ * 
+ * A few tricks are implemented so that sampleAgc does't only utilize 0% and 100%:
+ * 0. don't amplify anything below squelch
+ * 1. gain input = maximum signal observed in the last 5-10 seconds
+ * 2. we use two setpoints, one at ~60%, and one at ~80% of the maximum signal
+ * 3. the amplification depends on signal level:
+ *    a) high zone (90% .. 70%) - some adjustment
+ *    b) normal zone (20% .. 70%) - very slow adjustment
+ *    c) low zone (20% .. 10%) - some adjustment
+ *    d) emergency zome (<10% or >90%) - very fast adjustment
  */
 void agcAvg() {
 
-  float lastMultAgc = multAgc;
-  float tmpAgc;
-  if(fabs(sampleAvg) < 2.0) {
-    tmpAgc = sampleAvg;                           // signal below squelch -> deliver silence
-    multAgc = multAgc * 0.95;                     // slightly decrease gain multiplier
+  float lastMultAgc = multAgc;      // last muliplier used
+  float multAgcTemp = multAgc;      // new multiplier
+  float tmpAgc = sampleReal;        // what-if amplified signal
+
+  // check if signal is "squelched"
+  if((fabs(sampleAvg) < 2.0) || (sampleMax < 1.0)) {          // signal below squelch -> deliver silence
+    multAgcTemp = multAgc * 0.98;                             // and slightly decrease gain multiplier
   } else {
-    multAgc = (sampleAvg < 1) ? targetAgc : targetAgc / sampleAvg;  // Make the multiplier so that sampleAvg * multiplier = setpoint
+    // compute new setpoint
+    if (sampleReal * lastMultAgc < targetAgcStep0)
+      multAgcTemp = (sampleAvg <= 1) ? 1 : targetAgcStep0 / sampleMax;  // Make the multiplier so that sampleMax * multiplier = first setpoint
+    else
+      multAgcTemp = (sampleAvg <= 1) ? 1 : targetAgcStep1 / sampleMax;  // Make the multiplier so that sampleMax * multiplier = second setpoint
   }
 
-  if (multAgc < 0.5) multAgc = 0.5;               // signal higher than 2*setpoint -> don't reduce it further
-  multAgc = (lastMultAgc*127.0 +multAgc) / 128.0; //apply some filtering to gain multiplier -> smoother transitions
-  tmpAgc = (float)sample * multAgc;               // apply gain to signal
+  if (multAgcTemp > 32.0) multAgcTemp = 32.0;
+  if (multAgcTemp < 1.0/64.0) multAgcTemp = 1.0/64.0;
+
+  // check "zone" of the signal using previous gain
+  tmpAgc = sampleReal * lastMultAgc;
+  if (tmpAgc >= 1.0) {
+    if (tmpAgc > AGC_HIGH)                                                         // upper emergy zone
+      multAgcTemp = lastMultAgc + AGC_FOLLOW_FAST * (multAgcTemp - lastMultAgc);
+    else { 
+      if (tmpAgc < soundSquelch + AGC_LOW)                                          // lower emergy zone
+        multAgcTemp = lastMultAgc + AGC_FOLLOW_MED * (multAgcTemp - lastMultAgc);
+      else {
+        if ((tmpAgc < soundSquelch + AGC_TARGET_MIN) || (tmpAgc > AGC_TARGET_MAX))   // outside "normal zone"
+          multAgcTemp = lastMultAgc + AGC_FOLLOW * (multAgcTemp - lastMultAgc);
+        else                                                                         // inside "normal zone"
+          multAgcTemp = lastMultAgc + AGC_FOLLOW_SLOW * (multAgcTemp - lastMultAgc);
+      }
+    }
+  } else multAgcTemp = lastMultAgc + AGC_FOLLOW_FAST * (multAgcTemp - lastMultAgc);
+
+  // NOW finally amplify the signal
+  tmpAgc = sampleReal * multAgcTemp;                  // apply gain to signal
   if (tmpAgc <= (soundSquelch*1.2)) tmpAgc = sample;  // check against squelch threshold - increased by 20% to avoid artefacts (ripples)
 
   if (tmpAgc > 255) tmpAgc = 255;
-  sampleAgc = tmpAgc;                             // ONLY update sampleAgc ONCE because it's used elsewhere asynchronously!!!!
+  multAgc = multAgcTemp;                          // only update final AGC multiplier once
+  sampleAgc = 0.7 * tmpAgc + 0.3 * sampleAgc;     // ONLY update sampleAgc ONCE because it's used elsewhere asynchronously!!!!
+
   userVar0 = sampleAvg * 4;
   if (userVar0 > 255) userVar0 = 255;
 } // agcAvg()
@@ -320,6 +384,7 @@ void FFTcode( void * parameter) {
 	    }
     }
 	  micDataSm = (uint16_t)maxSample;
+    micDataReal = maxSample;
 
     FFT.DCRemoval(); // let FFT lib remove DC component, so we don't need to care about this in getSamples()
 
@@ -445,7 +510,10 @@ void FFTcode( void * parameter) {
 
 // Manual linear adjustment of gain using sampleGain adjustment for different input types.
     for (int i=0; i < 16; i++) {
-        fftCalc[i] = fftCalc[i] * sampleGain / 40 + fftCalc[i]/16.0;
+        if (soundAgc)
+          fftCalc[i] = fftCalc[i] * multAgc;
+        else
+          fftCalc[i] = fftCalc[i] * (double)sampleGain / 40.0 + (double)fftCalc[i]/16.0;
     }
 
 
@@ -476,8 +544,10 @@ void logAudio() {
   //Serial.print("micDataSm:");  Serial.print(micDataSm); Serial.print("\t");
   //Serial.print("micIn:");      Serial.print(micIn);     Serial.print("\t");
   //Serial.print("micLev:");     Serial.print(micLev);      Serial.print("\t");
-  Serial.print("sample:");     Serial.print(sample);      Serial.print("\t");
+  //Serial.print("sample:");     Serial.print(sample);      Serial.print("\t");
   //Serial.print("sampleAvg:");  Serial.print(sampleAvg);   Serial.print("\t");
+  Serial.print("sampleReal:");     Serial.print(sampleReal);      Serial.print("\t");
+  //Serial.print("sampleMax:");     Serial.print(sampleMax);      Serial.print("\t");
   //Serial.print("multAgc:");    Serial.print(multAgc);   Serial.print("\t");
   Serial.print("sampleAgc:");  Serial.print(sampleAgc);   Serial.print("\t");
   Serial.println(" ");
