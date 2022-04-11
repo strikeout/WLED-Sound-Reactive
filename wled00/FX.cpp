@@ -4276,6 +4276,8 @@ extern byte soundAgc;
 extern uint8_t maxVol;
 extern uint8_t binNum;
 
+extern float sampleReal;			                 // "sample" as float, to provide bits that are lost otherwise. Needed for AGC.
+extern float multAgc;                          // sampleReal * multAgc = sampleAgc. Our multiplier
 
 // FFT based variables
 extern double FFT_MajorPeak;
@@ -5546,7 +5548,9 @@ uint16_t WS2812FX::mode_gravcenter(void) {                // Gravcenter. By Andr
 
   fade_out(240);
 
-  float segmentSampleAvg = sampleAvg * SEGMENT.intensity / 255;
+  float tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
+  float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
+  if (soundAgc) segmentSampleAvg *= 0.125; // divide by 8, to compensate for later "sensitivty" upscaling
 
   int tempsamp = constrain(segmentSampleAvg*2,0,SEGLEN/2);     // Keep the sample from overflowing.
   uint8_t gravity = 8 - SEGMENT.speed/32;
@@ -5585,7 +5589,9 @@ uint16_t WS2812FX::mode_gravcentric(void) {                     // Gravcentric. 
   fade_out(240);
   fade_out(240);
 
-  float segmentSampleAvg = sampleAvg * SEGMENT.intensity / 255;
+  float tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
+  float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
+  if (soundAgc) segmentSampleAvg *= 0.125; // divide by 8, to compensate for later "sensitivty" upscaling
 
   int tempsamp = constrain(segmentSampleAvg*2,0,SEGLEN/2);     // Keep the sample from overflowing.
   uint8_t gravity = 8 - SEGMENT.speed/32;
@@ -5623,7 +5629,9 @@ uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andre
 
   fade_out(240);
 
-  float segmentSampleAvg = sampleAvg * SEGMENT.intensity / 255;
+  float tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
+  float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
+  if (soundAgc) segmentSampleAvg *= 0.25; // divide by 4, to compensate for later "sensitivty" upscaling
 
   int tempsamp = constrain(segmentSampleAvg*2,0,SEGLEN-1);       // Keep the sample from overflowing.
   uint8_t gravity = 8 - SEGMENT.speed/32;
@@ -5654,8 +5662,10 @@ uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andre
 uint16_t WS2812FX::mode_juggles(void) {                   // Juggles. By Andrew Tuline.
 
   fade_out(224);
+  int my_sampleAgc = max(min(sampleAgc, 255), 0);
+
   for (int i=0; i<SEGMENT.intensity/32+1; i++) {
-          setPixelColor(beatsin16(SEGMENT.speed/4+i*2,0,SEGLEN-1), color_blend(SEGCOLOR(1), color_from_palette(millis()/4+i*2, false, PALETTE_SOLID_WRAP, 0), sampleAgc));
+          setPixelColor(beatsin16(SEGMENT.speed/4+i*2,0,SEGLEN-1), color_blend(SEGCOLOR(1), color_from_palette(millis()/4+i*2, false, PALETTE_SOLID_WRAP, 0), my_sampleAgc));
   }
 
   return FRAMETIME;
@@ -6279,7 +6289,9 @@ uint16_t WS2812FX::mode_gravfreq(void) {                  // Gravfreq. By Andrew
 
   fade_out(240);
 
-  float segmentSampleAvg = sampleAvg * SEGMENT.intensity / 255;
+  float tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
+  float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
+  if (soundAgc) segmentSampleAvg *= 0.125; // divide by 8,  to compensate for later "sensitivty" upscaling
 
   int tempsamp = constrain(segmentSampleAvg*2,0,SEGLEN/2);     // Keep the sample from overflowing.
   uint8_t gravity = 8 - SEGMENT.speed/32;
