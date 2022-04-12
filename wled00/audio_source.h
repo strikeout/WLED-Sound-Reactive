@@ -188,7 +188,8 @@ public:
             for (int i = 0; i < num_samples; i++) {
                 // pre-shift samples down to 16bit
 #ifdef I2S_SAMPLE_DOWNSCALE_TO_16BIT
-                newSamples[i] >>= 16;
+                if (_shift != 0)
+                    newSamples[i] >>= 16;
 #endif
                 double currSample = 0.0;
                 if(_shift > 0)
@@ -197,7 +198,11 @@ public:
                   if(_shift < 0)
                     currSample = (double) (newSamples[i] << (- _shift)); // need to "pump up" 12bit ADC to full 16bit as delivered by other digital mics
                   else
+#ifdef I2S_SAMPLE_DOWNSCALE_TO_16BIT
+                    currSample = (double) newSamples[i] / 65536.0;        // _shift == 0 -> use the chance to keep lower 16bits
+#else
                     currSample = (double) newSamples[i];
+#endif
                 }
                 buffer[i] = currSample;
                 _dcOffset = ((_dcOffset * 31) + currSample) / 32;

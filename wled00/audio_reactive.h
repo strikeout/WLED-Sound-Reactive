@@ -19,7 +19,7 @@
 #include <driver/i2s.h>
 #include "audio_source.h"
 
-AudioSource *audioSource;
+static AudioSource *audioSource;
 
 // ALL AUDIO INPUT PINS DEFINED IN wled.h AND CONFIGURABLE VIA UI
 
@@ -342,7 +342,7 @@ void transmitAudioData() {
 
 
 // Create FFT object
-arduinoFFT FFT = arduinoFFT( vReal, vImag, samplesFFT, SAMPLE_RATE );
+static arduinoFFT FFT = arduinoFFT( vReal, vImag, samplesFFT, SAMPLE_RATE );
 
 double fftAdd( int from, int to) {
   int i = from;
