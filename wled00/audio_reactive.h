@@ -57,18 +57,16 @@ constexpr int SAMPLE_RATE = 10240;      // Base sample rate in Hz
 uint8_t maxVol = 10;                            // Reasonable value for constant volume for 'peak detector', as it won't always trigger
 uint8_t binNum = 8;                             // Used to select the bin for FFT based beat detection.
 
-const float targetAgcStep0 = 96;               // first AGC setPoint  at 40% of max (peak level) for the adjusted output
-const float targetAgcStep1 = 208;               // second AGC setPoint at 80% of max (peak level) for the adjusted output
+const float targetAgcStep0 = 104;               // first AGC setPoint  at 40% of max (peak level) for the adjusted output
+const float targetAgcStep1 = 216;               // second AGC setPoint at 85% of max (peak level) for the adjusted output
 
-#define AGC_LOW         20                      // AGC: low volume emergency zone
-#define AGC_TARGET_MIN  64                      // AGC: min 25% (below = too silent)
-#define AGC_TARGET_MAX  220                     // AGC: max 85% (above = too loud)
+#define AGC_LOW         32                      // AGC: low volume emergency zone
 #define AGC_HIGH        240                     // AGC: high volume emergency zone
+#define AGC_control_Kp  0.5                     // AGC - PI control, proportional gain parameter
+#define AGC_control_Ki  1.8                     // AGC - PI control, integral gain parameter
 
-#define AGC_FOLLOW_SLOW 0.000244140625          // 1/4096 - slowly follow setpoint
-#define AGC_FOLLOW      0.0009765625            // 1/1024 - follow setpoint
-#define AGC_FOLLOW_MED  0.00390625              // 1/256  - follow setpoint faster
-#define AGC_FOLLOW_FAST 0.03125                 // 1/32   - quickly follow setpoint
+#define AGC_FOLLOW_SLOW 0.0001220703125         // 1/8192 - slowly follow setpoint -  ~5 sec
+#define AGC_FOLLOW_FAST 0.00390625              // 1/256   - quickly follow setpoint - ~0.15 sec
 
 double sampleMax = 0;
 
@@ -198,9 +196,9 @@ void getSample() {
 
   // keep "peak" sample, but decay value if current sample is below peak
   if ((sampleMax < sampleReal) && (sampleReal > 0.5))
-      sampleMax = sampleReal;          // new peak
+      sampleMax = sampleMax + 0.5 * (sampleReal - sampleMax);          // new peak - with some filtering
   else
-      sampleMax = sampleMax * 0.9992;  // signal to zero --> 5-8sec
+      sampleMax = sampleMax * 0.9994;  // signal to zero --> 5-8sec
   if (sampleMax < 0.5) sampleMax = 0.0;
 
   sampleAvg = ((sampleAvg * 15.0) + sampleAdj) / 16.0;   // Smooth it out over the last 16 samples.
@@ -233,62 +231,76 @@ void getSample() {
 } // getSample()
 
 /*
- * A simple, but hairy, averaging multiplier to automatically adjust sound sensitivity.
+ * A "PI control" multiplier to automatically adjust sound sensitivity.
  * 
  * A few tricks are implemented so that sampleAgc does't only utilize 0% and 100%:
- * 0. don't amplify anything below squelch
+ * 0. don't amplify anything below squelch (but keep previous gain)
  * 1. gain input = maximum signal observed in the last 5-10 seconds
  * 2. we use two setpoints, one at ~60%, and one at ~80% of the maximum signal
  * 3. the amplification depends on signal level:
- *    a) high zone (90% .. 70%) - some adjustment
- *    b) normal zone (20% .. 70%) - very slow adjustment
- *    c) low zone (20% .. 10%) - some adjustment
- *    d) emergency zome (<10% or >90%) - very fast adjustment
+ *    a) normal zone - very slow adjustment
+ *    b) emergency zome (<10% or >90%) - very fast adjustment
  */
 void agcAvg() {
 
   float lastMultAgc = multAgc;      // last muliplier used
   float multAgcTemp = multAgc;      // new multiplier
-  float tmpAgc = sampleReal;        // what-if amplified signal
+  float tmpAgc = sampleReal * multAgc;        // what-if amplified signal
 
-  // check if signal is "squelched"
-  if((fabs(sampleAvg) < 2.0) || (sampleMax < 1.0)) {          // signal below squelch -> deliver silence
-    multAgcTemp = multAgc * 0.98;                             // and slightly decrease gain multiplier
-  } else {
-    // compute new setpoint
-    if (sampleReal * lastMultAgc < targetAgcStep0)
-      multAgcTemp = (sampleAvg <= 1) ? 1 : targetAgcStep0 / sampleMax;  // Make the multiplier so that sampleMax * multiplier = first setpoint
-    else
-      multAgcTemp = (sampleAvg <= 1) ? 1 : targetAgcStep1 / sampleMax;  // Make the multiplier so that sampleMax * multiplier = second setpoint
-  }
+  float control_error;                        // "control error" input for PI control
+  static double control_integrated = 0.0;     // "integrator control" = accumulated error
 
-  if (multAgcTemp > 32.0) multAgcTemp = 32.0;
-  if (multAgcTemp < 1.0/64.0) multAgcTemp = 1.0/64.0;
+  // For PI control, we need to have a contant "frequency"
+  // so let's make sure that the control loop is not running at insane speed
+  static unsigned long last_time = 0;
+  unsigned long time_now = millis();
+  if (time_now - last_time > 2)  {
+    last_time = time_now;
 
-  // check "zone" of the signal using previous gain
-  tmpAgc = sampleReal * lastMultAgc;
-  if (tmpAgc >= 1.0) {
-    if (tmpAgc > AGC_HIGH)                                                         // upper emergy zone
-      multAgcTemp = lastMultAgc + AGC_FOLLOW_FAST * (multAgcTemp - lastMultAgc);
-    else { 
-      if (tmpAgc < soundSquelch + AGC_LOW)                                          // lower emergy zone
-        multAgcTemp = lastMultAgc + AGC_FOLLOW_FAST * (multAgcTemp - lastMultAgc);
-      else {
-        if ((tmpAgc < soundSquelch + AGC_TARGET_MIN) || (tmpAgc > AGC_TARGET_MAX))   // outside "normal zone"
-          multAgcTemp = lastMultAgc + AGC_FOLLOW * (multAgcTemp - lastMultAgc);
-        else                                                                         // inside "normal zone"
-          multAgcTemp = lastMultAgc + AGC_FOLLOW_SLOW * (multAgcTemp - lastMultAgc);
-      }
+    if((fabs(sampleReal) < 2.0) || (sampleMax < 1.0)) {
+      // MIC signal is "squelched" - deliver silence
+      multAgcTemp = multAgc;          // keep old control value (no change)
+      tmpAgc = 0;
+      // we need to "spin down" the intgrated error buffer
+      if (fabs(control_integrated) < 1.0) control_integrated = 0.0;
+      else control_integrated = control_integrated * 0.5;
+    } else {
+      // compute new setpoint
+      if (tmpAgc < targetAgcStep0)
+        multAgcTemp = targetAgcStep0 / sampleMax;  // Make the multiplier so that sampleMax * multiplier = first setpoint
+      else
+        multAgcTemp = targetAgcStep1 / sampleMax;  // Make the multiplier so that sampleMax * multiplier = second setpoint
     }
-  } else multAgcTemp = lastMultAgc + AGC_FOLLOW_FAST * (multAgcTemp - lastMultAgc);
+    // limit amplification
+    if (multAgcTemp > 32.0) multAgcTemp = 32.0;
+    if (multAgcTemp < 1.0/64.0) multAgcTemp = 1.0/64.0;
+
+    // compute error terms
+    control_error = multAgcTemp - lastMultAgc;
+    control_integrated += control_error * 0.002;    // 2ms = intgration time
+
+    // apply PI Control 
+    tmpAgc = sampleReal * lastMultAgc;              // check "zone" of the signal using previous gain
+    if ((tmpAgc > AGC_HIGH) || (tmpAgc < soundSquelch + AGC_LOW)) {                  // upper/lower emergy zone
+      multAgcTemp = lastMultAgc + AGC_FOLLOW_FAST * AGC_control_Kp * control_error;
+      multAgcTemp += AGC_FOLLOW_FAST * AGC_control_Ki * control_integrated;
+    } else {                                                                         // "normal zone"
+      multAgcTemp = lastMultAgc + AGC_FOLLOW_SLOW * AGC_control_Kp * control_error;
+      multAgcTemp += AGC_FOLLOW_SLOW * AGC_control_Ki * control_integrated;
+    }
+
+    // limit amplification again - PI controler sometimes "overshoots"
+    if (multAgcTemp > 32.0) multAgcTemp = 32.0;
+    if (multAgcTemp < 1.0/64.0) multAgcTemp = 1.0/64.0;
+  }
 
   // NOW finally amplify the signal
   tmpAgc = sampleReal * multAgcTemp;                  // apply gain to signal
-  if (tmpAgc <= (soundSquelch*1.2)) tmpAgc = sample;  // check against squelch threshold - increased by 20% to avoid artefacts (ripples)
+  if(fabs(sampleReal) < 2.0) tmpAgc = 0;              // apply squelch threshold
 
   if (tmpAgc > 255) tmpAgc = 255;
-  multAgc = multAgcTemp;                          // only update final AGC multiplier once
-  sampleAgc = 0.7 * tmpAgc + 0.3 * sampleAgc;     // ONLY update sampleAgc ONCE because it's used elsewhere asynchronously!!!!
+  multAgc = multAgcTemp;                              // only update final AGC multiplier once
+  sampleAgc = 0.7 * tmpAgc + 0.3 * (float)sampleAgc;  // ONLY update sampleAgc ONCE because it's used elsewhere asynchronously!!!!
 
   userVar0 = sampleAvg * 4;
   if (userVar0 > 255) userVar0 = 255;
