@@ -262,8 +262,8 @@ void agcAvg() {
       multAgcTemp = multAgc;          // keep old control value (no change)
       tmpAgc = 0;
       // we need to "spin down" the intgrated error buffer
-      if (fabs(control_integrated) < 1.0) control_integrated = 0.0;
-      else control_integrated = control_integrated * 0.5;
+      if (fabs(control_integrated) < 0.01) control_integrated = 0.0;
+      else control_integrated = control_integrated * 0.95;
     } else {
       // compute new setpoint
       if (tmpAgc < targetAgcStep0)
@@ -277,7 +277,8 @@ void agcAvg() {
 
     // compute error terms
     control_error = multAgcTemp - lastMultAgc;
-    control_integrated += control_error * 0.002;    // 2ms = intgration time
+    if ((multAgcTemp > 0.085) && (multAgcTemp < 6.5))        //integrator anti-windup by clamping
+      control_integrated += control_error * 0.002 * 0.25;    // 2ms = intgration time; 0.25 for damping
 
     // apply PI Control 
     tmpAgc = sampleReal * lastMultAgc;              // check "zone" of the signal using previous gain
@@ -562,7 +563,7 @@ void logAudio() {
   //Serial.print("sampleAvg:");  Serial.print(sampleAvg);   Serial.print("\t");
   Serial.print("sampleReal:");     Serial.print(sampleReal);      Serial.print("\t");
   //Serial.print("sampleMax:");     Serial.print(sampleMax);      Serial.print("\t");
-  //Serial.print("multAgc:");    Serial.print(multAgc);   Serial.print("\t");
+  Serial.print("multAgc:");    Serial.print(multAgc, 4);   Serial.print("\t");
   Serial.print("sampleAgc:");  Serial.print(sampleAgc);   Serial.print("\t");
   Serial.println(" ");
 
