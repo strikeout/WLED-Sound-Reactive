@@ -38,8 +38,9 @@
 		Squelch: <input name="SQ" type="number" min="0" max="255" required><br>
 		Gain: <input name="GN" type="number" min="0" max="255" required><br>
 		<i>Enter values between 0 and 255. To tune, start with Squelch=5..10 and Gain=15..40 and modify according to your setup</i><br>
+		<i>40 means an amplification of 1; 1 is about 1/32, 255 is about 6.5</i><br>
 		Automatic Gain Control (AGC): <input type="checkbox" name="AGC"><br>
-		<i>AGC is an expiremental feature</i><br>
+		<i>AGC is an expiremental feature. Effects supporting AGC show the 🎚 icon</i><br>
 		<h2>Sound Input Pin Manager</h2>
 		Microphone type: <select id="dme" name="DMM" onchange="enDM()" >
 			<option value="0" selected>Generic Analog</option>

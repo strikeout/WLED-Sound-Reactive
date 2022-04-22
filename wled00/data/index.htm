@@ -28,16 +28,24 @@
 			<button onclick="window.location.href = '/settings';"><i class="icons">&#xe0a2;</i><p class="tab-label">Config</p></button>
 		  <button id="buttonPcm" onclick="togglePcMode(true)"><i class="icons">&#xe23d;</i><p class="tab-label">PC Mode</p></button>
 		</div>
-		<div id="briwrap">
-			<p class="hd">Brightness</p>
-			<div class="il">
-				<i class="icons slider-icon" onclick="tglTheme()">&#xe2a6;</i>
-				<div class="sliderwrap il">
-					<input id="sliderBri" onchange="setBri()" oninput="updateTrail(this)" max="255" min="1" type="range" value="128" />
-					<div class="sliderdisplay"></div>
-				</div>
-			</div>
-		</div>
+        <div id="briwrap">
+            <div class="il">
+                <p class="hd">Brightness</p>
+                <i class="icons slider-icon" onclick="tglTheme()">&#xe2a6;</i>
+                <div class="sliderwrap il">
+                    <input id="sliderBri" onchange="setBri()" oninput="updateTrail(this)" max="255" min="1" type="range" value="128" />
+                    <div class="sliderdisplay"></div>
+                </div>
+            </div>
+            <div class="il">
+                <p class="hd">Gain</p>
+                <i class="icons slider-icon" onclick="tglTheme()">🎚</i>
+                <div class="sliderwrap il">
+                    <input id="sliderGain" onchange="setGain()" oninput="updateTrail(this)" max="255" min="1" type="range" value="128" />
+                    <div class="sliderdisplay"></div>
+                </div>
+            </div>
+        </div>
 		<iframe id="liveview" src="about:blank"></iframe>
 	</div>
 </div>

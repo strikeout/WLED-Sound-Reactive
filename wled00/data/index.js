@@ -973,6 +973,7 @@ function updateUI()
   d.getElementById('buttonSync').className = (syncSend) ? "active":"";
 
   updateTrail(d.getElementById('sliderBri'));
+  updateTrail(d.getElementById('sliderGain'));
   updateTrail(d.getElementById('sliderSpeed'));
   updateTrail(d.getElementById('sliderIntensity'));
   updateTrail(d.getElementById('sliderCustom1'));
@@ -1059,6 +1060,7 @@ function makeWS() {
 function readState(s,command=false) {
   isOn = s.on;
   d.getElementById('sliderBri').value= s.bri;
+  d.getElementById('sliderGain').value= s.gain;
   nlA = s.nl.on;
   nlDur = s.nl.dur;
   nlTar = s.nl.tbri;
@@ -1892,6 +1894,10 @@ function setBri() {
   var obj = {"bri": parseInt(d.getElementById('sliderBri').value)};
   requestJson(obj);
 }
+function setGain() {
+  var obj = {"gain": parseInt(d.getElementById('sliderGain').value)};
+  requestJson(obj);
+}
 
 function setSpeed() {
   var obj = {"seg": {"sx": parseInt(d.getElementById('sliderSpeed').value)}};
@@ -2490,6 +2496,7 @@ function expand(i,a)
 
 function unfocusSliders() {
   d.getElementById("sliderBri").blur();
+  d.getElementById("sliderGain").blur();
   d.getElementById("sliderSpeed").blur();
   d.getElementById("sliderIntensity").blur();
   d.getElementById("sliderCustom1").blur();
