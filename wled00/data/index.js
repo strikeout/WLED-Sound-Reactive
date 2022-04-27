@@ -973,7 +973,7 @@ function updateUI()
   d.getElementById('buttonSync').className = (syncSend) ? "active":"";
 
   updateTrail(d.getElementById('sliderBri'));
-  updateTrail(d.getElementById('sliderGain'));
+  updateTrail(d.getElementById('sliderVolume')); //WLEDSR
   updateTrail(d.getElementById('sliderSpeed'));
   updateTrail(d.getElementById('sliderIntensity'));
   updateTrail(d.getElementById('sliderCustom1'));
@@ -1060,7 +1060,9 @@ function makeWS() {
 function readState(s,command=false) {
   isOn = s.on;
   d.getElementById('sliderBri').value= s.bri;
-  d.getElementById('sliderGain').value= s.gain;
+  d.getElementById('sliderVolume').value= s.volume; //WLEDSR
+  console.log("readstate s:"); //WLEDSR volume slider debug...
+  console.log(s);
   nlA = s.nl.on;
   nlDur = s.nl.dur;
   nlTar = s.nl.tbri;
@@ -1894,8 +1896,10 @@ function setBri() {
   var obj = {"bri": parseInt(d.getElementById('sliderBri').value)};
   requestJson(obj);
 }
-function setGain() {
-  var obj = {"gain": parseInt(d.getElementById('sliderGain').value)};
+
+//WLEDSR
+function setVolume() {
+  var obj = {"volume": parseInt(d.getElementById('sliderVolume').value)};
   requestJson(obj);
 }
 
@@ -2496,7 +2500,7 @@ function expand(i,a)
 
 function unfocusSliders() {
   d.getElementById("sliderBri").blur();
-  d.getElementById("sliderGain").blur();
+  d.getElementById("sliderVolume").blur(); //WLEDSR
   d.getElementById("sliderSpeed").blur();
   d.getElementById("sliderIntensity").blur();
   d.getElementById("sliderCustom1").blur();

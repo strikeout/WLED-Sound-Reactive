@@ -314,6 +314,7 @@ WLED_GLOBAL bool cctFromRgb _INIT(false); //CCT is calculated from RGB instead o
 WLED_GLOBAL byte col[]    _INIT_N(({ 255, 160, 0, 0 }));  // current RGB(W) primary color. col[] should be updated if you want to change the color.
 WLED_GLOBAL byte colSec[] _INIT_N(({ 0, 0, 0, 0 }));      // current RGB(W) secondary color
 WLED_GLOBAL byte briS     _INIT(128);                     // default brightness
+WLED_GLOBAL byte volumeS     _INIT(128);                     //WLEDSR default volume
 
 WLED_GLOBAL byte soundSquelch   _INIT(10);          // default squelch value for volume reactive routines
 WLED_GLOBAL byte sampleGain     _INIT(1);           // default sample gain
@@ -496,6 +497,9 @@ WLED_GLOBAL byte briT _INIT(0);
 WLED_GLOBAL byte briIT _INIT(0);
 WLED_GLOBAL byte briLast _INIT(128);          // brightness before turned off. Used for toggle function
 WLED_GLOBAL byte whiteLast _INIT(128);        // white channel before turned off. Used for toggle function
+
+// gain (WLEDSR)
+WLED_GLOBAL byte volume _INIT(volumeS);          // volume (set by sliderVolume)
 
 // button
 WLED_GLOBAL bool buttonPublishMqtt                            _INIT(false);

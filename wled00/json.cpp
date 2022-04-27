@@ -289,6 +289,7 @@ bool deserializeState(JsonObject root, byte callMode, byte presetId)
   bool stateResponse = root[F("v")] | false;
 
   getVal(root["bri"], &bri);
+  getVal(root["volume"], &volume); //WLEDSR
 
   bool on = root["on"] | (bri > 0);
   if (!on != !bri) toggleOnOff();
@@ -487,6 +488,7 @@ void serializeState(JsonObject root, bool forPreset, bool includeBri, bool segme
   if (includeBri) {
     root["on"] = (bri > 0);
     root["bri"] = briLast;
+    root["volume"] = volume; //WLEDSR
     root[F("transition")] = transitionDelay/100; //in 100ms
   }
 
