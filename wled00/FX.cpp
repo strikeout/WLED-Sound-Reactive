@@ -6434,6 +6434,7 @@ uint16_t WS2812FX::GEQ_base(bool centered_horizontal, bool centered_vertical, bo
 
   int xCount = SEGMENT.width;
   if (centered_vertical) xCount /= 2;
+
   for (int x=0; x < xCount; x++) {
     int band = map(x, 0, xCount-1, 0, 15);
     int barHeight = map(fftResult[band], 0, 255, 0, SEGMENT.height);
@@ -6443,27 +6444,35 @@ uint16_t WS2812FX::GEQ_base(bool centered_horizontal, bool centered_vertical, bo
 
     for (int y=0; y < SEGMENT.height; y++)
     {
-      CRGB color = CRGB::Black; //if not part of bars or peak, make black (not fade to black)
+      CRGB heightColor = CRGB::Black;
+      uint16_t colorIndex;
+      if (color_vertical)
+      {
+        if (centered_horizontal)
+          colorIndex = map(abs(y - (SEGMENT.height - 1)/2.0), 0, SEGMENT.height/2 - 1, 0, 255);
+        else
+          colorIndex = map(y, 0, SEGMENT.height - 1, 0, 255);
+      }
+      else
+        colorIndex = band * 17;
+      heightColor = color_from_palette(colorIndex, false, PALETTE_SOLID_WRAP, 0);
+
+      CRGB ledColor = CRGB::Black; //if not part of bars or peak, make black (not fade to black)
 
       //bar
-      if (y >= yStartBar && y < yStartBar + barHeight) {
-        if (color_vertical)
-          color = color_from_palette(map(y, 0, SEGMENT.height - 1, 0, 255), false, PALETTE_SOLID_WRAP, 0);
-        else
-          color = color_from_palette(band * 35, false, PALETTE_SOLID_WRAP, 0);
-      }
+      if (y >= yStartBar && y < yStartBar + barHeight)
+        ledColor = heightColor;
 
       //low and high peak (must exist && on peak position && only below if centered_horizontal effect)
       if ((previousBarHeight[x] > 0) && (SEGMENT.intensity < 255) && (y==yStartPeak || y==yStartPeak + previousBarHeight[x]-1) && (centered_horizontal || y!=yStartPeak))
-        color = SEGCOLOR(2)==CRGB::Black?color_from_palette((band * 35), false, PALETTE_SOLID_WRAP, 0):SEGCOLOR(2); //low peak
+        ledColor = SEGCOLOR(2)==CRGB::Black?heightColor:CRGB(SEGCOLOR(2)); //low peak
 
       if (centered_vertical) {
-        leds[XY(SEGMENT.width / 2 + x, SEGMENT.height - 1 - y)] = color;
-        leds[XY(SEGMENT.width / 2 - 1 - x, SEGMENT.height - 1 - y)] = color;
+        leds[XY(SEGMENT.width / 2 + x, SEGMENT.height - 1 - y)] = ledColor;
+        leds[XY(SEGMENT.width / 2 - 1 - x, SEGMENT.height - 1 - y)] = ledColor;
       }
-      else {
-        leds[XY(x, SEGMENT.height - 1 - y)] = color;
-      }
+      else
+        leds[XY(x, SEGMENT.height - 1 - y)] = ledColor;
     }
 
     if (rippleTime) previousBarHeight[x] -= centered_horizontal?2:1; //delay/ripple effect
