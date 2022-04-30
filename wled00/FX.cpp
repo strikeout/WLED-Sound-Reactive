@@ -4291,6 +4291,8 @@ extern float fftAvg[];
 // Helper function(s)                //
 ///////////////////////////////////////
 
+double mapf(double x, double in_min, double in_max, double out_min, double out_max);
+
 ////////////////////////////
 //       set Pixels       //
 ////////////////////////////
@@ -5552,7 +5554,8 @@ uint16_t WS2812FX::mode_gravcenter(void) {                // Gravcenter. By Andr
   float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
   if (soundAgc) segmentSampleAvg *= 0.125; // divide by 8, to compensate for later "sensitivty" upscaling
 
-  int tempsamp = constrain(segmentSampleAvg*2,0,SEGLEN/2);     // Keep the sample from overflowing.
+  float mySampleAvg = mapf(segmentSampleAvg*2.0, 0, 32, 0, (float)SEGLEN/2.0); // map to pixels availeable in current segment 
+  int tempsamp = constrain(mySampleAvg,0,SEGLEN/2);     // Keep the sample from overflowing.
   uint8_t gravity = 8 - SEGMENT.speed/32;
 
   for (int i=0; i<tempsamp; i++) {
@@ -5593,7 +5596,8 @@ uint16_t WS2812FX::mode_gravcentric(void) {                     // Gravcentric. 
   float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
   if (soundAgc) segmentSampleAvg *= 0.125; // divide by 8, to compensate for later "sensitivty" upscaling
 
-  int tempsamp = constrain(segmentSampleAvg*2,0,SEGLEN/2);     // Keep the sample from overflowing.
+  float mySampleAvg = mapf(segmentSampleAvg*2.0, 0, 32, 0, (float)SEGLEN/2.0); // map to pixels availeable in current segment 
+  int tempsamp = constrain(mySampleAvg,0,SEGLEN/2);     // Keep the sample from overflowing.
   uint8_t gravity = 8 - SEGMENT.speed/32;
 
   for (int i=0; i<tempsamp; i++) {
@@ -5633,7 +5637,8 @@ uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andre
   float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
   if (soundAgc) segmentSampleAvg *= 0.25; // divide by 4, to compensate for later "sensitivty" upscaling
 
-  int tempsamp = constrain(segmentSampleAvg*2,0,SEGLEN-1);       // Keep the sample from overflowing.
+  float mySampleAvg = mapf(segmentSampleAvg*2.0, 0, 64, 0, (SEGLEN-1)); // map to pixels availeable in current segment 
+  int tempsamp = constrain(mySampleAvg,0,SEGLEN-1);       // Keep the sample from overflowing.
   uint8_t gravity = 8 - SEGMENT.speed/32;
 
   for (int i=0; i<tempsamp; i++) {
@@ -6293,7 +6298,8 @@ uint16_t WS2812FX::mode_gravfreq(void) {                  // Gravfreq. By Andrew
   float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
   if (soundAgc) segmentSampleAvg *= 0.125; // divide by 8,  to compensate for later "sensitivty" upscaling
 
-  int tempsamp = constrain(segmentSampleAvg*2,0,SEGLEN/2);     // Keep the sample from overflowing.
+  float mySampleAvg = mapf(segmentSampleAvg*2.0, 0,32, 0, (float)SEGLEN/2.0); // map to pixels availeable in current segment 
+  int tempsamp = constrain(mySampleAvg,0,SEGLEN/2);     // Keep the sample from overflowing.
   uint8_t gravity = 8 - SEGMENT.speed/32;
 
   for (int i=0; i<tempsamp; i++) {
