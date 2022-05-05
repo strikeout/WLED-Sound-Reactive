@@ -187,7 +187,7 @@ void getSample() {
 /*-------END DEBUG-------*/
   micIn = abs(micIn);                             // And get the absolute value of each sample
 
-  sampleAdj = tmpSample * sampleGain / 40 * volume/128 + tmpSample / 16; // Adjust the gain. with volume adjustment
+  sampleAdj = tmpSample * sampleGain / 40 * inputLevel/128 + tmpSample / 16; // Adjust the gain. with inputLevel adjustment
 //  sampleReal = sampleAdj;
   sampleReal = tmpSample;
 
@@ -528,7 +528,7 @@ void FFTcode( void * parameter) {
         if (soundAgc)
           fftCalc[i] = fftCalc[i] * multAgc;
         else
-          fftCalc[i] = fftCalc[i] * (double)sampleGain / 40.0 * volume/128 + (double)fftCalc[i]/16.0; //with volume adjustment
+          fftCalc[i] = fftCalc[i] * (double)sampleGain / 40.0 * inputLevel/128 + (double)fftCalc[i]/16.0; //with inputLevel adjustment
     }
 
 

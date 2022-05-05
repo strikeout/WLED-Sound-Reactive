@@ -84,25 +84,54 @@ void userLoop() {
     agcAvg();                           // Calculated the PI adjusted value as sampleAvg
     myVals[millis()%32] = sampleAgc;
 
-    // update Volume Slider based on current AGC gain
-    if (soundAgc) {
+    static uint8_t lastMode = 0;
+    static bool agcEffect = false;
+    uint8_t knownMode = strip.getMainSegment().mode;
+
+    if (lastMode != knownMode) { // only execute if mode changes
+      char lineBuffer[8];
+      /*uint8_t printedChars = */ extractModeName(knownMode, JSON_mode_names, lineBuffer,8); //is this 'the' way to get mode name here?
+
+
+      //no clue why but it looks like 🎚 is encoded in JSON_mode_names as 240, 159, 142, 154. Not found here https://www.iemoji.com/view/emoji/918/objects/level-slider
+      //it is encoded in position 4 to 7
+
+      //used the following code to reverse engineer this
+
+      // Serial.println(lineBuffer);
+      // for (uint8_t i = 0; i<printedChars; i++) { //🎚 ♪
+      //   Serial.print(i);
+      //   Serial.print( ": ");
+      //   Serial.println(uint8_t(lineBuffer[i]));
+      // }
+      agcEffect = (lineBuffer[4] == 240 && lineBuffer[5] == 159 && lineBuffer[6] == 142 && lineBuffer[7] == 154 );
+
+      // if (agcEffect)
+      //   Serial.println("found 🎚");
+
+      lastMode = knownMode;
+    }
+
+    // update inputLevel Slider based on current AGC gain
+    if (soundAgc && agcEffect) {
       static unsigned long last_update_time = 0;
-      static float last_user_volume = 0;
+      static byte last_user_inputLevel = 0;
       unsigned long now_time = millis();    
 
-      float new_user_volume = 128.0 * multAgc;    // scale AGC multiplier so that "1" is at 128
-      if (new_user_volume > 128.0) new_user_volume = 128.0 * (((multAgc - 1.0) / 6.0) +1.0); // compress range so we can show values up to 6
-      new_user_volume = fmin(fmax(new_user_volume, 0),255);
+      byte new_user_inputLevel = 128.0 * multAgc;    // scale AGC multiplier so that "1" is at 128
+      if (new_user_inputLevel > 128.0) new_user_inputLevel = 128.0 * (((multAgc - 1.0) / 6.0) +1.0); // compress range so we can show values up to 6
+      new_user_inputLevel = MIN(MAX(new_user_inputLevel, 0),255);
 
 	    // update user interfaces - restrict frequency to avoid flooding UI's with small changes
-      if (  ((now_time - last_update_time > 3500) && (fabs(new_user_volume - last_user_volume) > 3))   // small change - every 3.5 sec (max) 
-          ||((now_time - last_update_time > 1200) && (fabs(new_user_volume - last_user_volume) > 31))  // BIG change - every second
-          ||((now_time - last_update_time > 1000) && (fabs(new_user_volume - volume)> 15)) )           // undo changes made by user
+      if ( ( ((now_time - last_update_time > 3500) && (abs(new_user_inputLevel - last_user_inputLevel) > 3))   // small change - every 3.5 sec (max) 
+          ||((now_time - last_update_time > 1200) && (abs(new_user_inputLevel - last_user_inputLevel) > 31))  // BIG change - every second
+          ||((now_time - last_update_time > 1000) && (abs(new_user_inputLevel - inputLevel)> 15))) // undo changes made by user
+          && (inputLevel != new_user_inputLevel))  // to be sure, needed?
       {
-        volume = new_user_volume;           // update user variable
-        updateInterfaces(CALL_MODE_BUTTON); // is this the correct way to notify UIs ?
+        inputLevel = new_user_inputLevel;           // update user variable
+        updateInterfaces(CALL_MODE_WS_SEND); // is this the correct way to notify UIs ? Yes says blazoncek
         last_update_time = now_time;
-        last_user_volume = new_user_volume;
+        last_user_inputLevel = new_user_inputLevel;
       }
     }
 

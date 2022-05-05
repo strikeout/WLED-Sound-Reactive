@@ -10,6 +10,7 @@ var powered = [true];
 var nlDur = 60, nlTar = 0;
 var nlMode = false;
 var selectedFx = -1;    //WLEDSR: used by togglePcMode, init to nonexisting effect
+var selectedEffectNameHTML = "" //WLEDSR
 var sliderControl = ""; //WLEDSR: used by togglePcMode
 var csel = 0; // selected color slot (0-2)
 var currentPreset = -1;
@@ -814,10 +815,10 @@ function genPalPrevCss(id)
   return `background: linear-gradient(to right,${gradient.join()});`;
 }
 
-// WLEDSR: add extraPar for slider and color control
+// WLEDSR: add extraPar for slider and color control, add name to onClick
 function generateListItemHtml(listName, id, name, clickAction, extraHtml = '', extraClass = '', extraPar = '')
 {
-    return `<div id="${listName}${id}" class="lstI btn fxbtn ${extraClass}" data-id="${id}" onClick="${clickAction}(${id}, '${extraPar}')">
+  return `<div id="${listName}${id}" class="lstI btn fxbtn ${extraClass}" data-id="${id}" onClick="${clickAction}(${id}, '${name}', '${extraPar}')">
       <label class="radio fxchkl">
         <input type="radio" value="${id}" name="${listName}">
         <span class="radiomark"></span>
@@ -973,7 +974,7 @@ function updateUI()
   d.getElementById('buttonSync').className = (syncSend) ? "active":"";
 
   updateTrail(d.getElementById('sliderBri'));
-  updateTrail(d.getElementById('sliderVolume')); //WLEDSR
+  updateTrail(d.getElementById('sliderInputLevel')); //WLEDSR
   updateTrail(d.getElementById('sliderSpeed'));
   updateTrail(d.getElementById('sliderIntensity'));
   updateTrail(d.getElementById('sliderCustom1'));
@@ -1060,9 +1061,7 @@ function makeWS() {
 function readState(s,command=false) {
   isOn = s.on;
   d.getElementById('sliderBri').value= s.bri;
-  d.getElementById('sliderVolume').value= s.volume; //WLEDSR
-  console.log("readstate s:"); //WLEDSR volume slider debug...
-  console.log(s);
+  d.getElementById('sliderInputLevel').value= s.inputLevel; //WLEDSR
   nlA = s.nl.on;
   nlDur = s.nl.dur;
   nlTar = s.nl.tbri;
@@ -1136,15 +1135,17 @@ function readState(s,command=false) {
   sliderControl = selectedEffect.outerHTML.replace(/&amp;/g, "&");
   var posAt = sliderControl.indexOf("@");
   if (posAt > 0) {
+    selectedEffectNameHTML = sliderControl.substring(0, posAt);
     sliderControl = sliderControl.substring(posAt);
     var posAt = sliderControl.indexOf(')"');
     sliderControl = sliderControl.substring(0,posAt-1);
   }
   else {
+    selectedEffectNameHTML = "";
     sliderControl = "";
   }
 
-  setSliderAndColorControl(selectedFx, sliderControl);
+  setSliderAndColorControl(selectedFx, selectedEffectNameHTML, sliderControl);
 
 
   // Palettes
@@ -1184,7 +1185,7 @@ function readState(s,command=false) {
 }
 
 // WLEDSR: control HTML elements for Slider and Color Control
-function setSliderAndColorControl(idx, extra) {
+function setSliderAndColorControl(idx, name, extra) {
   var topPosition = 0;
 
   var pcmode = localStorage.getItem('pcm') == "true";
@@ -1316,6 +1317,32 @@ function setSliderAndColorControl(idx, extra) {
     pallist.style.display = "none";
     pallabel.style.display = "none";
   }
+
+  // console.log("setSlider InputLevel s:"); //WLEDSR inputLevel slider debug...
+  // console.log(name);
+  // console.log(s);
+  // console.log(lastinfo);
+
+  //WLEDSR enable/disable show/hide inputlever slider 
+  if (name.includes('♪') || name.includes('♫')) { //SR effect
+    d.getElementById('divInputLevel').style.display = "inline-block"; //see .il in css
+
+    // agc on and agc supported effect (commented for the time being as userLoop will update inputLevel directly in this situation)
+    // if (name.includes('🎚') && lastinfo.soundAgc == 1) { 
+    //   d.getElementById('sliderInputLevel').disabled = true;
+    //   // d.getElementById('sliderInputLevel').parentNode.getElementsByClassName('sliderdisplay')[0].style.color = 'blue';
+    // }
+    // else {
+    //   d.getElementById('sliderInputLevel').disabled = false;
+    //   // d.getElementById('sliderInputLevel').parentNode.getElementsByClassName('sliderdisplay')[0].style.color = 'red';
+    //   // d.getElementById('sliderInputLevel').style.color = 'red';
+    // }
+  }
+  else {
+    d.getElementById('divInputLevel').style.display = "none";
+  }
+
+  // console.log(name, name.substr(2,2), d.getElementById('sliderInputLevel').parentNode.getElementsByClassName('sliderdisplay')[0]);
 } //setSliderAndColorControl
 
 var jsonTimeout;
@@ -1858,8 +1885,8 @@ function tglFreeze(s=null)
 	requestJson(obj);
 }
 
-// WLEDSR: add extra parameter for slider and color control
-function setX(ind = null, extra) {
+// WLEDSR: add name and extra parameter for slider and color control
+function setX(ind = null, name, extra) {
   if (ind === null) {
     ind = parseInt(d.querySelector('#fxlist input[name="fx"]:checked').value);
   } else {
@@ -1898,8 +1925,8 @@ function setBri() {
 }
 
 //WLEDSR
-function setVolume() {
-  var obj = {"volume": parseInt(d.getElementById('sliderVolume').value)};
+function setInputLevel() {
+  var obj = {"inputLevel": parseInt(d.getElementById('sliderInputLevel').value)};
   requestJson(obj);
 }
 
@@ -2500,7 +2527,7 @@ function expand(i,a)
 
 function unfocusSliders() {
   d.getElementById("sliderBri").blur();
-  d.getElementById("sliderVolume").blur(); //WLEDSR
+  d.getElementById("sliderInputLevel").blur(); //WLEDSR
   d.getElementById("sliderSpeed").blur();
   d.getElementById("sliderIntensity").blur();
   d.getElementById("sliderCustom1").blur();
@@ -2588,7 +2615,7 @@ function togglePcMode(fromB = false)
   sCol('--bh', d.getElementById('bot').clientHeight + "px");
   _C.style.width = (pcMode)?'100%':'400%';
   lastw = w;
-  if (selectedFx != -1) setSliderAndColorControl(selectedFx, sliderControl); // WLEDSR: to setSliderAndColorControl depending on pcmode
+  if (selectedFx != -1) setSliderAndColorControl(selectedFx, selectedEffectNameHTML, sliderControl); // WLEDSR: to setSliderAndColorControl depending on pcmode
 }
 
 function isObject(item) {

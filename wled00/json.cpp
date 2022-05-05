@@ -289,7 +289,7 @@ bool deserializeState(JsonObject root, byte callMode, byte presetId)
   bool stateResponse = root[F("v")] | false;
 
   getVal(root["bri"], &bri);
-  getVal(root["volume"], &volume); //WLEDSR
+  getVal(root["inputLevel"], &inputLevel); //WLEDSR
 
   bool on = root["on"] | (bri > 0);
   if (!on != !bri) toggleOnOff();
@@ -488,7 +488,7 @@ void serializeState(JsonObject root, bool forPreset, bool includeBri, bool segme
   if (includeBri) {
     root["on"] = (bri > 0);
     root["bri"] = briLast;
-    root["volume"] = volume; //WLEDSR
+    root["inputLevel"] = inputLevel; //WLEDSR
     root[F("transition")] = transitionDelay/100; //in 100ms
   }
 
@@ -659,6 +659,9 @@ void serializeInfo(JsonObject root)
   if (psramFound()) root[F("psram")] = ESP.getFreePsram();
   #endif
   root[F("uptime")] = millis()/1000 + rolloverMillis*4294967;
+
+  //WLEDSR
+  root[F("soundAgc")] = soundAgc;
 
   usermods.addToJsonInfo(root);
 

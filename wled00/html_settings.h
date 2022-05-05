@@ -204,7 +204,7 @@ onclick="H()">?</button></div><button type="button" onclick="B()">Back</button>
 <button type="submit">Save</button><hr><h2>Sound Input Settings</h2>Squelch: 
 <input name="SQ" type="number" min="0" max="255" required><br>Gain: <input 
 name="GN" type="number" min="0" max="255" required><br><i>
-To tune, set volume slider to middle/128, start with Squelch=5..10 and Gain=40 and modify according to your setup
+To tune, set input level slider to middle/128, start with Squelch=5..10 and Gain=40 and modify according to your setup
 </i><br><i>40 means an amplification of 1; 1 is about 1/32, 255 is about 6.5</i>
 <br>Automatic Gain Control (AGC): <input type="checkbox" name="AGC"><br><i>
 AGC is an expiremental feature. Effects supporting AGC show the 🎚 icon</i><br>
