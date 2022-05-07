@@ -9,11 +9,12 @@ var expanded = [false];
 var powered = [true];
 var nlDur = 60, nlTar = 0;
 var nlMode = false;
-var selectedFx = -1;    //WLEDSR: used by togglePcMode, init to nonexisting effect
+var selectedFx = 0; prevFx = -1   //WLEDSR
 var selectedEffectNameHTML = "" //WLEDSR
-var sliderControl = ""; //WLEDSR: used by togglePcMode
+var sliderControl = ""; //WLEDSR
+var selectedPal = 0; //WLEDSR Blazoncek default slider values
 var csel = 0; // selected color slot (0-2)
-var currentPreset = -1;
+var currentPreset = -1; prevPS = -1; //WLEDSR Blazoncek default slider values
 var lastUpdate = 0;
 var segCount = 0, ledCount = 0, lowestUnused = 0, maxSeg = 0, lSeg = 0;
 var pcMode = false, pcModeA = false, lastw = 0;
@@ -62,6 +63,8 @@ function handleVisibilityChange() {
 function sCol(na, col) {
   d.documentElement.style.setProperty(na, col);
 }
+
+function isEmpty(o) {return Object.keys(o).length === 0;} //WLEDSR Blazoncek default slider values
 
 function isRgbBlack(a, s) {
 	return (a[s][0] == 0 && a[s][1] == 0 && a[s][2] == 0);
@@ -973,6 +976,10 @@ function updateUI()
   d.getElementById('buttonNl').className = (nlA) ? "active":"";
   d.getElementById('buttonSync').className = (syncSend) ? "active":"";
 
+  //WLEDSR Blazoncek default slider values
+  updateSelectedPalette();
+  updateSelectedFx();
+
   updateTrail(d.getElementById('sliderBri'));
   updateTrail(d.getElementById('sliderInputLevel')); //WLEDSR
   updateTrail(d.getElementById('sliderSpeed'));
@@ -992,6 +999,58 @@ function updateUI()
 
 	updatePA();
 	updatePSliders();
+}
+
+//WLEDSR Blazoncek default slider values
+function updateSelectedPalette()
+{
+  // Palettes
+  pallist.querySelector(`input[name="palette"][value="${selectedPal}"]`).checked = true;
+  selElement = pallist.querySelector('.selected');
+  if (selElement) {
+    selElement.classList.remove('selected')
+  }
+  pallist.querySelector(`.lstI[data-id="${selectedPal}"]`).classList.add('selected');
+
+}
+
+//WLEDSR Blazoncek default slider values
+function updateSelectedFx()
+{
+  // Effects
+  var selFx = fxlist.querySelector(`input[name="fx"][value="${selectedFx}"]`);
+  if (selFx) selFx.checked = true;
+  else location.reload(); // effect list is gone (e.g. if restoring tab). Reload.
+
+  var selElement = fxlist.querySelector('.selected');
+  if (selElement) {
+    selElement.classList.remove('selected')
+  }
+  var selectedEffect = fxlist.querySelector(`.lstI[data-id="${selectedFx}"]`);
+
+  if (selectedEffect) {
+    selectedEffect.classList.add('selected');
+
+    //Blazoncek default value
+    var fx = (selectedFx != prevFx) && currentPreset==-1; // effect changed & preset==none
+		var ps = (prevPS != currentPreset) && currentPreset==-1; // preset changed & preset==none
+
+    // WLEDSR: extract the Slider and color control string from the HTML element and set it.
+    sliderControl = selectedEffect.outerHTML.replace(/&amp;/g, "&");
+    var posAt = sliderControl.indexOf("@");
+    if (posAt > 0) {
+      selectedEffectNameHTML = sliderControl.substring(0, posAt);
+      sliderControl = sliderControl.substring(posAt);
+      var posAt = sliderControl.indexOf(')"');
+      sliderControl = sliderControl.substring(0,posAt-1);
+    }
+    else {
+      selectedEffectNameHTML = "";
+      sliderControl = "";
+    }
+  
+    setSliderAndColorControl(selectedFx, selectedEffectNameHTML, sliderControl, (fx || ps));
+  }
 }
 
 function displayRover(i,s)
@@ -1067,6 +1126,7 @@ function readState(s,command=false) {
   nlTar = s.nl.tbri;
   nlMode = s.nl.mode;
   syncSend = s.udpn.send;
+  prevPS = currentPreset; //WLEDSR Blazoncek default slider values
   currentPreset = s.ps;
   tr = s.transition;
   d.getElementById('tt').value = tr/10;
@@ -1118,50 +1178,13 @@ function readState(s,command=false) {
   d.getElementById('sliderCustom2').value  = i.c2x;
   d.getElementById('sliderCustom3').value  = i.c3x;
 
-  // Effects
-  var selFx = fxlist.querySelector(`input[name="fx"][value="${i.fx}"]`);
-  if (selFx) selFx.checked = true;
-  else location.reload(); // effect list is gone (e.g. if restoring tab). Reload.
-
-  var selElement = fxlist.querySelector('.selected');
-  if (selElement) {
-    selElement.classList.remove('selected')
-  }
-  var selectedEffect = fxlist.querySelector(`.lstI[data-id="${i.fx}"]`);
-  selectedEffect.classList.add('selected');
-  selectedFx = i.fx;
-
-  // WLEDSR: extract the Slider and color control string from the HTML element and set it.
-  sliderControl = selectedEffect.outerHTML.replace(/&amp;/g, "&");
-  var posAt = sliderControl.indexOf("@");
-  if (posAt > 0) {
-    selectedEffectNameHTML = sliderControl.substring(0, posAt);
-    sliderControl = sliderControl.substring(posAt);
-    var posAt = sliderControl.indexOf(')"');
-    sliderControl = sliderControl.substring(0,posAt-1);
-  }
-  else {
-    selectedEffectNameHTML = "";
-    sliderControl = "";
-  }
-
-  setSliderAndColorControl(selectedFx, selectedEffectNameHTML, sliderControl);
-
-
-  // Palettes
-  pallist.querySelector(`input[name="palette"][value="${i.pal}"]`).checked = true;
-  selElement = pallist.querySelector('.selected');
-  if (selElement) {
-    selElement.classList.remove('selected')
-  }
-  pallist.querySelector(`.lstI[data-id="${i.pal}"]`).classList.add('selected');
-
-  if (!command) {
-    selectedEffect.scrollIntoView({
-      behavior: 'smooth',
-      block: 'nearest',
-    });
-  }
+  //WLEDSR Blazoncek default slider values
+  // if (!command) {
+  //   selectedEffect.scrollIntoView({
+  //     behavior: 'smooth',
+  //     block: 'nearest',
+  //   });
+  // }
 
   if (s.error && s.error != 0) {
     var errstr = "";
@@ -1181,11 +1204,16 @@ function readState(s,command=false) {
       }
     showToast('Error ' + s.error + ": " + errstr, true);
   }
+
+  //WLEDSR Blazoncek default slider values
+  prevFx = selectedFx;
+  selectedPal = i.pal;
+  selectedFx = i.fx;
   updateUI();
 }
 
 // WLEDSR: control HTML elements for Slider and Color Control
-function setSliderAndColorControl(idx, name, extra) {
+function setSliderAndColorControl(idx, name, extra, applyDef=false) {
   var topPosition = 0;
 
   var pcmode = localStorage.getItem('pcm') == "true";
@@ -1196,6 +1224,7 @@ function setSliderAndColorControl(idx, name, extra) {
   var slidersOnOff = (extras.length==0 || extras[0] == '')?[]:extras[0].split(",");
   var colorsOnOff  = (extras.length<2  || extras[1] == '')?[]:extras[1].split(",");
   var paletteOnOff = (extras.length<3  || extras[2] == '')?[]:extras[2].split(",");
+  var obj = {"seg":{}};
 
   // set html slider items on/off
   for (let i=0; i<5; i++) {
@@ -1204,6 +1233,18 @@ function setSliderAndColorControl(idx, name, extra) {
     // if (not controlDefined and for AC speed or intensity and for SR alle sliders) or slider has a value
     if ((!controlDefined && i < ((idx<128)?2:5)) || (slidersOnOff.length>i && slidersOnOff[i] != "")) {
       label.style.display = "block";
+
+      //WLEDSR Blazoncek default slider values
+      if (slidersOnOff.length>i && slidersOnOff[i].indexOf("=")>0) {
+				// embeded default values
+				var dPos = slidersOnOff[i].indexOf("=");
+				var v = Math.max(0,Math.min(255,parseInt(slidersOnOff[i].substr(dPos+1))));
+				if      (i==0) { if (applyDef) d.getElementById("sliderSpeed").value     = v; obj.seg.sx = v; }
+				else if (i==1) { if (applyDef) d.getElementById("sliderIntensity").value = v; obj.seg.ix = v; }
+				else           { if (applyDef) d.getElementById("sliderCustom"+(i-1)).value   = v; obj.seg["c"+(i-1)+"x"] = v}
+				slidersOnOff[i] = slidersOnOff[i].substring(0,dPos); //remove the default value
+			}
+
       if (slidersOnOff.length>i && slidersOnOff[i] != "!")
         label.innerHTML = slidersOnOff[i];
       else if (i==0) label.innerHTML = "Effect speed";
@@ -1304,18 +1345,36 @@ function setSliderAndColorControl(idx, name, extra) {
   // var selectPalette = d.getElementById("selectPalette");
   var pallabel = d.getElementById("paletteLabel");
   // if not controlDefined or palette has a value
-  if ((!controlDefined) || (paletteOnOff.length>0 && paletteOnOff[0] != "")) {
+  if ((!controlDefined) || (paletteOnOff.length>0 && paletteOnOff[0] != "" && isNaN(paletteOnOff[0]))) {
     pallist.style.display = "block";
 
     pallabel.style.display = "block";
+
+    //WLEDSR Blazoncek default slider values
+    if (paletteOnOff.length>0 && paletteOnOff[0].indexOf("=")>0) {
+			// embeded default values
+			var dPos = paletteOnOff[0].indexOf("=");
+			var v = Math.max(0,Math.min(255,parseInt(paletteOnOff[0].substr(dPos+1))));
+			var p = d.querySelector(`#pallist input[name="palette"][value="${v}"]`);
+			if (applyDef && p) {
+				p.checked = true;
+				obj.seg.pal = v;
+			}
+			paletteOnOff[0] = paletteOnOff[0].substring(0,dPos);
+		}
+
     if (paletteOnOff.length>0 && paletteOnOff[0] != "!")
-    pallabel.innerHTML = paletteOnOff[0];
-    else pallabel.innerHTML = "Color palette";
+      pallabel.innerHTML = paletteOnOff[0];
+    else 
+      pallabel.innerHTML = "Color palette";
   }
   else {
     // disable label and slider
     pallist.style.display = "none";
     pallabel.style.display = "none";
+
+    //WLEDSR Blazoncek default slider values
+    if (paletteOnOff.length>0 && paletteOnOff[0]!="" && !isNaN(paletteOnOff[0]) && parseInt(paletteOnOff[0])!=selectedPal) obj.seg.pal = parseInt(paletteOnOff[0]);
   }
 
   // console.log("setSlider InputLevel s:"); //WLEDSR inputLevel slider debug...
@@ -1341,6 +1400,9 @@ function setSliderAndColorControl(idx, name, extra) {
   else {
     d.getElementById('divInputLevel').style.display = "none";
   }
+
+  // WLEDSR Blazoncek default slider values
+	if (!isEmpty(obj.seg) && applyDef) requestJson(obj); // update default values (may need throttling on ESP8266)
 
   // console.log(name, name.substr(2,2), d.getElementById('sliderInputLevel').parentNode.getElementsByClassName('sliderdisplay')[0]);
 } //setSliderAndColorControl
@@ -2615,7 +2677,10 @@ function togglePcMode(fromB = false)
   sCol('--bh', d.getElementById('bot').clientHeight + "px");
   _C.style.width = (pcMode)?'100%':'400%';
   lastw = w;
-  if (selectedFx != -1) setSliderAndColorControl(selectedFx, selectedEffectNameHTML, sliderControl); // WLEDSR: to setSliderAndColorControl depending on pcmode
+
+  //WLEDSR Blazoncek default slider values
+  //looks like not needed anymore:
+  // if (selectedFx != -1) setSliderAndColorControl(selectedFx, selectedEffectNameHTML, sliderControl); // WLEDSR: to setSliderAndColorControl depending on pcmode
 }
 
 function isObject(item) {
