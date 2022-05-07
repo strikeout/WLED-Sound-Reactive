@@ -108,28 +108,38 @@ void userLoop() {
 
       // if (agcEffect)
       //   Serial.println("found 🎚");
-
-      lastMode = knownMode;
     }
 
     // update inputLevel Slider based on current AGC gain
     if (soundAgc && agcEffect) {
       static unsigned long last_update_time = 0;
-      static byte last_user_inputLevel = 0;
+      static unsigned long last_kick_time = 0;
+      static int last_user_inputLevel = 0;
       unsigned long now_time = millis();    
 
-      byte new_user_inputLevel = 128.0 * multAgc;    // scale AGC multiplier so that "1" is at 128
-      if (new_user_inputLevel > 128.0) new_user_inputLevel = 128.0 * (((multAgc - 1.0) / 6.0) +1.0); // compress range so we can show values up to 6
+      // "user kick" feature - if user has moved the slider by at least 32 units, we "kick" AGC gain by 30% (up or down)
+      // only once in 3.5 seconds
+      if (   (lastMode == knownMode)
+          && (abs(last_user_inputLevel - inputLevel) > 31) 
+          && (now_time - last_kick_time > 3500)) {
+        if (last_user_inputLevel > inputLevel) multAgc *= 0.70; // down -> reduce gain
+        if (last_user_inputLevel < inputLevel) multAgc *= 1.40; // up -> increase gain
+        last_kick_time = now_time;
+      }
+
+      lastMode = knownMode;
+
+      int new_user_inputLevel = 128.0 * multAgc;                                       // scale AGC multiplier so that "1" is at 128
+      if (multAgc > 1.0) new_user_inputLevel = 128.0 * (((multAgc - 1.0) / 4.0) +1.0); // compress range so we can show values up to 4
       new_user_inputLevel = MIN(MAX(new_user_inputLevel, 0),255);
 
 	    // update user interfaces - restrict frequency to avoid flooding UI's with small changes
-      if ( ( ((now_time - last_update_time > 3500) && (abs(new_user_inputLevel - last_user_inputLevel) > 3))   // small change - every 3.5 sec (max) 
-          ||((now_time - last_update_time > 1200) && (abs(new_user_inputLevel - last_user_inputLevel) > 31))  // BIG change - every second
-          ||((now_time - last_update_time > 1000) && (abs(new_user_inputLevel - inputLevel)> 15))) // undo changes made by user
-          && (inputLevel != new_user_inputLevel))  // to be sure, needed?
+      if ( ( ((now_time - last_update_time > 3500) && (abs(new_user_inputLevel - inputLevel) > 2))     // small change - every 3.5 sec (max) 
+           ||((now_time - last_update_time > 2200) && (abs(new_user_inputLevel - inputLevel) > 15))    // medium change
+           ||((now_time - last_update_time > 1200) && (abs(new_user_inputLevel - inputLevel) > 31)) )) // BIG change - every second
       {
-        inputLevel = new_user_inputLevel;           // update user variable
-        updateInterfaces(CALL_MODE_WS_SEND); // is this the correct way to notify UIs ? Yes says blazoncek
+        inputLevel = new_user_inputLevel;           // change of least 3 units -> update user variable
+        updateInterfaces(CALL_MODE_WS_SEND);        // is this the correct way to notify UIs ? Yes says blazoncek
         last_update_time = now_time;
         last_user_inputLevel = new_user_inputLevel;
       }
