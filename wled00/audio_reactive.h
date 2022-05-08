@@ -58,6 +58,7 @@ uint8_t maxVol = 10;                            // Reasonable value for constant
 uint8_t binNum = 8;                             // Used to select the bin for FFT based beat detection.
 
 const float targetAgcStep0 = 104;               // first AGC setPoint  at 40% of max (peak level) for the adjusted output
+const float targetAgcStep0Up = 88;              // limit value, for choosing one of the two setpoints (poor man's bang-bang)
 const float targetAgcStep1 = 220;               // second AGC setPoint at 85% of max (peak level) for the adjusted output
 
 #define AGC_LOW         28                      // AGC: low volume emergency zone
@@ -167,7 +168,7 @@ void getSample() {
   // Note to self: the next line kills 80% of sample - "miclev" filter runs at "full arduino loop" speed, following the signal almost instantly!
   //micLev = ((micLev * 31) + micIn) / 32;                // Smooth it out over the last 32 samples for automatic centering
   micLev = ((micLev * 8191.0) + micDataReal) / 8192.0;                // takes a few seconds to "catch up" with the Mic Input
-  if(micIn < micLev) micLev = ((micLev * 63.0) + micDataReal) / 64.0; // align MicLev to lowest input signal
+  if(micIn < micLev) micLev = ((micLev * 31.0) + micDataReal) / 32.0; // align MicLev to lowest input signal
 
   micIn -= micLev;                                // Let's center it to 0 now
 /*---------DEBUG---------*/
@@ -266,7 +267,7 @@ void agcAvg() {
       else control_integrated = control_integrated * 0.95;
     } else {
       // compute new setpoint
-      if (tmpAgc < targetAgcStep0)
+      if (tmpAgc <= targetAgcStep0Up)
         multAgcTemp = targetAgcStep0 / sampleMax;  // Make the multiplier so that sampleMax * multiplier = first setpoint
       else
         multAgcTemp = targetAgcStep1 / sampleMax;  // Make the multiplier so that sampleMax * multiplier = second setpoint
