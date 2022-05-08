@@ -5552,7 +5552,7 @@ uint16_t WS2812FX::mode_gravcenter(void) {                // Gravcenter. By Andr
 
   float tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
   float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
-  if (soundAgc) segmentSampleAvg *= 0.125; // divide by 8, to compensate for later "sensitivty" upscaling
+  segmentSampleAvg *= 0.125; // divide by 8, to compensate for later "sensitivty" upscaling
 
   float mySampleAvg = mapf(segmentSampleAvg*2.0, 0, 32, 0, (float)SEGLEN/2.0); // map to pixels availeable in current segment 
   int tempsamp = constrain(mySampleAvg,0,SEGLEN/2);     // Keep the sample from overflowing.
@@ -5594,7 +5594,7 @@ uint16_t WS2812FX::mode_gravcentric(void) {                     // Gravcentric. 
 
   float tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
   float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
-  if (soundAgc) segmentSampleAvg *= 0.125; // divide by 8, to compensate for later "sensitivty" upscaling
+  segmentSampleAvg *= 0.125; // divide by 8, to compensate for later "sensitivty" upscaling
 
   float mySampleAvg = mapf(segmentSampleAvg*2.0, 0, 32, 0, (float)SEGLEN/2.0); // map to pixels availeable in current segment 
   int tempsamp = constrain(mySampleAvg,0,SEGLEN/2);     // Keep the sample from overflowing.
@@ -5635,7 +5635,7 @@ uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andre
 
   float tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
   float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
-  if (soundAgc) segmentSampleAvg *= 0.25; // divide by 4, to compensate for later "sensitivty" upscaling
+  segmentSampleAvg *= 0.25; // divide by 4, to compensate for later "sensitivty" upscaling
 
   float mySampleAvg = mapf(segmentSampleAvg*2.0, 0, 64, 0, (SEGLEN-1)); // map to pixels availeable in current segment 
   int tempsamp = constrain(mySampleAvg,0,SEGLEN-1);       // Keep the sample from overflowing.
@@ -5709,9 +5709,9 @@ uint16_t WS2812FX::mode_midnoise(void) {                  // Midnoise. By Andrew
   fade_out(SEGMENT.speed);
   fade_out(SEGMENT.speed);
 
-  uint8_t tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
+  int tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
 
-  uint16_t maxLen = tmpSound * SEGMENT.intensity / 256;   // Too sensitive.
+  int maxLen = tmpSound * SEGMENT.intensity / 256;   // Too sensitive.
   maxLen = maxLen * SEGMENT.intensity / 128;              // Reduce sensitity/length.
   if (maxLen >SEGLEN/2) maxLen = SEGLEN/2;
 
@@ -6033,7 +6033,7 @@ uint16_t WS2812FX::mode_binmap(void) {                    // Binmap. Scale raw f
     sumBin = sumBin/(endBin-startBin+1);                  // Normalize it.
     sumBin = sumBin * (i+5) / (endBin-startBin+5);        // Disgusting frequency adjustment calculation. Lows were too bright. Am open to quick 'n dirty alternatives.
 
-    sumBin = sumBin * 8;                                  // Need to use the 'log' version for this.
+    sumBin = sumBin * 8;                                  // Need to use the 'log' version for this. Why " * 8" ??
 
     if (sumBin > maxVal) sumBin = maxVal;                 // Make sure our bin isn't higher than the max . . which we capped earlier.
 
@@ -6110,13 +6110,17 @@ uint16_t WS2812FX::mode_freqmap(void) {                   // Map FFT_MajorPeak t
   // Start frequency = 60 Hz and log10(60) = 1.78
   // End frequency = 5120 Hz and lo10(5120) = 3.71
 
+  float my_magnitude = FFT_Magnitude / 4.0;
+  if (soundAgc) my_magnitude *= multAgc;
+  if (sampleAvg < 1 ) my_magnitude = 0.001;              // noise gate closed - mute
+
   fade_out(SEGMENT.speed);
 
-  uint16_t locn = (log10(FFT_MajorPeak) - 1.78) * (float)SEGLEN/(3.71-1.78);  // log10 frequency range is from 1.78 to 3.71. Let's scale to SEGLEN.
+  uint16_t locn = (log10f(FFT_MajorPeak) - 1.78) * (float)SEGLEN/(3.71-1.78);  // log10 frequency range is from 1.78 to 3.71. Let's scale to SEGLEN.
 
   if (locn >=SEGLEN) locn = SEGLEN-1;
   uint16_t pixCol = (log10f(FFT_MajorPeak) - 1.78) * 255.0/(3.71-1.78);   // Scale log10 of frequency values to the 255 colour index.
-  uint16_t bright = (int)FFT_Magnitude>>3;
+  uint16_t bright = (int)my_magnitude;
 
   setPixelColor(locn, color_blend(SEGCOLOR(1), color_from_palette(SEGMENT.intensity+pixCol, false, PALETTE_SOLID_WRAP, 0), bright));
 
@@ -6193,12 +6197,17 @@ uint16_t WS2812FX::mode_freqmatrix(void) {                // Freqmatrix. By Andr
 uint16_t WS2812FX::mode_freqpixels(void) {                // Freqpixel. By Andrew Tuline.
 
   uint16_t fadeRate = 2*SEGMENT.speed - SEGMENT.speed*SEGMENT.speed/255;    // Get to 255 as quick as you can.
+
+  float my_magnitude = FFT_Magnitude / 16.0;
+  if (soundAgc) my_magnitude *= multAgc;
+  if (sampleAvg < 1 ) my_magnitude = 0.001;              // noise gate closed - mute
+
   fade_out(fadeRate);
 
   for (int i=0; i < SEGMENT.intensity/32+1; i++) {
     uint16_t locn = random16(0,SEGLEN);
     uint8_t pixCol = (log10f(FFT_MajorPeak) - 1.78) * 255.0/(3.71-1.78);  // Scale log10 of frequency values to the 255 colour index.
-    setPixelColor(locn, color_blend(SEGCOLOR(1), color_from_palette(SEGMENT.intensity+pixCol, false, PALETTE_SOLID_WRAP, 0), (int)FFT_Magnitude>>4));
+    setPixelColor(locn, color_blend(SEGCOLOR(1), color_from_palette(SEGMENT.intensity+pixCol, false, PALETTE_SOLID_WRAP, 0), (int)my_magnitude));
   }
   return FRAMETIME;
 } // mode_freqpixels()
@@ -6296,7 +6305,7 @@ uint16_t WS2812FX::mode_gravfreq(void) {                  // Gravfreq. By Andrew
 
   float tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
   float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
-  if (soundAgc) segmentSampleAvg *= 0.125; // divide by 8,  to compensate for later "sensitivty" upscaling
+  segmentSampleAvg *= 0.125; // divide by 8,  to compensate for later "sensitivty" upscaling
 
   float mySampleAvg = mapf(segmentSampleAvg*2.0, 0,32, 0, (float)SEGLEN/2.0); // map to pixels availeable in current segment 
   int tempsamp = constrain(mySampleAvg,0,SEGLEN/2);     // Keep the sample from overflowing.
@@ -6401,12 +6410,16 @@ uint16_t WS2812FX::mode_waterfall(void) {                   // Waterfall. By: An
   if (SEGENV.aux0 != secondHand) {                        // Triggered millis timing.
     SEGENV.aux0 = secondHand;
 
+    float my_magnitude = FFT_Magnitude / 8.0;
+    if (soundAgc) my_magnitude *= multAgc;
+    if (sampleAvg < 1 ) my_magnitude = 0.001;             // noise gate closed - mute
+
     uint8_t pixCol = (log10((int)FFT_MajorPeak) - 2.26) * 177;  // log10 frequency range is from 2.26 to 3.7. Let's scale accordingly.
 
     if (samplePeak) {
       leds[realPixelIndex(SEGLEN-1)] = CHSV(92,92,92);
     } else {
-      leds[realPixelIndex(SEGLEN-1)] = color_blend(SEGCOLOR(1), color_from_palette(pixCol+SEGMENT.intensity, false, PALETTE_SOLID_WRAP, 0), (int)FFT_Magnitude>>8);
+      leds[realPixelIndex(SEGLEN-1)] = color_blend(SEGCOLOR(1), color_from_palette(pixCol+SEGMENT.intensity, false, PALETTE_SOLID_WRAP, 0), (int)my_magnitude);
     }
       for (int i=0; i<SEGLEN-1; i++) leds[realPixelIndex(i)] = leds[realPixelIndex(i+1)];
   }
