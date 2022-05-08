@@ -122,8 +122,8 @@ void userLoop() {
       if (   (lastMode == knownMode)
           && (abs(last_user_inputLevel - inputLevel) > 31) 
           && (now_time - last_kick_time > 3500)) {
-        if (last_user_inputLevel > inputLevel) multAgc *= 0.70; // down -> reduce gain
-        if (last_user_inputLevel < inputLevel) multAgc *= 1.40; // up -> increase gain
+        if (last_user_inputLevel > inputLevel) multAgc *= 0.60; // down -> reduce gain
+        if (last_user_inputLevel < inputLevel) multAgc *= 1.50; // up -> increase gain
         last_kick_time = now_time;
       }
 

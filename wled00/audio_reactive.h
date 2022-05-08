@@ -58,9 +58,9 @@ uint8_t maxVol = 10;                            // Reasonable value for constant
 uint8_t binNum = 8;                             // Used to select the bin for FFT based beat detection.
 
 const float targetAgcStep0 = 104;               // first AGC setPoint  at 40% of max (peak level) for the adjusted output
-const float targetAgcStep1 = 216;               // second AGC setPoint at 85% of max (peak level) for the adjusted output
+const float targetAgcStep1 = 220;               // second AGC setPoint at 85% of max (peak level) for the adjusted output
 
-#define AGC_LOW         32                      // AGC: low volume emergency zone
+#define AGC_LOW         28                      // AGC: low volume emergency zone
 #define AGC_HIGH        240                     // AGC: high volume emergency zone
 #define AGC_control_Kp  0.5                     // AGC - PI control, proportional gain parameter
 #define AGC_control_Ki  1.8                     // AGC - PI control, integral gain parameter
@@ -387,7 +387,9 @@ void FFTcode( void * parameter) {
 
     // micDataSm = ((micData * 3) + micData)/4;
 
-    double maxSample = 0.0;
+    const int halfSamplesFFT = samplesFFT / 2;   // samplesFFT divided by 2
+    double maxSample1 = 0.0;                         // max sample from first half of FFT batch
+    double maxSample2 = 0.0;                         // max sample from second half of FFT batch
     for (int i=0; i < samplesFFT; i++)
     {
 	    // set imaginary parts to 0
@@ -395,11 +397,16 @@ void FFTcode( void * parameter) {
 	    // pick our  our current mic sample - we take the max value from all samples that go into FFT
 	    if ((vReal[i] <= (INT16_MAX - 1024)) && (vReal[i] >= (INT16_MIN + 1024)))  //skip extreme values - normally these are artefacts
 	    {
-		    if (fabs(vReal[i]) > maxSample) maxSample = fabs(vReal[i]);
+	        if (i <= halfSamplesFFT) {
+		       if (fabs(vReal[i]) > maxSample1) maxSample1 = fabs(vReal[i]);
+	        } else {
+		       if (fabs(vReal[i]) > maxSample2) maxSample2 = fabs(vReal[i]);
+	        }
 	    }
     }
-	  micDataSm = (uint16_t)maxSample;
-    micDataReal = maxSample;
+    // release first sample to volume reactive effects
+    micDataSm = (uint16_t)maxSample1;
+    micDataReal = maxSample1;
 
     FFT.DCRemoval(); // let FFT lib remove DC component, so we don't need to care about this in getSamples()
 
@@ -539,6 +546,10 @@ void FFTcode( void * parameter) {
         fftAvg[i] = (float)fftResult[i]*.05 + (1-.05)*fftAvg[i];
     }
 
+// release second sample to volume reactive effects. 
+	// The FFT process currently takes ~20ms, so releasing a second sample now effectively doubles the "sample rate" 
+    micDataSm = (uint16_t)maxSample2;
+    micDataReal = maxSample2;
 
 // Looking for fftResultMax for each bin using Pink Noise
 //      for (int i=0; i<16; i++) {
