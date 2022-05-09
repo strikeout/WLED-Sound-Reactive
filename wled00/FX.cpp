@@ -6019,21 +6019,34 @@ uint16_t WS2812FX::mode_binmap(void) {                    // Binmap. Scale raw f
 
   float maxVal = 512;                           // Kind of a guess as to the maximum output value per combined logarithmic bins.
 
+  float binScale = (((float)sampleGain / 40.0) + 1.0/16) * ((float)inputLevel/128.0);  // non-AGC gain multiplier
+  if (soundAgc) binScale = multAgc;                                                    // AGC gain
+  if (sampleAvg < 1) binScale = 0.001;                                                 // silentium!
+
+#if 0
+  //The next lines are good for debugging, however too much flickering for non-developers ;-)
+  float my_magnitude = FFT_Magnitude / 16.0;    // scale magnitude to be aligned with scaling of FFT bins
+  my_magnitude *= binScale;                     // apply gain
+  maxVal = fmax(64, my_magnitude);              // set maxVal = max FFT result
+#endif
+
   for (int i=0; i<SEGLEN; i++) {
 
-    uint16_t startBin = FIRSTBIN+i*LASTBIN/SEGLEN;        // This is the START bin for this particular pixel.
-    uint16_t   endBin = FIRSTBIN+(i+1)*LASTBIN/SEGLEN;    // This is the END bin for this particular pixel.
+    uint16_t startBin = FIRSTBIN+i*(LASTBIN-FIRSTBIN)/SEGLEN;        // This is the START bin for this particular pixel.
+    uint16_t   endBin = FIRSTBIN+(i+1)*(LASTBIN-FIRSTBIN)/SEGLEN;    // This is the END bin for this particular pixel.
+    if (endBin > startBin) endBin --;                     // avoid overlapping
 
     double sumBin = 0;
 
     for (int j=startBin; j<=endBin; j++) {
-      sumBin += (fftBin[j] < soundSquelch*6) ? 0 : fftBin[j];  // We need some sound temporary squelch for fftBin, because we didn't do it for the raw bins in audio_reactive.h
+      sumBin += (fftBin[j] < soundSquelch*1.75) ? 0 : fftBin[j];  // We need some sound temporary squelch for fftBin, because we didn't do it for the raw bins in audio_reactive.h
     }
 
     sumBin = sumBin/(endBin-startBin+1);                  // Normalize it.
     sumBin = sumBin * (i+5) / (endBin-startBin+5);        // Disgusting frequency adjustment calculation. Lows were too bright. Am open to quick 'n dirty alternatives.
 
     sumBin = sumBin * 8;                                  // Need to use the 'log' version for this. Why " * 8" ??
+    sumBin *= binScale;                                   // apply gain
 
     if (sumBin > maxVal) sumBin = maxVal;                 // Make sure our bin isn't higher than the max . . which we capped earlier.
 

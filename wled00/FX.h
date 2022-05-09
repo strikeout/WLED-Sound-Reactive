@@ -1414,7 +1414,7 @@ const char JSON_mode_names[] PROGMEM = R"=====([
 " ♫🎚 2D GEQ@Bar speed,Ripple decay;,,Peak Color;!",
 " ♫🎚 Waterfall@!,Adjust color,,Select bin, Volume (minimum);!,!;!",
 " ♫🎚 Freqpixels@Fade rate,Starting colour and # of pixels;;",
-" ♫ Binmap@;!,!;!",
+" ♫🎚 Binmap@;!,!;!",
 " ♪🎚 Noisefire@!,!;;",
 " ♪🎚 Puddlepeak@Fade rate,Puddle size,,Select bin,Volume (minimum);!,!;!",
 " ♫🎚 Noisemove@Speed of perlin movement,Fade rate;,!;!",
