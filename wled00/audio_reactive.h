@@ -43,7 +43,7 @@ static AudioSource *audioSource;
 //#define MAJORPEAK_SUPPRESS_NOISE      // define to activate a dirty hack that ignores the lowest + hightest FFT bins
 
 #define AGC_PRESET_normal             // AGC default settings
-//#define AGC_PRESET_vivid              // AGC setting that are more "vivid" i.e. respond to changes more quickly 
+//#define AGC_PRESET_vivid              // AGC settings that are more "vivid" i.e. respond to changes more quickly 
 // could add UI option for AGC presets later
 
 #ifdef AGC_PRESET_vivid
@@ -90,10 +90,10 @@ const float targetAgcStep1 = 220;               // second AGC setPoint at 85% of
   #define AGC_control_Ki  1.8                   // AGC - PI control, integral gain parameter
 #else
   #define SAMPLEMAX_DECAY 0.9985                // decay factor for sampleMax, in case the current sample is below sampleMax
-  #define AGC_FOLLOW_SLOW 0.000244140625        // 1/4096 - slowly follow setpoint -  2-5 sec
+  #define AGC_FOLLOW_SLOW 0.000244140625        // 1/4096 - slowly follow setpoint -  2-3 sec
   #define AGC_FOLLOW_FAST 0.0078125             // 1/128   - quickly follow setpoint - ~0.1 sec
-  #define AGC_control_Kp  0.75                  // AGC - PI control, proportional gain parameter
-  #define AGC_control_Ki  1.55                  // AGC - PI control, integral gain parameter
+  #define AGC_control_Kp  1.5                   // AGC - PI control, proportional gain parameter
+  #define AGC_control_Ki  1.85                  // AGC - PI control, integral gain parameter
 #endif
 
 double sampleMax = 0;                           // Max sample over a few seconds. Needed for AGC controler.
@@ -306,8 +306,9 @@ void agcAvg() {
 
     // compute error terms
     control_error = multAgcTemp - lastMultAgc;
-    if ((multAgcTemp > 0.085) && (multAgcTemp < 6.5))        //integrator anti-windup by clamping
-      control_integrated += control_error * 0.002 * 0.25;    // 2ms = intgration time; 0.25 for damping
+    if (((multAgcTemp > 0.085) && (multAgcTemp < 6.5))        //integrator anti-windup by clamping
+        && (multAgc*sampleMax < 320))                         //integrator TILT switch (over 150% of max)
+      control_integrated += control_error * 0.002 * 0.25;     // 2ms = intgration time; 0.25 for damping
 
     // apply PI Control 
     tmpAgc = sampleReal * lastMultAgc;              // check "zone" of the signal using previous gain
