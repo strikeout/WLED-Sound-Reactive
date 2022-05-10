@@ -42,13 +42,25 @@ static AudioSource *audioSource;
 
 //#define MAJORPEAK_SUPPRESS_NOISE      // define to activate a dirty hack that ignores the lowest + hightest FFT bins
 
+#define AGC_PRESET_normal             // AGC default settings
+//#define AGC_PRESET_vivid              // AGC setting that are more "vivid" i.e. respond to changes more quickly 
+// could add UI option for AGC presets later
+
+#ifdef AGC_PRESET_vivid
+#undef AGC_PRESET_normal              // user can override with "-D AGC_PRESET_vivid"
+#endif
+
+#if (defined(AGC_PRESET_normal) && defined(AGC_PRESET_vivid)) || (!defined(AGC_PRESET_normal) && !defined(AGC_PRESET_vivid))
+#error please define either  AGC_PRESET_normal  OR  AGC_PRESET_vivid
+#endif
+
 constexpr i2s_port_t I2S_PORT = I2S_NUM_0;
 constexpr int BLOCK_SIZE = 128;
 constexpr int SAMPLE_RATE = 10240;      // Base sample rate in Hz
 
 //Use userVar0 and userVar1 (API calls &U0=,&U1=, uint16_t)
 
-#ifndef LED_BUILTIN     // Set LED_BUILTIN if it is not defined by Arduino framework
+#if !defined(LED_BUILTIN) && !defined(BUILTIN_LED) // Set LED_BUILTIN if it is not defined by Arduino framework
   #define LED_BUILTIN 3
 #endif
 
@@ -57,19 +69,35 @@ constexpr int SAMPLE_RATE = 10240;      // Base sample rate in Hz
 uint8_t maxVol = 10;                            // Reasonable value for constant volume for 'peak detector', as it won't always trigger
 uint8_t binNum = 8;                             // Used to select the bin for FFT based beat detection.
 
-const float targetAgcStep0 = 104;               // first AGC setPoint  at 40% of max (peak level) for the adjusted output
-const float targetAgcStep0Up = 88;              // limit value, for choosing one of the two setpoints (poor man's bang-bang)
-const float targetAgcStep1 = 220;               // second AGC setPoint at 85% of max (peak level) for the adjusted output
 
+#if defined(AGC_PRESET_normal)
+const float targetAgcStep0 = 112;               // first AGC setPoint  at 42% of max (peak level) for the adjusted output
+const float targetAgcStep0Up = 88;              // limit value at 35%, for choosing one of the two setpoints (poor man's bang-bang)
+#else
+const float targetAgcStep0 = 140;               // first AGC setPoint  at 55% of max
+const float targetAgcStep0Up = 64;              // limit value at 25%, for choosing one of the two setpoints (poor man's bang-bang)
+#endif
+
+const float targetAgcStep1 = 220;               // second AGC setPoint at 85% of max (peak level) for the adjusted output
 #define AGC_LOW         28                      // AGC: low volume emergency zone
 #define AGC_HIGH        240                     // AGC: high volume emergency zone
-#define AGC_control_Kp  0.5                     // AGC - PI control, proportional gain parameter
-#define AGC_control_Ki  1.8                     // AGC - PI control, integral gain parameter
 
-#define AGC_FOLLOW_SLOW 0.0001220703125         // 1/8192 - slowly follow setpoint -  ~5 sec
-#define AGC_FOLLOW_FAST 0.00390625              // 1/256   - quickly follow setpoint - ~0.15 sec
+#if defined(AGC_PRESET_normal)
+  #define SAMPLEMAX_DECAY 0.9994                // decay factor for sampleMax, in case the current sample is below sampleMax
+  #define AGC_FOLLOW_SLOW 0.0001220703125       // 1/8192 - slowly follow setpoint -  ~5 sec
+  #define AGC_FOLLOW_FAST 0.00390625            // 1/256   - quickly follow setpoint - ~0.15 sec
+  #define AGC_control_Kp  0.5                   // AGC - PI control, proportional gain parameter
+  #define AGC_control_Ki  1.8                   // AGC - PI control, integral gain parameter
+#else
+  #define SAMPLEMAX_DECAY 0.9985                // decay factor for sampleMax, in case the current sample is below sampleMax
+  #define AGC_FOLLOW_SLOW 0.000244140625        // 1/4096 - slowly follow setpoint -  2-5 sec
+  #define AGC_FOLLOW_FAST 0.0078125             // 1/128   - quickly follow setpoint - ~0.1 sec
+  #define AGC_control_Kp  0.75                  // AGC - PI control, proportional gain parameter
+  #define AGC_control_Ki  1.55                  // AGC - PI control, integral gain parameter
+#endif
 
-double sampleMax = 0;
+double sampleMax = 0;                           // Max sample over a few seconds. Needed for AGC controler.
+
 
 uint8_t myVals[32];                             // Used to store a pile of samples because WLED frame rate and WLED sample rate are not synchronized. Frame rate is too low.
 bool samplePeak = 0;                            // Boolean flag for peak. Responding routine must reset this flag
@@ -199,7 +227,7 @@ void getSample() {
   if ((sampleMax < sampleReal) && (sampleReal > 0.5))
       sampleMax = sampleMax + 0.5 * (sampleReal - sampleMax);          // new peak - with some filtering
   else
-      sampleMax = sampleMax * 0.9994;  // signal to zero --> 5-8sec
+      sampleMax = sampleMax * SAMPLEMAX_DECAY;  // signal to zero --> 5-8sec
   if (sampleMax < 0.5) sampleMax = 0.0;
 
   sampleAvg = ((sampleAvg * 15.0) + sampleAdj) / 16.0;   // Smooth it out over the last 16 samples.
