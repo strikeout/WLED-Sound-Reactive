@@ -5709,10 +5709,11 @@ uint16_t WS2812FX::mode_midnoise(void) {                  // Midnoise. By Andrew
   fade_out(SEGMENT.speed);
   fade_out(SEGMENT.speed);
 
-  int tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
+  float tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
+  float tmpSound2 = tmpSound * (float)SEGMENT.intensity / 256.0;  // Too sensitive.
+  tmpSound2 *= (float)SEGMENT.intensity / 128.0;              // Reduce sensitity/length.
 
-  int maxLen = tmpSound * SEGMENT.intensity / 256;   // Too sensitive.
-  maxLen = maxLen * SEGMENT.intensity / 128;              // Reduce sensitity/length.
+  int maxLen = mapf(tmpSound2, 0, 127, 0, SEGLEN/2);
   if (maxLen >SEGLEN/2) maxLen = SEGLEN/2;
 
   for (int i=(SEGLEN/2-maxLen); i<(SEGLEN/2+maxLen); i++) {
@@ -5764,14 +5765,14 @@ uint16_t WS2812FX::mode_noisemeter(void) {                // Noisemeter. By Andr
   uint8_t fadeRate = map(SEGMENT.speed,0,255,224,255);
   fade_out(fadeRate);
 
-  int maxLen = sample*8;
-
-  maxLen = maxLen * SEGMENT.intensity / 256;              // Still a bit too sensitive.
-
+  float tmpSound = (soundAgc) ? sampleAgc : sample;
+  float tmpSound2 = tmpSound * 2.0 * (float)SEGMENT.intensity / 255.0;
+  int maxLen = mapf(tmpSound2, 0, 255, 0, SEGLEN); // map to pixels availeable in current segment              // Still a bit too sensitive.
   if (maxLen >SEGLEN) maxLen = SEGLEN;
 
+  if (!soundAgc) tmpSound = sampleAvg;                              // now use smoothed value (sampleAvg or sampleAgc)
   for (int i=0; i<maxLen; i++) {                                    // The louder the sound, the wider the soundbar. By Andrew Tuline.
-    uint8_t index = inoise8(i*sampleAvg+SEGENV.aux0, SEGENV.aux1+i*sampleAvg);  // Get a value from the noise function. I'm using both x and y axis.
+    uint8_t index = inoise8(i*tmpSound+SEGENV.aux0, SEGENV.aux1+i*tmpSound);  // Get a value from the noise function. I'm using both x and y axis.
     setPixelColor(i, color_from_palette(index, false, PALETTE_SOLID_WRAP, 0));
   }
 
@@ -5907,8 +5908,10 @@ uint16_t WS2812FX::mode_puddles(void) {                   // Puddles. By Andrew 
 
   fade_out(fadeVal);
 
-  if (sample>0 ) {
-    size = sample * SEGMENT.intensity /256 /8 + 1;        // Determine size of the flash based on the volume.
+  float tmpSound = (soundAgc) ? sampleAgc : sample;
+  
+  if (tmpSound>1 ) {
+    size = tmpSound * SEGMENT.intensity /256 /8 + 1;        // Determine size of the flash based on the volume.
     if (pos+size>= SEGLEN) size=SEGLEN-pos;
   }
 
@@ -6259,11 +6262,13 @@ uint16_t WS2812FX::mode_freqwave(void) {                  // Freqwave. By Andrea
     //uint8_t fade = SEGMENT.custom3;
     //uint8_t fadeval;
 
-    double sensitivity = mapf(SEGMENT.custom3, 1, 255, 1, 10);
-    int pixVal = sampleAvg * SEGMENT.intensity / 256 * sensitivity;
+    float tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
+
+    float sensitivity = mapf(SEGMENT.custom3, 1, 255, 1, 10);
+    float pixVal = tmpSound * (float)SEGMENT.intensity / 256.0 * sensitivity;
     if (pixVal > 255) pixVal = 255;
 
-    double intensity = map(pixVal, 0, 255, 0, 100) / 100.0;  // make a brightness from the last avg
+    float intensity = mapf(pixVal, 0, 255, 0, 100) / 100.0;  // make a brightness from the last avg
 
     CRGB color = 0;
     CHSV c;
@@ -6279,7 +6284,7 @@ uint16_t WS2812FX::mode_freqwave(void) {                  // Freqwave. By Andrea
       int upperLimit = 20 * SEGMENT.custom2;
       int lowerLimit = 2 * SEGMENT.custom1;
       int i =  lowerLimit!=upperLimit?map(FFT_MajorPeak, lowerLimit, upperLimit, 0, 255):FFT_MajorPeak;
-      uint16_t b = 255 * intensity;
+      uint16_t b = 255.0 * intensity;
       if (b > 255) b=255;
       c = CHSV(i, 240, (uint8_t)b);
       color = c;                                          // implicit conversion to RGB supplied by FastLED
@@ -6382,7 +6387,12 @@ uint16_t WS2812FX::mode_rocktaves(void) {                 // Rocktaves. Same not
   double frTemp = FFT_MajorPeak;
   uint8_t octCount = 0;                                   // Octave counter.
   uint8_t volTemp = 0;
-  if (FFT_Magnitude > 500) volTemp = 255;                 // We need to squelch out the background noise.
+
+  float my_magnitude = FFT_Magnitude / 16.0;             // scale magnitude to be aligned with scaling of FFT bins
+  if (soundAgc) my_magnitude *= multAgc;                 // apply gain
+  if (sampleAvg < 1 ) my_magnitude = 0.001;              // mute
+
+  if (my_magnitude > 32) volTemp = 255;                 // We need to squelch out the background noise.
 
   while ( frTemp > 249 ) {
     octCount++;                                           // This should go up to 5.

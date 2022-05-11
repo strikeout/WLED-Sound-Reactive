@@ -307,7 +307,7 @@ void agcAvg() {
     // compute error terms
     control_error = multAgcTemp - lastMultAgc;
     if (((multAgcTemp > 0.085) && (multAgcTemp < 6.5))        //integrator anti-windup by clamping
-        && (multAgc*sampleMax < 320))                         //integrator TILT switch (over 150% of max)
+        && (multAgc*sampleMax < 352))                         //integrator TILT switch (over 140% of max)
       control_integrated += control_error * 0.002 * 0.25;     // 2ms = intgration time; 0.25 for damping
 
     // apply PI Control 

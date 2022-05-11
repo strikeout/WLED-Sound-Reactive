@@ -1406,10 +1406,10 @@ const char JSON_mode_names[] PROGMEM = R"=====([
 " ♪🎚 Matripix@!,Brightness=64;,!;!",
 " ♪🎚 Gravimeter@Rate of fall,Sensitivity=128;,!;!",
 " ♪🎚 Plasmoid@,# of pixels;!,!;!",
-" ♪ Puddles@Fade rate,Puddle size;!,!;!",
-" ♪🎚 Midnoise@Fade rate,Maximum length;,!;!",
-" ♪ Noisemeter@Fade rate,Width;!,!;!",
-" ♫ Freqwave@Time delay,Sound effect,Low bin,High bin,Pre-amp;;",
+" ♪🎚 Puddles@Fade rate,Puddle size;!,!;!",
+" ♪🎚 Midnoise@Fade rate,Maximum length=128;,!;!",
+" ♪🎚 Noisemeter@Fade rate,Width=128;!,!;!",
+" ♫🎚 Freqwave@Time delay,Sound effect,Low bin,High bin,Pre-amp;;",
 " ♫🎚 Freqmatrix@Time delay,Sound effect,Low bin,High bin,Sensivity;;",
 " ♫🎚 2D GEQ@Bar speed,Ripple decay;,,Peak Color;!",
 " ♫🎚 Waterfall@!,Adjust color,,Select bin, Volume (minimum);!,!;!",
@@ -1457,7 +1457,7 @@ const char JSON_mode_names[] PROGMEM = R"=====([
 "2D DNA Spiral@Speed,Frequency;;!",
 "2D Black Hole@Outer X frequency,Inner X frequency,Inner Y frequency;;",
 "Wavesins@Speed,Brightness variation,Starting Color,Range of Colors,Color variation;;!",
-" ♫ Rocktaves@;,!;!",
+" ♫🎚 Rocktaves@;,!;!",
 " ♫🎚 2D Akemi@Color speed,Dance ☑;Head palette,Arms & Legs,Eyes & Mouth;Face palette",
 " ⚙️ Custom Effect@Speed,Intensity,Custom 1, Custom 2, Custom 3;!;!"
 ])=====";
