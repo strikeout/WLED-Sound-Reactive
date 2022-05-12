@@ -88,12 +88,16 @@ const float targetAgcStep1 = 220;               // second AGC setPoint at 85% of
   #define AGC_FOLLOW_FAST 0.00390625            // 1/256   - quickly follow setpoint - ~0.15 sec
   #define AGC_control_Kp  0.5                   // AGC - PI control, proportional gain parameter
   #define AGC_control_Ki  1.8                   // AGC - PI control, integral gain parameter
+  #define AGC_CEIL_integrator  352              // AGC - ceiling value thats stops the "integrator" beast from going wild
+  #define AGC_SAMPLE_SMOOTHING 0.0625           // 1/16 - for smoothing out sampleAgc
 #else
   #define SAMPLEMAX_DECAY 0.9985                // decay factor for sampleMax, in case the current sample is below sampleMax
   #define AGC_FOLLOW_SLOW 0.000244140625        // 1/4096 - slowly follow setpoint -  2-3 sec
   #define AGC_FOLLOW_FAST 0.0078125             // 1/128   - quickly follow setpoint - ~0.1 sec
   #define AGC_control_Kp  1.5                   // AGC - PI control, proportional gain parameter
   #define AGC_control_Ki  1.85                  // AGC - PI control, integral gain parameter
+  #define AGC_CEIL_integrator  448              // AGC - ceiling value thats stops the "integrator" beast from going wild
+  #define AGC_SAMPLE_SMOOTHING 0.125            // 1/8 - for smoothing out sampleAgc
 #endif
 
 double sampleMax = 0;                           // Max sample over a few seconds. Needed for AGC controler.
@@ -108,7 +112,8 @@ int sample;                                     // Current sample. Must only be 
 float sampleReal = 0.0;					                // "sample" as float, to provide bits that are lost otherwise. Needed for AGC.
 static float tmpSample;                         // An interim sample variable used for calculations.
 static float sampleAdj;                         // Gain adjusted sample value
-int sampleAgc;                                  // Our AGC sample
+int rawSampleAgc = 0;                           // Our AGC sample - raw
+float sampleAgc = 0.0;                          // AGC sample, smoothed
 uint16_t micData;                               // Analog input for FFT
 uint16_t micDataSm;                             // Smoothed mic data, as it's a bit twitchy
 float micDataReal = 0.0;                        // future support - this one has the full 24bit MicIn data - lowest 8bit after decimal point
@@ -307,7 +312,7 @@ void agcAvg() {
     // compute error terms
     control_error = multAgcTemp - lastMultAgc;
     if (((multAgcTemp > 0.085) && (multAgcTemp < 6.5))        //integrator anti-windup by clamping
-        && (multAgc*sampleMax < 352))                         //integrator TILT switch (over 140% of max)
+        && (multAgc*sampleMax < AGC_CEIL_integrator))         //integrator ceiling (>140% of max)
       control_integrated += control_error * 0.002 * 0.25;     // 2ms = intgration time; 0.25 for damping
 
     // apply PI Control 
@@ -328,10 +333,16 @@ void agcAvg() {
   // NOW finally amplify the signal
   tmpAgc = sampleReal * multAgcTemp;                  // apply gain to signal
   if(fabs(sampleReal) < 2.0) tmpAgc = 0;              // apply squelch threshold
-
   if (tmpAgc > 255) tmpAgc = 255;
-  multAgc = multAgcTemp;                              // only update final AGC multiplier once
-  sampleAgc = 0.7 * tmpAgc + 0.3 * (float)sampleAgc;  // ONLY update sampleAgc ONCE because it's used elsewhere asynchronously!!!!
+
+  // update global vars ONCE - multAgc, sampleAGC, rawSampleAgc
+  multAgc = multAgcTemp;
+  rawSampleAgc = 0.7 * tmpAgc + 0.3 * (float)rawSampleAgc;
+  // update smoothed AGC sample
+  if(fabs(sampleReal) < 2.0) 
+    sampleAgc =  0.7 * tmpAgc + 0.3 * sampleAgc;      // fast
+  else 
+    sampleAgc = sampleAgc + AGC_SAMPLE_SMOOTHING * (tmpAgc - sampleAgc); // smooth
 
   userVar0 = sampleAvg * 4;
   if (userVar0 > 255) userVar0 = 255;
@@ -348,7 +359,7 @@ void agcAvg() {
 void transmitAudioData() {
   if (!udpSyncConnected) return;
   extern uint8_t myVals[];
-  extern int sampleAgc;
+  extern float sampleAgc;
   extern int sample;
   extern float sampleAvg;
   extern bool udpSamplePeak;
