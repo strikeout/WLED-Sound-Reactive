@@ -726,7 +726,7 @@ void getSettingsJS(byte subPage, char* dest)
   {
     sappend('v',SET_F("SQ"),soundSquelch);
     sappend('v',SET_F("GN"),sampleGain);
-    sappend('c',SET_F("AGC"),soundAgc);
+    sappend('i',SET_F("AGC"),soundAgc);
     sappend('v',SET_F("SI"),audioPin);
     sappend('i',SET_F("DMM"),dmType);
     sappend('v',SET_F("DI"),i2ssdPin);

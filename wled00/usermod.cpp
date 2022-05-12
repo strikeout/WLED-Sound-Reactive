@@ -89,25 +89,21 @@ void userLoop() {
     uint8_t knownMode = strip.getMainSegment().mode;
 
     if (lastMode != knownMode) { // only execute if mode changes
-      char lineBuffer[8];
-      /*uint8_t printedChars = */ extractModeName(knownMode, JSON_mode_names, lineBuffer,8); //is this 'the' way to get mode name here?
-
-
-      //no clue why but it looks like 🎚 is encoded in JSON_mode_names as 240, 159, 142, 154. Not found here https://www.iemoji.com/view/emoji/918/objects/level-slider
-      //it is encoded in position 4 to 7
+      char lineBuffer[3];
+      /* uint8_t printedChars = */ extractModeName(knownMode, JSON_mode_names, lineBuffer, 3); //is this 'the' way to get mode name here?
 
       //used the following code to reverse engineer this
-
       // Serial.println(lineBuffer);
-      // for (uint8_t i = 0; i<printedChars; i++) { //🎚 ♪
+      // for (uint8_t i = 0; i<printedChars; i++) {
       //   Serial.print(i);
       //   Serial.print( ": ");
       //   Serial.println(uint8_t(lineBuffer[i]));
       // }
-      agcEffect = (lineBuffer[4] == 240 && lineBuffer[5] == 159 && lineBuffer[6] == 142 && lineBuffer[7] == 154 );
+      agcEffect = (lineBuffer[1] == 226 && lineBuffer[2] == 153); // && (lineBuffer[3] == 170 || lineBuffer[3] == 171 ) encoding of ♪ or ♫
+      // agcEffect = (lineBuffer[4] == 240 && lineBuffer[5] == 159 && lineBuffer[6] == 142 && lineBuffer[7] == 154 ); //encoding of 🎚 No clue why as not found here https://www.iemoji.com/view/emoji/918/objects/level-slider
 
       // if (agcEffect)
-      //   Serial.println("found 🎚");
+      //   Serial.println("found ♪ or ♫");
     }
 
     // update inputLevel Slider based on current AGC gain

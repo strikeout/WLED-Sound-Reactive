@@ -582,7 +582,7 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
     t = request->arg(F("GN")).toInt();
     if (t >= 0) sampleGain = t;
 
-    t = request->hasArg(F("AGC"));
+    t = request->arg(F("AGC")).toInt();
     if (t >=0) soundAgc = t;
 
 

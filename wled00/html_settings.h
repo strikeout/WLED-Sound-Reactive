@@ -206,8 +206,10 @@ onclick="H()">?</button></div><button type="button" onclick="B()">Back</button>
 name="GN" type="number" min="0" max="255" required><br><i>
 To tune, set input level slider to middle/128, start with Squelch=5..10 and Gain=40 and modify according to your setup
 </i><br><i>40 means an amplification of 1; 1 is about 1/32, 255 is about 6.5</i>
-<br>Automatic Gain Control (AGC): <input type="checkbox" name="AGC"><br><i>
-AGC is an expiremental feature. Effects supporting AGC show the 🎚 icon</i><br>
+<br>Automatic Gain Control (AGC): <select name="AGC"><option value="0">Off
+</option><option value="1">Normal</option><option value="2">Vivid</option>
+</select><br><i>
+If AGC is enabled, the input slider (🎚) will automatically be adjusted</i><br>
 <h2>Sound Input Pin Manager</h2>Microphone type: <select id="dme" name="DMM" 
 onchange="enDM()"><option value="0" selected="selected">Generic Analog</option>
 <option value="1">Generic I2S</option><option value="2">ES7243</option><option 

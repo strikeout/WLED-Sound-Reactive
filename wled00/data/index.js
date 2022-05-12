@@ -1387,14 +1387,16 @@ function setSliderAndColorControl(idx, name, extra, applyDef=false) {
     d.getElementById('divInputLevel').style.display = "inline-block"; //see .il in css
 
     // agc on and agc supported effect (commented for the time being as userLoop will update inputLevel directly in this situation)
-    // if (name.includes('🎚') && lastinfo.soundAgc == 1) { 
-    //   d.getElementById('sliderInputLevel').disabled = true;
-    //   // d.getElementById('sliderInputLevel').parentNode.getElementsByClassName('sliderdisplay')[0].style.color = 'blue';
+    // would like to make the slider circle red if agc is on but did not manage to do that yet
+    // if (lastinfo.soundAgc) { 
+    //   // d.getElementById('sliderInputLevel').disabled = true;
+    //   d.getElementById('sliderInputLevel').style.background = 'red';
+    //   // d.getElementById('sliderInputLevel').parentNode.getElementsByClassName('sliderdisplay')[0].style.color = 'green';
     // }
     // else {
-    //   d.getElementById('sliderInputLevel').disabled = false;
-    //   // d.getElementById('sliderInputLevel').parentNode.getElementsByClassName('sliderdisplay')[0].style.color = 'red';
-    //   // d.getElementById('sliderInputLevel').style.color = 'red';
+    //   // d.getElementById('sliderInputLevel').disabled = false;
+    //   d.getElementById('sliderInputLevel').style.background = 'white';
+    //   // d.getElementById('sliderInputLevel').parentNode.getElementsByClassName('sliderdisplay')[0].style.color = 'blue';
     // }
   }
   else {
