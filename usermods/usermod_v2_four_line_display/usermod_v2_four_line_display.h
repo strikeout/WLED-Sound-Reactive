@@ -1048,7 +1048,7 @@ class FourLineDisplayUsermod : public Usermod {
         setFlipMode(flip);
         if (needsRedraw && !wakeDisplay()) redraw(true);
       }
-      // use "return !top["newestParameter"].isNull();" when updating Usermod with new features
+      // use "return !top["newestParameter"].isNull();" when updating Usermod with new features (or return false during development)
       return !top[FPSTR(_enabled)].isNull();
     }
 
