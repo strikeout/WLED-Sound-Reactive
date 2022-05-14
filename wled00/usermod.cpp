@@ -80,6 +80,7 @@ void userLoop() {
 
   if (!(audioSyncEnabled & (1 << 1))) { // Only run the sampling code IF we're not in Receive mode
     lastTime = millis();
+    if (soundAgc > AGC_NUM_PRESETS) soundAgc = 0; // make sure that AGC preset is valid (to avoid array bounds violation)
     getSample();                        // Sample the microphone
     agcAvg();                           // Calculated the PI adjusted value as sampleAvg
     myVals[millis()%32] = sampleAgc;

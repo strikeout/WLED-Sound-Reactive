@@ -42,18 +42,6 @@ static AudioSource *audioSource;
 
 //#define MAJORPEAK_SUPPRESS_NOISE      // define to activate a dirty hack that ignores the lowest + hightest FFT bins
 
-#define AGC_PRESET_normal             // AGC default settings
-//#define AGC_PRESET_vivid              // AGC settings that are more "vivid" i.e. respond to changes more quickly 
-// could add UI option for AGC presets later
-
-#ifdef AGC_PRESET_vivid
-#undef AGC_PRESET_normal              // user can override with "-D AGC_PRESET_vivid"
-#endif
-
-#if (defined(AGC_PRESET_normal) && defined(AGC_PRESET_vivid)) || (!defined(AGC_PRESET_normal) && !defined(AGC_PRESET_vivid))
-#error please define either  AGC_PRESET_normal  OR  AGC_PRESET_vivid
-#endif
-
 constexpr i2s_port_t I2S_PORT = I2S_NUM_0;
 constexpr int BLOCK_SIZE = 128;
 constexpr int SAMPLE_RATE = 10240;      // Base sample rate in Hz
@@ -70,35 +58,45 @@ uint8_t maxVol = 10;                            // Reasonable value for constant
 uint8_t binNum = 8;                             // Used to select the bin for FFT based beat detection.
 
 
-#if defined(AGC_PRESET_normal)
-const float targetAgcStep0 = 112;               // first AGC setPoint  at 42% of max (peak level) for the adjusted output
-const float targetAgcStep0Up = 88;              // limit value at 35%, for choosing one of the two setpoints (poor man's bang-bang)
-#else
-const float targetAgcStep0 = 140;               // first AGC setPoint  at 55% of max
-const float targetAgcStep0Up = 64;              // limit value at 25%, for choosing one of the two setpoints (poor man's bang-bang)
-#endif
+// 
+// AGC presets
+//  Note: in C++, "const" implies "static" - no need to explicitly declare everything as "static const"
+// 
+#define AGC_NUM_PRESETS   3       // AGC currently has 3 presets: normal, vivid, lazy
 
-const float targetAgcStep1 = 220;               // second AGC setPoint at 85% of max (peak level) for the adjusted output
-#define AGC_LOW         28                      // AGC: low volume emergency zone
-#define AGC_HIGH        240                     // AGC: high volume emergency zone
+              // Normal, Vivid,    Lazy
+const double agcSampleDecay[AGC_NUM_PRESETS] =    // decay factor for sampleMax, in case the current sample is below sampleMax
+              {0.9994,  0.9985,  0.9997};
 
-#if defined(AGC_PRESET_normal)
-  #define SAMPLEMAX_DECAY 0.9994                // decay factor for sampleMax, in case the current sample is below sampleMax
-  #define AGC_FOLLOW_SLOW 0.0001220703125       // 1/8192 - slowly follow setpoint -  ~5 sec
-  #define AGC_FOLLOW_FAST 0.00390625            // 1/256   - quickly follow setpoint - ~0.15 sec
-  #define AGC_control_Kp  0.5                   // AGC - PI control, proportional gain parameter
-  #define AGC_control_Ki  1.8                   // AGC - PI control, integral gain parameter
-  #define AGC_CEIL_integrator  352              // AGC - ceiling value thats stops the "integrator" beast from going wild
-  #define AGC_SAMPLE_SMOOTHING 0.0625           // 1/16 - for smoothing out sampleAgc
-#else
-  #define SAMPLEMAX_DECAY 0.9985                // decay factor for sampleMax, in case the current sample is below sampleMax
-  #define AGC_FOLLOW_SLOW 0.000244140625        // 1/4096 - slowly follow setpoint -  2-3 sec
-  #define AGC_FOLLOW_FAST 0.0078125             // 1/128   - quickly follow setpoint - ~0.1 sec
-  #define AGC_control_Kp  1.5                   // AGC - PI control, proportional gain parameter
-  #define AGC_control_Ki  1.85                  // AGC - PI control, integral gain parameter
-  #define AGC_CEIL_integrator  448              // AGC - ceiling value thats stops the "integrator" beast from going wild
-  #define AGC_SAMPLE_SMOOTHING 0.125            // 1/8 - for smoothing out sampleAgc
-#endif
+const float agcZoneLow[AGC_NUM_PRESETS] =         // low volume emergency zone
+              {    32,      28,      36};
+const float agcZoneHigh[AGC_NUM_PRESETS] =        // high volume emergency zone
+              {   240,     240,     248};
+const float agcZoneStop[AGC_NUM_PRESETS] =        // disable AGC integrator if we get above this level
+              {   352,     448,     336};
+
+const float agcTarget0[AGC_NUM_PRESETS] =         // first AGC setPoint -> between 40% and 65%
+              {   112,     144,     164};
+const float agcTarget0Up[AGC_NUM_PRESETS] =       // setpoint switching value (a poor man's bang-bang)
+              {    88,      64,     116};
+const float agcTarget1[AGC_NUM_PRESETS] =         // second AGC setPoint -> around 85%
+              {   220,     224,     216};
+
+const double agcFollowFast[AGC_NUM_PRESETS] =     // quickly follow setpoint - ~0.15 sec
+              { 1.0/256.0,  1.0/128.0,  1.0/256.0};
+const double agcFollowSlow[AGC_NUM_PRESETS] =     // slowly follow setpoint  - ~2-15 secs
+              {1.0/8192.0, 1.0/4096.0, 1.0/8192.0};
+
+const double agcControlKp[AGC_NUM_PRESETS] =      // AGC - PI control, proportional gain parameter
+              {   0.5,     1.5,     0.6};
+const double agcControlKi[AGC_NUM_PRESETS] =      // AGC - PI control, integral gain parameter
+              {   1.8,     1.85,    1.25};
+
+const float agcSampleSmooth[AGC_NUM_PRESETS] =   // smoothing factor for sampleAgc (use rawSampleAgc if you want the non-smoothed value)
+              {  1.0/12.0,    1.0/6.0,   1.0/16.0};
+// 
+// AGC presets end
+// 
 
 double sampleMax = 0;                           // Max sample over a few seconds. Needed for AGC controler.
 
@@ -182,6 +180,7 @@ void getSample() {
   static long peakTime;
   //extern double FFT_Magnitude;                    // Optional inclusion for our volume routines // COMMENTED OUT - UNUSED VARIABLE COMPILER WARNINGS
   //extern double FFT_MajorPeak;                    // Same here. Not currently used though       // COMMENTED OUT - UNUSED VARIABLE COMPILER WARNINGS
+  const int AGC_preset = (soundAgc > 0)? (soundAgc-1): 0; // make sure the _compiler_ knows this value will not change while we are inside the function
 
   #ifdef WLED_DISABLE_SOUND
     micIn = inoise8(millis(), millis());          // Simulated analog read
@@ -225,14 +224,18 @@ void getSample() {
 //  sampleReal = sampleAdj;
   sampleReal = tmpSample;
 
-  sampleAdj = fmin(sampleAdj, 255);                // Question: why are we limiting the value to 8 bits ???
+  sampleAdj = fmax(fmin(sampleAdj, 255), 0);           // Question: why are we limiting the value to 8 bits ???
   sample = (int)sampleAdj;                             // ONLY update sample ONCE!!!!
 
   // keep "peak" sample, but decay value if current sample is below peak
-  if ((sampleMax < sampleReal) && (sampleReal > 0.5))
+  if ((sampleMax < sampleReal) && (sampleReal > 0.5)) {
       sampleMax = sampleMax + 0.5 * (sampleReal - sampleMax);          // new peak - with some filtering
-  else
-      sampleMax = sampleMax * SAMPLEMAX_DECAY;  // signal to zero --> 5-8sec
+  } else {
+      if ((multAgc*sampleMax > agcZoneStop[AGC_preset]) && (soundAgc > 0))
+        sampleMax = sampleMax + 0.5 * (sampleReal - sampleMax);        // over AGC Zone - get back quickly
+      else
+        sampleMax = sampleMax * agcSampleDecay[AGC_preset];            // signal to zero --> 5-8sec
+  }
   if (sampleMax < 0.5) sampleMax = 0.0;
 
   sampleAvg = ((sampleAvg * 15.0) + sampleAdj) / 16.0;   // Smooth it out over the last 16 samples.
@@ -276,6 +279,8 @@ void getSample() {
  *    b) emergency zome (<10% or >90%) - very fast adjustment
  */
 void agcAvg() {
+  const int AGC_preset = (soundAgc > 0)? (soundAgc-1): 0; // make sure the _compiler_ knows this value will not change while we are inside the function
+  static int last_AGC_preset = -1;
 
   float lastMultAgc = multAgc;      // last muliplier used
   float multAgcTemp = multAgc;      // new multiplier
@@ -283,6 +288,9 @@ void agcAvg() {
 
   float control_error;                        // "control error" input for PI control
   static double control_integrated = 0.0;     // "integrator control" = accumulated error
+
+  if (last_AGC_preset != AGC_preset)
+    control_integrated = 0.0;              // new preset - reset integrator
 
   // For PI control, we need to have a contant "frequency"
   // so let's make sure that the control loop is not running at insane speed
@@ -297,13 +305,13 @@ void agcAvg() {
       tmpAgc = 0;
       // we need to "spin down" the intgrated error buffer
       if (fabs(control_integrated) < 0.01) control_integrated = 0.0;
-      else control_integrated = control_integrated * 0.95;
+      else control_integrated = control_integrated * 0.91;
     } else {
       // compute new setpoint
-      if (tmpAgc <= targetAgcStep0Up)
-        multAgcTemp = targetAgcStep0 / sampleMax;  // Make the multiplier so that sampleMax * multiplier = first setpoint
+      if (tmpAgc <= agcTarget0Up[AGC_preset])
+        multAgcTemp = agcTarget0[AGC_preset] / sampleMax;  // Make the multiplier so that sampleMax * multiplier = first setpoint
       else
-        multAgcTemp = targetAgcStep1 / sampleMax;  // Make the multiplier so that sampleMax * multiplier = second setpoint
+        multAgcTemp = agcTarget1[AGC_preset] / sampleMax;  // Make the multiplier so that sampleMax * multiplier = second setpoint
     }
     // limit amplification
     if (multAgcTemp > 32.0) multAgcTemp = 32.0;
@@ -312,17 +320,17 @@ void agcAvg() {
     // compute error terms
     control_error = multAgcTemp - lastMultAgc;
     if (((multAgcTemp > 0.085) && (multAgcTemp < 6.5))        //integrator anti-windup by clamping
-        && (multAgc*sampleMax < AGC_CEIL_integrator))         //integrator ceiling (>140% of max)
+        && (multAgc*sampleMax < agcZoneStop[AGC_preset]))         //integrator ceiling (>140% of max)
       control_integrated += control_error * 0.002 * 0.25;     // 2ms = intgration time; 0.25 for damping
 
     // apply PI Control 
     tmpAgc = sampleReal * lastMultAgc;              // check "zone" of the signal using previous gain
-    if ((tmpAgc > AGC_HIGH) || (tmpAgc < soundSquelch + AGC_LOW)) {                  // upper/lower emergy zone
-      multAgcTemp = lastMultAgc + AGC_FOLLOW_FAST * AGC_control_Kp * control_error;
-      multAgcTemp += AGC_FOLLOW_FAST * AGC_control_Ki * control_integrated;
+    if ((tmpAgc > agcZoneHigh[AGC_preset]) || (tmpAgc < soundSquelch + agcZoneLow[AGC_preset])) {                  // upper/lower emergy zone
+      multAgcTemp = lastMultAgc + agcFollowFast[AGC_preset] * agcControlKp[AGC_preset] * control_error;
+      multAgcTemp += agcFollowFast[AGC_preset] * agcControlKi[AGC_preset] * control_integrated;
     } else {                                                                         // "normal zone"
-      multAgcTemp = lastMultAgc + AGC_FOLLOW_SLOW * AGC_control_Kp * control_error;
-      multAgcTemp += AGC_FOLLOW_SLOW * AGC_control_Ki * control_integrated;
+      multAgcTemp = lastMultAgc + agcFollowSlow[AGC_preset] * agcControlKp[AGC_preset] * control_error;
+      multAgcTemp += agcFollowSlow[AGC_preset] * agcControlKi[AGC_preset] * control_integrated;
     }
 
     // limit amplification again - PI controler sometimes "overshoots"
@@ -333,19 +341,22 @@ void agcAvg() {
   // NOW finally amplify the signal
   tmpAgc = sampleReal * multAgcTemp;                  // apply gain to signal
   if(fabs(sampleReal) < 2.0) tmpAgc = 0;              // apply squelch threshold
-  if (tmpAgc > 255) tmpAgc = 255;
+  if (tmpAgc > 255) tmpAgc = 255;                     // limit to 8bit
+  if (tmpAgc < 1) tmpAgc = 0;                         // just to be sure
 
   // update global vars ONCE - multAgc, sampleAGC, rawSampleAgc
   multAgc = multAgcTemp;
-  rawSampleAgc = 0.7 * tmpAgc + 0.3 * (float)rawSampleAgc;
+  rawSampleAgc = 0.8 * tmpAgc + 0.2 * (float)rawSampleAgc;
   // update smoothed AGC sample
-  if(fabs(sampleReal) < 2.0) 
-    sampleAgc =  0.7 * tmpAgc + 0.3 * sampleAgc;      // fast
-  else 
-    sampleAgc = sampleAgc + AGC_SAMPLE_SMOOTHING * (tmpAgc - sampleAgc); // smooth
+  if(fabs(tmpAgc) < 1.0) 
+    sampleAgc =  0.5 * tmpAgc + 0.5 * sampleAgc;      // fast path to zero
+  else
+    sampleAgc = sampleAgc + agcSampleSmooth[AGC_preset] * (tmpAgc - sampleAgc); // smooth path
 
   userVar0 = sampleAvg * 4;
   if (userVar0 > 255) userVar0 = 255;
+
+  last_AGC_preset = AGC_preset;
 } // agcAvg()
 
 
