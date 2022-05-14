@@ -5460,7 +5460,7 @@ uint16_t WS2812FX::mode_2DSwirl(void) {             // By: Mark Kriegsman https:
   uint8_t nj = (SEGMENT.width - 1) - j;
   uint16_t ms = millis();
 
-  uint8_t tmpSound = (soundAgc) ? rawSampleAgc : sample;
+  int tmpSound = (soundAgc) ? rawSampleAgc : sample;
 
   leds[XY( i, j)]  += ColorFromPalette(currentPalette, (ms / 11 + sampleAvg*4), tmpSound * SEGMENT.intensity / 64, LINEARBLEND); //CHSV( ms / 11, 200, 255);
   leds[XY( j, i)]  += ColorFromPalette(currentPalette, (ms / 13 + sampleAvg*4), tmpSound * SEGMENT.intensity / 64, LINEARBLEND); //CHSV( ms / 13, 200, 255);
@@ -5512,7 +5512,7 @@ uint16_t WS2812FX::mode_2DWaverly(void) {                                       
   //  byte thisVal = inoise8(i * 45 , t , t);
   // byte thisMax = map(thisVal, 0, 255, 0, SEGMENT.height);
 
-    uint8_t tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
+    int tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
 
     uint16_t thisVal = tmpSound*SEGMENT.intensity/64 * inoise8(i * 45 , t , t)/64;
     uint16_t thisMax = map(thisVal, 0, 512, 0, SEGMENT.height);
@@ -5626,7 +5626,7 @@ uint16_t WS2812FX::mode_gravcentric(void) {                     // Gravcentric. 
 ///////////////////////
 //   * GRAVIMETER    //
 ///////////////////////
-
+#ifndef SR_DEBUG_AGC
 uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andrew Tuline.
 
   uint16_t dataSize = sizeof(gravity);
@@ -5661,6 +5661,57 @@ uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andre
   return FRAMETIME;
 } // mode_gravimeter()
 
+#else
+// This an abuse of the gravimeter effect for AGC debugging
+// instead of sound volume, it uses the AGC gain multiplier as input
+uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andrew Tuline.
+
+  uint16_t dataSize = sizeof(gravity);
+  if (!SEGENV.allocateData(dataSize)) return mode_static(); //allocation failed
+  Gravity* gravcen = reinterpret_cast<Gravity*>(SEGENV.data);
+
+  fade_out(240);
+
+  float tmpSound = multAgc;                                                         // AGC gain
+  if (soundAgc == 0) {
+    if ((sampleAvg> 1.0) && (sampleReal > 0.05))
+      tmpSound = (float)sample / sampleReal;                                        // current non-AGC gain
+    else 
+      tmpSound = ((float)sampleGain/40.0 * (float)inputLevel/128.0) + 1.0/16.0;     // non-AGC gain from presets
+  }
+
+  if (tmpSound > 2) tmpSound = ((tmpSound -2.0) / 2) +2;  //compress ranges > 2
+  if (tmpSound > 1) tmpSound = ((tmpSound -1.0) / 2) +1;  //compress ranges > 1
+
+  float segmentSampleAvg = 64.0 * tmpSound * (float)SEGMENT.intensity / 128.0;
+  float mySampleAvg = mapf(segmentSampleAvg, 0, 128, 0, (SEGLEN-1)); // map to pixels availeable in current segment 
+  int tempsamp = constrain(mySampleAvg,0,SEGLEN-1);                  // Keep the sample from overflowing.
+
+  //tempsamp = SEGLEN - tempsamp;                                      // uncomment to invert direction
+  segmentSampleAvg=fmax(64.0 - fmin(segmentSampleAvg,63),8);         // inverted brightness
+
+  uint8_t gravity = 8 - SEGMENT.speed/32;
+
+  if (sampleAvg > 1)                                                 // disable bar "body" if below squelch
+  {
+    for (int i=0; i<tempsamp; i++) {
+      uint8_t index = inoise8(i*segmentSampleAvg+millis(), 5000+i*segmentSampleAvg);
+      setPixelColor(i, color_blend(SEGCOLOR(1), color_from_palette(index, false, PALETTE_SOLID_WRAP, 0), segmentSampleAvg*4.0));
+    }
+  }
+  if (tempsamp >= gravcen->topLED)
+    gravcen->topLED = tempsamp;
+  else if (gravcen->gravityCounter % gravity == 0)
+    gravcen->topLED--;
+
+  if (gravcen->topLED > 0) {
+    setPixelColor(gravcen->topLED, color_from_palette(millis(), false, PALETTE_SOLID_WRAP, 0));
+  }
+  gravcen->gravityCounter = (gravcen->gravityCounter + 1) % gravity;
+
+  return FRAMETIME;
+} // mode_gravimeter()
+#endif
 
 //////////////////////
 //   * JUGGLES      //

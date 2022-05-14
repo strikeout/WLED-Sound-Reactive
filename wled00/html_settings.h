@@ -201,15 +201,16 @@ var d=document;function H(){window.open("https://github.com/atuline/WLED/wiki/Sq
 %CSS%%SCSS%</head><body onload="S()"><form
  id="form_s" name="Sf" method="post"><div class="helpB"><button type="button" 
 onclick="H()">?</button></div><button type="button" onclick="B()">Back</button>
-<button type="submit">Save</button><hr><h2>Sound Input Settings</h2>Squelch: 
+<button type="submit">Save</button><hr><h2>Sound Input Settings</h2><p>Squelch: 
 <input name="SQ" type="number" min="0" max="255" required><br>Gain: <input 
 name="GN" type="number" min="0" max="255" required><br><i>
+Gain=40 means an amplification of 1; 1 is about 1/12, 255 is about 6.5</i><br>
+<i>
 To tune, set input level slider to middle/128, start with Squelch=5..10 and Gain=40 and modify according to your setup
-</i><br><i>40 means an amplification of 1; 1 is about 1/32, 255 is about 6.5</i>
-<br>Automatic Gain Control (AGC): <select name="AGC"><option value="0">Off
-</option><option value="1">Normal</option><option value="2">Vivid</option>
-</select><br><i>
-If AGC is enabled, the input slider (🎚) will automatically be adjusted</i><br>
+</i><br></p><p>Automatic Gain Control (AGC): <select name="AGC"><option 
+value="0">Off</option><option value="1">Normal</option><option value="2">Vivid
+</option><option value="3">Lazy</option></select><br><i>
+If AGC is enabled, the input slider (🎚) will automatically be adjusted</i></p>
 <h2>Sound Input Pin Manager</h2>Microphone type: <select id="dme" name="DMM" 
 onchange="enDM()"><option value="0" selected="selected">Generic Analog</option>
 <option value="1">Generic I2S</option><option value="2">ES7243</option><option 
