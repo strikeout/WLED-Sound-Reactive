@@ -124,8 +124,6 @@ void userLoop() {
         last_kick_time = now_time;
       }
 
-      lastMode = knownMode;
-
       int new_user_inputLevel = 128.0 * multAgc;                                       // scale AGC multiplier so that "1" is at 128
       if (multAgc > 1.0) new_user_inputLevel = 128.0 * (((multAgc - 1.0) / 4.0) +1.0); // compress range so we can show values up to 4
       new_user_inputLevel = MIN(MAX(new_user_inputLevel, 0),255);
@@ -141,6 +139,7 @@ void userLoop() {
         last_user_inputLevel = new_user_inputLevel;
       }
     }
+    lastMode = knownMode;
 
 #if defined(MIC_LOGGER) || defined(MIC_SAMPLING_LOG) || defined(FFT_SAMPLING_LOG)
     EVERY_N_MILLIS(20) {
