@@ -83,9 +83,9 @@ const float agcTarget1[AGC_NUM_PRESETS] =         // second AGC setPoint -> arou
               {   220,     224,     216};
 
 const double agcFollowFast[AGC_NUM_PRESETS] =     // quickly follow setpoint - ~0.15 sec
-              { 1.0/256.0,  1.0/128.0,  1.0/256.0};
+              { 1.0/192.0,  1.0/128.0,  1.0/256.0};
 const double agcFollowSlow[AGC_NUM_PRESETS] =     // slowly follow setpoint  - ~2-15 secs
-              {1.0/8192.0, 1.0/4096.0, 1.0/8192.0};
+              {1.0/6144.0, 1.0/4096.0, 1.0/8192.0};
 
 const double agcControlKp[AGC_NUM_PRESETS] =      // AGC - PI control, proportional gain parameter
               {   0.5,     1.5,     0.6};
