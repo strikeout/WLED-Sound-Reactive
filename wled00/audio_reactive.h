@@ -280,7 +280,7 @@ void getSample() {
  */
 void agcAvg() {
   const int AGC_preset = (soundAgc > 0)? (soundAgc-1): 0; // make sure the _compiler_ knows this value will not change while we are inside the function
-  static int last_AGC_preset = -1;
+  static int last_soundAgc = -1;
 
   float lastMultAgc = multAgc;      // last muliplier used
   float multAgcTemp = multAgc;      // new multiplier
@@ -289,7 +289,7 @@ void agcAvg() {
   float control_error;                        // "control error" input for PI control
   static double control_integrated = 0.0;     // "integrator control" = accumulated error
 
-  if (last_AGC_preset != AGC_preset)
+  if (last_soundAgc != soundAgc)
     control_integrated = 0.0;              // new preset - reset integrator
 
   // For PI control, we need to have a contant "frequency"
@@ -356,7 +356,7 @@ void agcAvg() {
   userVar0 = sampleAvg * 4;
   if (userVar0 > 255) userVar0 = 255;
 
-  last_AGC_preset = AGC_preset;
+  last_soundAgc = soundAgc;
 } // agcAvg()
 
 

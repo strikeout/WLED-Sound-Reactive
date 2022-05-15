@@ -108,7 +108,7 @@ void userLoop() {
     }
 
     // update inputLevel Slider based on current AGC gain
-    if (soundAgc && agcEffect) {
+    if ((soundAgc>0) && agcEffect) {
       static unsigned long last_update_time = 0;
       static unsigned long last_kick_time = 0;
       static int last_user_inputLevel = 0;
@@ -174,6 +174,7 @@ void userLoop() {
             myVals[i] = receivedPacket.myVals[i];
           }
           sampleAgc = receivedPacket.sampleAgc;
+          rawSampleAgc = receivedPacket.sampleAgc;
           sample = receivedPacket.sample;
           sampleAvg = receivedPacket.sampleAvg;
           // VERIFY THAT THIS IS A COMPATIBLE PACKET
@@ -185,6 +186,7 @@ void userLoop() {
               myVals[i] = receivedPacket.myVals[i];
             }
             sampleAgc = receivedPacket.sampleAgc;
+            rawSampleAgc = receivedPacket.sampleAgc;
             sample = receivedPacket.sample;
             sampleAvg = receivedPacket.sampleAvg;
 
