@@ -73,7 +73,7 @@ const float agcZoneLow[AGC_NUM_PRESETS] =         // low volume emergency zone
 const float agcZoneHigh[AGC_NUM_PRESETS] =        // high volume emergency zone
               {   240,     240,     248};
 const float agcZoneStop[AGC_NUM_PRESETS] =        // disable AGC integrator if we get above this level
-              {   352,     448,     336};
+              {   336,     448,     304};
 
 const float agcTarget0[AGC_NUM_PRESETS] =         // first AGC setPoint -> between 40% and 65%
               {   112,     144,     164};
@@ -88,9 +88,9 @@ const double agcFollowSlow[AGC_NUM_PRESETS] =     // slowly follow setpoint  - ~
               {1.0/6144.0, 1.0/4096.0, 1.0/8192.0};
 
 const double agcControlKp[AGC_NUM_PRESETS] =      // AGC - PI control, proportional gain parameter
-              {   0.5,     1.5,     0.6};
+              {   0.6,     1.5,    0.65};
 const double agcControlKi[AGC_NUM_PRESETS] =      // AGC - PI control, integral gain parameter
-              {   1.8,     1.85,    1.25};
+              {   1.7,     1.85,     1.2};
 
 const float agcSampleSmooth[AGC_NUM_PRESETS] =   // smoothing factor for sampleAgc (use rawSampleAgc if you want the non-smoothed value)
               {  1.0/12.0,    1.0/6.0,   1.0/16.0};
@@ -319,9 +319,12 @@ void agcAvg() {
 
     // compute error terms
     control_error = multAgcTemp - lastMultAgc;
+    
     if (((multAgcTemp > 0.085) && (multAgcTemp < 6.5))        //integrator anti-windup by clamping
-        && (multAgc*sampleMax < agcZoneStop[AGC_preset]))         //integrator ceiling (>140% of max)
+        && (multAgc*sampleMax < agcZoneStop[AGC_preset]))     //integrator ceiling (>140% of max)
       control_integrated += control_error * 0.002 * 0.25;     // 2ms = intgration time; 0.25 for damping
+    else
+      control_integrated *= 0.9;                              // spin down that beasty integrator
 
     // apply PI Control 
     tmpAgc = sampleReal * lastMultAgc;              // check "zone" of the signal using previous gain
