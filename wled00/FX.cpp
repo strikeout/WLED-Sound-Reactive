@@ -5903,12 +5903,13 @@ uint16_t WS2812FX::mode_plasmoid(void) {                  // Plasmoid. By Andrew
   plasmoip->thatphase += beatsin8(7,-4,4);                          // Two phase values to make a complex pattern. By Andrew Tuline.
 
   for (int i=0; i<SEGLEN; i++) {                          // For each of the LED's in the strand, set a brightness based on a wave as follows.
-    uint8_t thisbright = cubicwave8((i*13)+plasmoip->thisphase)/2;
-    thisbright += cos8((i*117)+plasmoip->thatphase)/2;              // Let's munge the brightness a bit and animate it all with the phases.
+    // updated, similar to "plasma" effect - softhack007
+    uint8_t thisbright = cubicwave8(((i*(1 + (3*SEGMENT.speed/32)))+plasmoip->thisphase) & 0xFF)/2;
+    thisbright += cos8(((i*(97 +(5*SEGMENT.speed/32)))+plasmoip->thatphase) & 0xFF)/2; // Let's munge the brightness a bit and animate it all with the phases.
+    
     uint8_t colorIndex=thisbright;
-
-    uint8_t tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
-    if (tmpSound * SEGMENT.intensity / 32 < thisbright) {thisbright = 0;}
+    int tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
+    if (tmpSound * SEGMENT.intensity / 64 < thisbright) {thisbright = 0;}
 
     leds[realPixelIndex(i)] += color_blend(SEGCOLOR(1), color_from_palette(colorIndex, false, PALETTE_SOLID_WRAP, 0), thisbright);
   }
