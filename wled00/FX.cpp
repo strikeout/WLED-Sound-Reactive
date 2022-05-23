@@ -6420,7 +6420,7 @@ uint16_t WS2812FX::mode_noisemove(void) {                 // Noisemove.    By: A
     uint16_t locn = inoise16(millis()*SEGMENT.speed+i*50000, millis()*SEGMENT.speed);   // Get a new pixel location from moving noise.
 
     locn = map(locn,7500,58000,0,SEGLEN-1);               // Map that to the length of the strand, and ensure we don't go over.
-    locn = locn % (SEGLEN - 1);                           // Just to be bloody sure.
+    locn = locn % SEGLEN;                                 // Just to be bloody sure.
 
     setPixelColor(locn, color_blend(SEGCOLOR(1), color_from_palette(i*64, false, PALETTE_SOLID_WRAP, 0), fftResult[i % 16]*4));
 
