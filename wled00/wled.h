@@ -171,6 +171,16 @@ using PSRAMDynamicJsonDocument = BasicJsonDocument<PSRAM_Allocator>;
   Comment out this error message to build regardless.
 #endif
 
+// begin WLEDSR specific
+#if defined(ARDUINO_ARCH_ESP32) && defined(LOROL_LITTLEFS) && !defined(LITTLEFS_threadsafe_SOFTHACK007)
+  // the softhack007 fork is at https://github.com/softhack007/LITTLEFS-threadsafe.git#master
+  #error You are not using the softhack007 fork of the LOROL LITTLEFS library.\
+  Using upstream has a higher risks of ending up with a corrupted LittleFS filesystem on flash.\
+  Comment out this error message to build regardlessly.
+#endif
+// end WLEDSR specific
+
+
 #ifndef WLED_DISABLE_INFRARED
   #include <IRremoteESP8266.h>
   #include <IRrecv.h>
