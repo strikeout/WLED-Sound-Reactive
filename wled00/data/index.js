@@ -54,6 +54,8 @@ var cpick = new iro.ColorPicker("#picker", {
 	]
 });
 
+var isInInputField = false; //WLEDSR: do not (re)populateSegment if editing segment
+
 function handleVisibilityChange() {
   if (!d.hidden && new Date () - lastUpdate > 3000) {
     requestJson(null);
@@ -583,7 +585,7 @@ function populateSegments(s)
 		if (i == lowestUnused) lowestUnused = i+1;
 		if (i > lSeg) lSeg = i;
 
-		//WLEDSR: add tooltip (title) and add reverse direction X / Y and rotation parameters
+		//WLEDSR: add tooltip (title) and add reverse direction X / Y and rotation parameters and add onFocus/onBlur
     cn += `<div title="Fx${inst.fx}: ${inst.start}-${inst.stop} (${inst.mi} ${inst.rev} ${inst.rev2D} ${inst.rot2D})" class="seg">
       <label class="check schkl">
         &nbsp;
@@ -596,7 +598,7 @@ function populateSegments(s)
       </div>
       <i class="icons e-icon flr ${expanded[i] ? "exp":""}" id="sege${i}" onclick="expand(${i})">&#xe395;</i>
       <div class="segin ${expanded[i] ? "expanded":""}" id="seg${i}">
-        <input type="text" class="ptxt stxt noslide" id="seg${i}t" autocomplete="off" maxlength=32 value="${inst.n?inst.n:""}" placeholder="Enter name..."/>
+        <input type="text" class="ptxt stxt noslide" id="seg${i}t" autocomplete="off" maxlength=32 value="${inst.n?inst.n:""}" placeholder="Enter name..." onfocus="focusOn('name')" onblur="focusOff('name')"/>
         <div class="sbs">
         <i class="icons e-icon pwr ${powered[i] ? "act":""}" id="seg${i}pwr" onclick="setSegPwr(${i})">&#xe08f;</i>
         <div class="sliderwrap il sws">
@@ -611,9 +613,9 @@ function populateSegments(s)
             <td class="segtd">Offset</td>
           </tr>
           <tr>
-            <td class="segtd"><input class="noslide segn" id="seg${i}s" type="number" min="0" max="${ledCount-1}" value="${inst.start}" oninput="updateLen(${i})" onkeydown="segEnter(${i})"></td>
-            <td class="segtd"><input class="noslide segn" id="seg${i}e" type="number" min="0" max="${ledCount-(cfg.comp.seglen?inst.start:0)}" value="${inst.stop-(cfg.comp.seglen?inst.start:0)}" oninput="updateLen(${i})" onkeydown="segEnter(${i})"></td>
-            <td class="segtd"><input class="noslide segn" id="seg${i}of" type="number" value="${inst.of}" oninput="updateLen(${i})"></td>
+            <td class="segtd"><input class="noslide segn" id="seg${i}s" type="number" min="0" max="${ledCount-1}" value="${inst.start}" oninput="updateLen(${i})" onkeydown="segEnter(${i})" onfocus="focusOn(${i})" onblur="focusOff(${i})"></td>
+            <td class="segtd"><input class="noslide segn" id="seg${i}e" type="number" min="0" max="${ledCount-(cfg.comp.seglen?inst.start:0)}" value="${inst.stop-(cfg.comp.seglen?inst.start:0)}" oninput="updateLen(${i})" onkeydown="segEnter(${i})" onfocus="focusOn(${i})" onblur="focusOff(${i})"></td>
+            <td class="segtd"><input class="noslide segn" id="seg${i}of" type="number" value="${inst.of}" oninput="updateLen(${i})" onfocus="focusOn(${i})" onblur="focusOff(${i})"></td>
           </tr>
         </table>
         <table class="infot">
@@ -623,8 +625,8 @@ function populateSegments(s)
             <td class="segtd">Apply</td>
           </tr>
           <tr>
-            <td class="segtd"><input class="noslide segn" id="seg${i}grp" type="number" min="1" max="255" value="${inst.grp}" oninput="updateLen(${i})" onkeydown="segEnter(${i})"></td>
-            <td class="segtd"><input class="noslide segn" id="seg${i}spc" type="number" min="0" max="255" value="${inst.spc}" oninput="updateLen(${i})" onkeydown="segEnter(${i})"></td>
+            <td class="segtd"><input class="noslide segn" id="seg${i}grp" type="number" min="1" max="255" value="${inst.grp}" oninput="updateLen(${i})" onkeydown="segEnter(${i})" onfocus="focusOn(${i})" onblur="focusOff(${i})"></td>
+            <td class="segtd"><input class="noslide segn" id="seg${i}spc" type="number" min="0" max="255" value="${inst.spc}" oninput="updateLen(${i})" onkeydown="segEnter(${i})" onfocus="focusOn(${i})" onblur="focusOff(${i})"></td>
             <td class="segtd"><i class="icons e-icon cnf" id="segc${i}" onclick="setSeg(${i})">&#xe390;</i></td>
           </tr>
         </table>
@@ -949,6 +951,14 @@ function updateLen(s)
   d.getElementById(`seg${s}len`).innerHTML = out;
 }
 
+//WLEDSR: do not (re)populateSegment if editing segment
+function focusOn(name) {
+  isInInputField = true;
+}
+function focusOff(name) {
+  isInInputField = false;
+}
+
 // updates background color of currently selected preset
 function updatePA()
 {
@@ -1131,7 +1141,8 @@ function readState(s,command=false) {
   tr = s.transition;
   d.getElementById('tt').value = tr/10;
 
-  populateSegments(s);
+  if (!isInInputField) //WLEDSR: do not (re)populateSegment if editing segment
+    populateSegments(s);
   var selc=0;
   var sellvl=0; // 0: selc is invalid, 1: selc is mainseg, 2: selc is first selected
   hasRGB = hasWhite = hasCCT = false;
