@@ -123,7 +123,7 @@ public:
     virtual void initialize() {
 
         if (!pinManager.allocatePin(i2swsPin, true, PinOwner::DigitalMic) ||
-            !pinManager.allocatePin(i2ssdPin, true, PinOwner::DigitalMic)) {
+            !pinManager.allocatePin(i2ssdPin, false, PinOwner::DigitalMic)) {
                 return;
         }
 
