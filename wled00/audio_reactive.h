@@ -620,7 +620,7 @@ void FFTcode( void * parameter) {
 void logAudio() {
 #ifdef MIC_LOGGER
 
-
+  //Serial.print("micReal:");    Serial.print(micDataReal);   Serial.print("\t");
   //Serial.print("micData:");    Serial.print(micData);   Serial.print("\t");
   //Serial.print("micDataSm:");  Serial.print(micDataSm); Serial.print("\t");
   //Serial.print("micIn:");      Serial.print(micIn);     Serial.print("\t");

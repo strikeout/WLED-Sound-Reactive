@@ -8,16 +8,38 @@
    Until this configuration is moved to the webinterface
 */
 
+
 // data type requested from the I2S driver - currently we always use 32bit
-//#define I2S_USE_16BIT_SAMPLES   // (experimental) define this to request 16bit - more efficient but possibly less compatible
+//#define I2S_USE_16BIT_SAMPLES    // (experimental) define this to request 16bit - more efficient but possibly less compatible
+
+// if you have problems to get your microphone work on the left channel, uncomment the following line
+//#define I2S_USE_RIGHT_CHANNEL    // (experimental) define this to use right channel (digital mics only)
+
+// Uncomment the line below to utilize ADC1 _exclusively_ for I2S sound input.
+// benefit: analog mic inputs will be sampled contiously -> better response times and less "glitches"
+// WARNING: this option WILL lock-up your device in case that any other analogRead() operation is performed; 
+//          for example if you want to read "analog buttons"
+//#define I2S_GRAB_ADC1_COMPLETELY // (experimental) continously sample analog ADC microphone. WARNING will cause analogRead() lock-up 
+
+
 #ifdef I2S_USE_16BIT_SAMPLES
 #define I2S_SAMPLE_RESOLUTION I2S_BITS_PER_SAMPLE_16BIT
 #define I2S_datatype int16_t
+#define I2S_unsigned_datatype uint16_t
 #undef  I2S_SAMPLE_DOWNSCALE_TO_16BIT
 #else
 #define I2S_SAMPLE_RESOLUTION I2S_BITS_PER_SAMPLE_32BIT
 #define I2S_datatype int32_t
+#define I2S_unsigned_datatype uint32_t
 #define I2S_SAMPLE_DOWNSCALE_TO_16BIT
+#endif
+
+#ifdef I2S_USE_RIGHT_CHANNEL
+#define I2S_MIC_CHANNEL I2S_CHANNEL_FMT_ONLY_RIGHT
+#define I2S_MIC_CHANNEL_TEXT "right channel only."
+#else
+#define I2S_MIC_CHANNEL I2S_CHANNEL_FMT_ONLY_LEFT
+#define I2S_MIC_CHANNEL_TEXT "left channel only."
 #endif
 
 #ifndef MCLK_PIN
@@ -80,7 +102,8 @@ public:
 
 protected:
     // Private constructor, to make sure it is not callable except from derived classes
-    AudioSource(int sampleRate, int blockSize, int16_t lshift, uint32_t mask) : _sampleRate(sampleRate), _blockSize(blockSize), _sampleNoDCOffset(0), _dcOffset(0.0f), _shift(lshift), _mask(mask), _initialized(false) {};
+    AudioSource(int sampleRate, int blockSize, int16_t lshift, uint32_t mask) : _sampleRate(sampleRate), _blockSize(blockSize), _sampleNoDCOffset(0), _dcOffset(0.0f), _shift(lshift), _mask(mask), 
+                _initialized(false), _myADCchannel(0x0F), _lastADCsample(0), _broken_samples_counter(0) {};
 
     int _sampleRate;                /* Microphone sampling rate */
     int _blockSize;                 /* I2S block size */
@@ -89,6 +112,10 @@ protected:
     int16_t _shift;                /* Shift obtained samples to the right (positive) or left(negative) by this amount */
     uint32_t _mask;                 /* Bitmask for sample data after shifting. Bitmask 0X0FFF means that we need to convert 12bit ADC samples from unsigned to signed*/
     bool _initialized;              /* Gets set to true if initialization is successful */
+    int8_t _myADCchannel;           /* current ADC channel, in case of analog input. 0x0F if undefined */
+    I2S_datatype _lastADCsample;    /* last sample from ADC */
+    I2S_datatype decodeADCsample(I2S_unsigned_datatype rawData); /* function to handle ADC samples */
+    unsigned int _broken_samples_counter; /* counts number of broken (and fixed) ADC samples */
 };
 
 /* Basic I2S microphone source
@@ -102,7 +129,7 @@ public:
             .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),
             .sample_rate = _sampleRate,
             .bits_per_sample = I2S_SAMPLE_RESOLUTION,
-            .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+            .channel_format = I2S_MIC_CHANNEL,
             .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
             .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
             .dma_buf_count = 8,
@@ -149,11 +176,13 @@ public:
     }
 
     virtual void deinitialize() {
-        _initialized = false;
-        esp_err_t err = i2s_driver_uninstall(I2S_NUM_0);
-        if (err != ESP_OK) {
-            Serial.printf("Failed to uninstall i2s driver: %d\n", err);
-            return;
+        if (_initialized) {
+            _initialized = false;
+            esp_err_t err = i2s_driver_uninstall(I2S_NUM_0);
+            if (err != ESP_OK) {
+                Serial.printf("Failed to uninstall i2s driver: %d\n", err);
+                return;
+            }
         }
         pinManager.deallocatePin(i2swsPin, PinOwner::DigitalMic);
         pinManager.deallocatePin(i2ssdPin, PinOwner::DigitalMic);
@@ -168,10 +197,11 @@ public:
             esp_err_t err;
             size_t bytes_read = 0;        /* Counter variable to check if we actually got enough data */
             I2S_datatype newSamples[num_samples]; /* Intermediary sample storage */
+           
+            _dcOffset = 0.0f;              // Reset dc offset
+            _broken_samples_counter = 0;   // Reset ADC broken samples counter
 
-            // Reset dc offset
-            _dcOffset = 0.0f;
-
+            // get fresh samples
             err = i2s_read(I2S_NUM_0, (void *)newSamples, sizeof(newSamples), &bytes_read, portMAX_DELAY);
             if ((err != ESP_OK)){
                 Serial.printf("Failed to get samples: %d\n", err);
@@ -186,6 +216,20 @@ public:
 
             // Store samples in sample buffer and update DC offset
             for (int i = 0; i < num_samples; i++) {
+
+                if (_mask == 0x0FFF) {  // mask = 0x0FFF means we are in I2SAdcSource
+                    I2S_unsigned_datatype rawData = * reinterpret_cast<I2S_unsigned_datatype *> (newSamples + i); // C++ acrobatics to get sample as "unsigned"
+                    I2S_datatype sampleNoFilter = decodeADCsample(rawData);
+                    if (_broken_samples_counter >= num_samples-1) {             // kill-switch: ADC sample correction off when all samples in a batch were "broken"
+                        _myADCchannel = 0x0F;
+                        Serial.println("AS: too many broken audio samples from ADC - sample correction switched off.");
+                    }
+
+                    newSamples[i] = (3 * sampleNoFilter + _lastADCsample) / 4;  // apply low-pass filter (2-tap FIR)
+                    //newSamples[i] = (sampleNoFilter + lastADCsample) / 2;      // apply stronger low-pass filter (2-tap FIR)
+                    _lastADCsample = sampleNoFilter;                            // update ADC last sample
+                }
+
                 // pre-shift samples down to 16bit
 #ifdef I2S_SAMPLE_DOWNSCALE_TO_16BIT
                 if (_shift != 0)
@@ -211,6 +255,33 @@ public:
             // Update no-DC sample
             _sampleNoDCOffset = buffer[num_samples - 1] - _dcOffset;
         }
+    }
+
+    // function to handle ADC samples
+    I2S_datatype decodeADCsample(I2S_unsigned_datatype rawData) {
+#ifndef I2S_USE_16BIT_SAMPLES
+        rawData = (rawData >> 16) & 0xFFFF;                        // scale input down from 32bit -> 16bit
+        I2S_datatype lastGoodSample = _lastADCsample / 16384 ;     // 26bit-> 12bit with correct sign handling
+#else
+        rawData = rawData & 0xFFFF;                                // input is already in 16bit, just mask off possible junk
+        I2S_datatype lastGoodSample = _lastADCsample * 4;          // 10bit-> 12bit
+#endif
+        // decode ADC sample
+        uint16_t the_channel = (rawData >> 12) & 0x000F;           // upper 4 bit = ADC channel
+        uint16_t the_sample  =  rawData & 0x0FFF;                  // lower 12bit -> ADC sample (unsigned)
+        I2S_datatype finalSample = (int(the_sample) - 2048);       // convert to signed (centered at 0);
+
+        // fix bad samples
+        if ((the_channel != _myADCchannel) && (_myADCchannel != 0x0F)) { // 0x0F means "don't know what my channel is" 
+            finalSample = lastGoodSample;                         // replace with the last good ADC sample
+            _broken_samples_counter ++;
+            //Serial.print("\n!ADC rogue sample 0x"); Serial.print(rawData, HEX); Serial.print("\tchannel:");Serial.println(the_channel);
+        }
+#ifndef I2S_USE_16BIT_SAMPLES
+        finalSample = finalSample << 16;    // scale up from 16bit -> 32bit;
+#endif
+        finalSample = finalSample / 4;      // mimic old analog driver behaviour (12bit -> 10bit)
+        return(finalSample);
     }
 
     virtual int getSampleWithoutDCOffset() {
@@ -335,25 +406,45 @@ public:
             .bits_per_sample = I2S_SAMPLE_RESOLUTION,
             .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
             .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
-            .intr_alloc_flags = ESP_INTR_FLAG_LEVEL2,
+            .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
             .dma_buf_count = 8,
-            .dma_buf_len = _blockSize
+            .dma_buf_len = _blockSize,
+            .use_apll    = false, // must be disabled for analog microphone
+            .tx_desc_auto_clear = false,
+            .fixed_mclk = 0
         };
     }
 
     void initialize() {
+
+        // check if "analog buttons" are configured for ADC1, and issue warning
+        for (int b=0; b<WLED_MAX_BUTTONS; b++) {
+            //if ((btnPin[b] >= 0) && (buttonType[b] == BTN_TYPE_ANALOG || buttonType[b] == BTN_TYPE_ANALOG_INVERTED) && (digitalPinToAnalogChannel(btnPin[b]) < 10)) {
+            if ((btnPin[b] >= 0) && (buttonType[b] == BTN_TYPE_ANALOG || buttonType[b] == BTN_TYPE_ANALOG_INVERTED) && (digitalPinToAnalogChannel(btnPin[b]) >= 0)) {
+                Serial.println("AS: Analog Microphone does not work reliably when analog buttons are configured on ADC1.");
+                Serial.printf( "    Button %d GPIO %d\n", b, btnPin[b]);
+                Serial.println("    To recover, please disable any analog button in LED preferences, then restart your device.");
+                Serial.flush();
+#ifdef I2S_GRAB_ADC1_COMPLETELY
+                Serial.println("AS: Analog Microphone initialization aborted. Cannot use ADC1 exclusively");
+                return;
+#endif
+            }
+        }
 
         if(!pinManager.allocatePin(audioPin, false, PinOwner::AnalogMic)) {
             return;
         }
         // Determine Analog channel. Only Channels on ADC1 are supported
         int8_t channel = digitalPinToAnalogChannel(audioPin);
-        if (channel > 9) {
+        if ((channel < 0) || (channel > 9)) {  // channel == -1 means "not an ADC pin"
             Serial.printf("Incompatible GPIO used for audio in: %d\n", audioPin);
             return;
         } else {
             adc_gpio_init(ADC_UNIT_1, adc_channel_t(channel));
         }
+        _myADCchannel = channel;
+        _lastADCsample = 0;
 
         // Install Driver
         esp_err_t err = i2s_driver_install(I2S_NUM_0, &_config, 0, nullptr);
@@ -369,7 +460,7 @@ public:
             return;
 
         }
-#if defined(ARDUINO_ARCH_ESP32)
+#if defined(I2S_GRAB_ADC1_COMPLETELY)
         // according to docs from espressif, the ADC needs to be started explicitly
         // fingers crossed
         err = i2s_adc_enable(I2S_NUM_0);
@@ -385,13 +476,12 @@ public:
     void getSamples(double *buffer, uint16_t num_samples) {
 
     /* Enable ADC. This has to be enabled and disabled directly before and
-    after sampling, otherwise Wifi dies
+    after sampling, otherwise Wifi dies and analogRead() hangs
     */
         if (_initialized) {
-#if !defined(ARDUINO_ARCH_ESP32)
-			// old code - works for me without enable/disable, at least on ESP32.
-            esp_err_t err = i2s_adc_enable(I2S_NUM_0);
+#if !defined(I2S_GRAB_ADC1_COMPLETELY)
 			//esp_err_t err = i2s_start(I2S_NUM_0);
+            esp_err_t err = i2s_adc_enable(I2S_NUM_0);
             if (err != ESP_OK) {
                 Serial.printf("Failed to enable i2s adc: %d\n", err);
                 return;
@@ -399,8 +489,7 @@ public:
 #endif
             I2SSource::getSamples(buffer, num_samples);
 
-#if !defined(ARDUINO_ARCH_ESP32)
-			// old code - works for me without enable/disable, at least on ESP32.
+#if !defined(I2S_GRAB_ADC1_COMPLETELY)
             err = i2s_adc_disable(I2S_NUM_0);
 			//err = i2s_stop(I2S_NUM_0);
             if (err != ESP_OK) {
@@ -413,22 +502,28 @@ public:
 
     void deinitialize() {
         pinManager.deallocatePin(audioPin, PinOwner::AnalogMic);
-        _initialized = false;
         esp_err_t err;
-#if defined(ARDUINO_ARCH_ESP32)
-        // according to docs from espressif, the ADC needs to be stopped explicitly
-        // fingers crossed
-        err = i2s_adc_disable(I2S_NUM_0);
-        if (err != ESP_OK) {
-            Serial.printf("Failed to disable i2s adc: %d\n", err);
-            //return;
-        }
+        if (_initialized) {
+            _initialized = false;
+#if defined(I2S_GRAB_ADC1_COMPLETELY)
+            // according to docs from espressif, the ADC needs to be stopped explicitly
+            // fingers crossed
+            err = i2s_adc_disable(I2S_NUM_0);
+            if (err != ESP_OK) {
+                Serial.printf("Failed to disable i2s adc: %d\n", err);
+                //return;
+            }
 #endif
-        err = i2s_driver_uninstall(I2S_NUM_0);
-        if (err != ESP_OK) {
-            Serial.printf("Failed to uninstall i2s driver: %d\n", err);
-            return;
+            i2s_adc_disable(I2S_NUM_0);     // just to be sure
+            i2s_stop(I2S_NUM_0);
+            err = i2s_driver_uninstall(I2S_NUM_0);
+            if (err != ESP_OK) {
+                Serial.printf("Failed to uninstall i2s driver: %d\n", err);
+                return;
+            }
         }
+        _myADCchannel = 0x0F;
+        _lastADCsample = 0;
     }
 };
 

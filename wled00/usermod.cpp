@@ -23,31 +23,29 @@ void userSetup() {
   delay(100);         // Give that poor microphone some time to setup.
   switch (dmType) {
     case 1:
-      Serial.println("AS: Generic I2S Microphone.");
+      Serial.print("AS: Generic I2S Microphone - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
       audioSource = new I2SSource(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
       break;
     case 2:
-      Serial.println("AS: ES7243 Microphone.");
+      Serial.print("AS: ES7243 Microphone - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
       audioSource = new ES7243(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
       break;
     case 3:
-      Serial.println("AS: SPH0645 Microphone");
+      Serial.print("AS: SPH0645 Microphone - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
       audioSource = new SPH0654(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
       break;
     case 4:
-      Serial.println("AS: Generic I2S Microphone with Master Clock");
+      Serial.print("AS: Generic I2S Microphone with Master Clock - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
       audioSource = new I2SSourceWithMasterClock(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
       break;
     case 5:
-      Serial.println("AS: I2S PDM Microphone");
+      Serial.print("AS: I2S PDM Microphone - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
       audioSource = new I2SPdmSource(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
       break;
     case 0:
     default:
-      Serial.println("AS: Analog Microphone.");
-      // we don't do the down-shift by 16bit any more
-      //audioSource = new I2SAdcSource(SAMPLE_RATE, BLOCK_SIZE, -4, 0x0FFF);  // request upscaling to 16bit - still produces too much noise
-      audioSource = new I2SAdcSource(SAMPLE_RATE, BLOCK_SIZE, 0, 0x0FFF);     // keep at 12bit - less noise
+      Serial.println("AS: Analog Microphone (left channel only).");
+      audioSource = new I2SAdcSource(SAMPLE_RATE, BLOCK_SIZE, 0, 0x0FFF);
       break;
   }
 
