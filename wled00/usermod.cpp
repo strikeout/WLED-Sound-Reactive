@@ -129,7 +129,8 @@ void userLoop() {
 	    // update user interfaces - restrict frequency to avoid flooding UI's with small changes
       if ( ( ((now_time - last_update_time > 3500) && (abs(new_user_inputLevel - inputLevel) > 2))     // small change - every 3.5 sec (max) 
            ||((now_time - last_update_time > 2200) && (abs(new_user_inputLevel - inputLevel) > 15))    // medium change
-           ||((now_time - last_update_time > 1200) && (abs(new_user_inputLevel - inputLevel) > 31)) )) // BIG change - every second
+           ||((now_time - last_update_time > 1200) && (abs(new_user_inputLevel - inputLevel) > 31))    // BIG change - every second
+           ) && (now_time - lastInterfaceUpdate > INTERFACE_UPDATE_COOLDOWN))		                     // respect UI cooldown time
       {
         inputLevel = new_user_inputLevel;           // change of least 3 units -> update user variable
         updateInterfaces(CALL_MODE_WS_SEND);        // is this the correct way to notify UIs ? Yes says blazoncek
