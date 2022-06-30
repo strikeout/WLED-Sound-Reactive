@@ -468,8 +468,13 @@ public:
             Serial.printf("Failed to enable i2s adc: %d\n", err);
             //return;
         }
+#else
+        err = i2s_adc_disable(I2S_NUM_0);
+		//err = i2s_stop(I2S_NUM_0);
+        if (err != ESP_OK) {
+            Serial.printf("Failed to initially disable i2s adc: %d\n", err);
+        }
 #endif
-
         _initialized = true;
     }
 
