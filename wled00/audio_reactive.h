@@ -104,7 +104,7 @@ double sampleMax = 0;                           // Max sample over a few seconds
 uint8_t myVals[32];                             // Used to store a pile of samples because WLED frame rate and WLED sample rate are not synchronized. Frame rate is too low.
 bool samplePeak = 0;                            // Boolean flag for peak. Responding routine must reset this flag
 bool udpSamplePeak = 0;                         // Boolean flag for peak. Set at the same tiem as samplePeak, but reset by transmitAudioData
-int delayMs = 10;                               // I don't want to sample too often and overload WLED
+constexpr int delayMs = 10;                     // I don't want to sample too often and overload WLED
 static int micIn = 0.0;                         // Current sample starts with negative values and large values, which is why it's 16 bit signed
 int sample;                                     // Current sample. Must only be updated ONCE!!!
 float sampleReal = 0.0;					                // "sample" as float, to provide bits that are lost otherwise. Needed for AGC.
@@ -116,11 +116,11 @@ uint16_t micData;                               // Analog input for FFT
 uint16_t micDataSm;                             // Smoothed mic data, as it's a bit twitchy
 float micDataReal = 0.0;                        // future support - this one has the full 24bit MicIn data - lowest 8bit after decimal point
 long timeOfPeak = 0;
-long lastTime = 0;
+static unsigned long lastTime = 0;
 static double micLev = 0.0;                     // Used to convert returned value to have '0' as minimum. A leveller
 float multAgc = 1.0;                            // sample * multAgc = sampleAgc. Our multiplier
 float sampleAvg = 0;                            // Smoothed Average
-double beat = 0;                                // beat Detection
+//double beat = 0;                              // beat Detection
 
 static float expAdjF;                           // Used for exponential filter.
 float weighting = 0.2;                          // Exponential filter weighting. Will be adjustable in a future release.

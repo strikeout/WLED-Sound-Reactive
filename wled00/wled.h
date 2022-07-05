@@ -8,7 +8,7 @@
  */
 
 // version code in format yymmddb (b = daily build)
-#define VERSION 2207050
+#define VERSION 2207051
 
 //uncomment this if you have a "my_config.h" file you'd like to use
 //#define WLED_USE_MY_CONFIG
@@ -328,7 +328,7 @@ WLED_GLOBAL byte briS     _INIT(128);                     // default brightness
 //WLEDSR
 WLED_GLOBAL byte inputLevelS    _INIT(128);         // WLEDSR default inputLevel
 WLED_GLOBAL byte soundSquelch   _INIT(10);          // default squelch value for volume reactive routines
-WLED_GLOBAL byte sampleGain     _INIT(1);           // default sample gain
+WLED_GLOBAL byte sampleGain     _INIT(40);           // default sample gain
 WLED_GLOBAL byte soundAgc       _INIT(0);           // default Automagic gain control
 WLED_GLOBAL uint16_t noiseFloor _INIT(100);         // default squelch value for FFT reactive routines
 
