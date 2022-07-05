@@ -565,7 +565,7 @@ void FFTcode( void * parameter) {
       fftCalc[5] = (fftAdd(12,16)) /5;      // 240 - 340
       fftCalc[6] = (fftAdd(16,21)) /6;      // 320 - 440
       fftCalc[7] = (fftAdd(21,28)) /8;      // 420 - 600
-      fftCalc[8] = (fftAdd(29,37)) /10;     // 580 - 760
+      fftCalc[8] = (fftAdd(28,37)) /10;     // 580 - 760
       fftCalc[9] = (fftAdd(37,48)) /12;     // 740 - 980
       fftCalc[10] = (fftAdd(48,64)) /17;    // 960 - 1300
       fftCalc[11] = (fftAdd(64,84)) /21;    // 1280 - 1700
