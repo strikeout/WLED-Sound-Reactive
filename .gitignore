@@ -3,6 +3,7 @@
 .pioenvs
 .piolibdeps
 .vscode
+!.vscode/extensions.json
 /wled00/Release
 /wled00/extLibs
 /platformio_override.ini
@@ -12,12 +13,5 @@
 .gitignore
 .clang-format
 node_modules
-.cproject
-.project
 .idea
 .direnv
-*.lnk
-*.bak
-*.cppcheck
-/WLED_SR_ESP32-cppcheck-build-dir
-platformio.ini
