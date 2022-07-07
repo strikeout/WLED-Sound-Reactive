@@ -3,6 +3,15 @@
 #include <Wire.h>
 #include "wled.h"
 #include <driver/i2s.h>
+#include <driver/adc.h>
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0)
+#include <driver/adc_deprecated.h>
+#include <driver/adc_types_deprecated.h>
+#endif
+
+//#include <driver/i2s_std.h>
+//#include <driver/i2s_pdm.h>
+//#include <driver/gpio.h>
 
 /* ToDo: remove. ES7243 is controlled via compiler defines
    Until this configuration is moved to the webinterface
@@ -105,7 +114,7 @@ protected:
     AudioSource(int sampleRate, int blockSize, int16_t lshift, uint32_t mask) : _sampleRate(sampleRate), _blockSize(blockSize), _sampleNoDCOffset(0), _dcOffset(0.0f), _shift(lshift), _mask(mask), 
                 _initialized(false), _myADCchannel(0x0F), _lastADCsample(0), _broken_samples_counter(0) {};
 
-    int _sampleRate;                /* Microphone sampling rate */
+    uint32_t _sampleRate;           /* Microphone sampling rate */
     int _blockSize;                 /* I2S block size */
     volatile int _sampleNoDCOffset; /* Up-to-date sample without DCOffset */
     float _dcOffset;                /* Rolling average DC offset */
@@ -130,7 +139,11 @@ public:
             .sample_rate = _sampleRate,
             .bits_per_sample = I2S_SAMPLE_RESOLUTION,
             .channel_format = I2S_MIC_CHANNEL,
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 2, 0)
+            .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_STAND_I2S),
+#else
             .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
+#endif
             .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
             .dma_buf_count = 8,
             .dma_buf_len = _blockSize
@@ -405,7 +418,11 @@ public:
             .sample_rate = _sampleRate,
             .bits_per_sample = I2S_SAMPLE_RESOLUTION,
             .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 2, 0)
+            .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_STAND_I2S),
+#else
             .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
+#endif
             .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
             .dma_buf_count = 8,
             .dma_buf_len = _blockSize,
