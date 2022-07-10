@@ -136,7 +136,7 @@ public:
         AudioSource(sampleRate, blockSize, lshift, mask) {
         _config = {
             .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),
-            .sample_rate = _sampleRate,
+            .sample_rate = _sampleRate,                       // "narrowing conversion" warning can be ignored here - our _sampleRate is never bigger that INT32_MAX
             .bits_per_sample = I2S_SAMPLE_RESOLUTION,
             .channel_format = I2S_MIC_CHANNEL,
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 2, 0)
@@ -415,7 +415,7 @@ public:
         I2SSource(sampleRate, blockSize, lshift, mask){
         _config = {
             .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_ADC_BUILT_IN),
-            .sample_rate = _sampleRate,
+            .sample_rate = _sampleRate,                       // "narrowing conversion" warning can be ignored here - our _sampleRate is never bigger that INT32_MAX
             .bits_per_sample = I2S_SAMPLE_RESOLUTION,
             .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 2, 0)

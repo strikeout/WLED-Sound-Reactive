@@ -20,6 +20,7 @@
 #include "audio_source.h"
 
 static AudioSource *audioSource;
+static volatile bool disableSoundProcessing = false;      // if true, sound processing (FFT, filters, AGC) will be suspended. "volatile" as its shared between tasks.
 
 // ALL AUDIO INPUT PINS DEFINED IN wled.h AND CONFIGURABLE VIA UI
 
@@ -432,9 +433,11 @@ void FFTcode( void * parameter) {
     delay(1);           // DO NOT DELETE THIS LINE! It is needed to give the IDLE(0) task enough time and to keep the watchdog happy.
                         // taskYIELD(), yield(), vTaskDelay() and esp_task_wdt_feed() didn't seem to work.
 
-    // Only run the FFT computing code if we're not in Receive mode
-    if (audioSyncEnabled & (1 << 1))
+    // Only run the FFT computing code if we're not in "realime mode" or in Receive mode
+    if (disableSoundProcessing || (audioSyncEnabled & (1 << 1))) {
+      delay(12);   // release CPU - delay is implemeted using vTaskDelay()
       continue;
+    }
     audioSource->getSamples(vReal, samplesFFT);
 
     // old code - Last sample in vReal is our current mic sample
