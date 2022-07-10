@@ -435,7 +435,7 @@ void FFTcode( void * parameter) {
 
     // Only run the FFT computing code if we're not in "realime mode" or in Receive mode
     if (disableSoundProcessing || (audioSyncEnabled & (1 << 1))) {
-      delay(12);   // release CPU - delay is implemeted using vTaskDelay()
+      delay(7);   // release CPU - delay is implemeted using vTaskDelay()
       continue;
     }
     audioSource->getSamples(vReal, samplesFFT);
