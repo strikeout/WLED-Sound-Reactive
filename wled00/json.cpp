@@ -594,21 +594,6 @@ void serializeInfo(JsonObject root)
   leds[F("wv")]   = totalLC & 0x02;     // deprecated, true if white slider should be displayed for any segment
   leds["cct"]     = totalLC & 0x04;     // deprecated, use info.leds.lc
 
-  uint8_t totalLC = 0;
-  JsonArray lcarr = leds.createNestedArray(F("seglc"));
-  uint8_t nSegs = strip.getLastActiveSegmentId();
-  for (byte s = 0; s <= nSegs; s++) {
-    uint8_t lc = strip.getSegment(s).getLightCapabilities();
-    totalLC |= lc;
-    lcarr.add(lc);
-  }
-
-  leds["lc"] = totalLC;
-
-  leds[F("rgbw")] = strip.hasRGBWBus(); // deprecated, use info.leds.lc
-  leds[F("wv")]   = totalLC & 0x02;     // deprecated, true if white slider should be displayed for any segment
-  leds["cct"]     = totalLC & 0x04;     // deprecated, use info.leds.lc
-
   root[F("str")] = syncToggleReceive;
 
   root[F("name")] = serverDescription;

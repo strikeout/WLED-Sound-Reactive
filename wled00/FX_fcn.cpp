@@ -259,8 +259,6 @@ void IRAM_ATTR WS2812FX::setPixelColor(uint16_t i, byte r, byte g, byte b, byte 
 
   if (SEGLEN) { // SEGLEN!=0 -> from segment/FX
     //color_blend(getpixel, col, _bri_t); (pseudocode for future blending of segments)
-    uint16_t realIndex = realPixelIndex(i); // ewowi20210624: from segment index to logical index
-    uint16_t len = SEGMENT.length();
     if (_bri_t < 255) {
       r = scale8(r, _bri_t);
       g = scale8(g, _bri_t);
@@ -274,6 +272,7 @@ void IRAM_ATTR WS2812FX::setPixelColor(uint16_t i, byte r, byte g, byte b, byte 
   if (SEGLEN || (realtimeMode && useMainSegmentOnly)) {
     uint32_t col = RGBW32(r, g, b, w);
     uint16_t len = _segments[segIdx].length();
+    uint16_t realIndex = realPixelIndex(i); // ewowi20210624: from segment index to logical index
 
     // get physical pixel address (taking into account start, grouping, spacing [and offset])
     i = i * _segments[segIdx].groupLength();
@@ -285,11 +284,6 @@ void IRAM_ATTR WS2812FX::setPixelColor(uint16_t i, byte r, byte g, byte b, byte 
       }
     }
     i += _segments[segIdx].start;
-
-    // set all the pixels in the group
-    for (uint16_t j = 0; j < _segments[segIdx].grouping; j++) {
-      uint16_t indexSet = i + ((_segments[segIdx].options & REVERSE) ? -j : j);
-      if (indexSet >= _segments[segIdx].start && indexSet < _segments[segIdx].stop) {
 
     /* Set all the pixels in the group */
     for (uint16_t j = 0; j < SEGMENT.grouping; j++) {
