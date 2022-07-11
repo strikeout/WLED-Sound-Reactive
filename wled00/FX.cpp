@@ -2816,7 +2816,6 @@ uint16_t WS2812FX::mode_popcorn(void) {
     if (popcorn[i].pos >= 0.0f) { // draw now active popcorn (either active before or just popped)
       uint32_t col = color_wheel(popcorn[i].colIndex);
       if (!SEGMENT.palette && popcorn[i].colIndex < NUM_COLORS) col = SEGCOLOR(popcorn[i].colIndex);
-
       uint16_t ledIndex = popcorn[i].pos;
       if (ledIndex < SEGLEN) setPixelColor(ledIndex, col);
     }
@@ -5556,7 +5555,7 @@ uint16_t WS2812FX::mode_gravcenter(void) {                // Gravcenter. By Andr
   float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
   segmentSampleAvg *= 0.125; // divide by 8, to compensate for later "sensitivty" upscaling
 
-  float mySampleAvg = mapf(segmentSampleAvg*2.0, 0, 32, 0, (float)SEGLEN/2.0); // map to pixels availeable in current segment 
+  float mySampleAvg = mapf(segmentSampleAvg*2.0, 0, 32, 0, (float)SEGLEN/2.0); // map to pixels availeable in current segment
   int tempsamp = constrain(mySampleAvg,0,SEGLEN/2);     // Keep the sample from overflowing.
   uint8_t gravity = 8 - SEGMENT.speed/32;
 
@@ -5598,7 +5597,7 @@ uint16_t WS2812FX::mode_gravcentric(void) {                     // Gravcentric. 
   float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
   segmentSampleAvg *= 0.125; // divide by 8, to compensate for later "sensitivty" upscaling
 
-  float mySampleAvg = mapf(segmentSampleAvg*2.0, 0, 32, 0, (float)SEGLEN/2.0); // map to pixels availeable in current segment 
+  float mySampleAvg = mapf(segmentSampleAvg*2.0, 0, 32, 0, (float)SEGLEN/2.0); // map to pixels availeable in current segment
   int tempsamp = constrain(mySampleAvg,0,SEGLEN/2);     // Keep the sample from overflowing.
   uint8_t gravity = 8 - SEGMENT.speed/32;
 
@@ -5639,7 +5638,7 @@ uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andre
   float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
   segmentSampleAvg *= 0.25; // divide by 4, to compensate for later "sensitivty" upscaling
 
-  float mySampleAvg = mapf(segmentSampleAvg*2.0, 0, 64, 0, (SEGLEN-1)); // map to pixels availeable in current segment 
+  float mySampleAvg = mapf(segmentSampleAvg*2.0, 0, 64, 0, (SEGLEN-1)); // map to pixels availeable in current segment
   int tempsamp = constrain(mySampleAvg,0,SEGLEN-1);       // Keep the sample from overflowing.
   uint8_t gravity = 8 - SEGMENT.speed/32;
 
@@ -5676,7 +5675,7 @@ uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andre
   if (soundAgc == 0) {
     if ((sampleAvg> 1.0) && (sampleReal > 0.05))
       tmpSound = (float)sample / sampleReal;                                        // current non-AGC gain
-    else 
+    else
       tmpSound = ((float)sampleGain/40.0 * (float)inputLevel/128.0) + 1.0/16.0;     // non-AGC gain from presets
   }
 
@@ -5684,7 +5683,7 @@ uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andre
   if (tmpSound > 1) tmpSound = ((tmpSound -1.0) / 2) +1;  //compress ranges > 1
 
   float segmentSampleAvg = 64.0 * tmpSound * (float)SEGMENT.intensity / 128.0;
-  float mySampleAvg = mapf(segmentSampleAvg, 0, 128, 0, (SEGLEN-1)); // map to pixels availeable in current segment 
+  float mySampleAvg = mapf(segmentSampleAvg, 0, 128, 0, (SEGLEN-1)); // map to pixels availeable in current segment
   int tempsamp = constrain(mySampleAvg,0,SEGLEN-1);                  // Keep the sample from overflowing.
 
   //tempsamp = SEGLEN - tempsamp;                                      // uncomment to invert direction
@@ -5906,7 +5905,7 @@ uint16_t WS2812FX::mode_plasmoid(void) {                  // Plasmoid. By Andrew
     // updated, similar to "plasma" effect - softhack007
     uint8_t thisbright = cubicwave8(((i*(1 + (3*SEGMENT.speed/32)))+plasmoip->thisphase) & 0xFF)/2;
     thisbright += cos8(((i*(97 +(5*SEGMENT.speed/32)))+plasmoip->thatphase) & 0xFF)/2; // Let's munge the brightness a bit and animate it all with the phases.
-    
+
     uint8_t colorIndex=thisbright;
     int tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
     if (tmpSound * SEGMENT.intensity / 64 < thisbright) {thisbright = 0;}
@@ -5963,7 +5962,7 @@ uint16_t WS2812FX::mode_puddles(void) {                   // Puddles. By Andrew 
   fade_out(fadeVal);
 
   float tmpSound = (soundAgc) ? rawSampleAgc : sample;
-  
+
   if (tmpSound>1 ) {
     size = tmpSound * SEGMENT.intensity /256 /8 + 1;        // Determine size of the flash based on the volume.
     if (pos+size>= SEGLEN) size=SEGLEN-pos;
@@ -6380,7 +6379,7 @@ uint16_t WS2812FX::mode_gravfreq(void) {                  // Gravfreq. By Andrew
   float segmentSampleAvg = tmpSound * (float)SEGMENT.intensity / 255.0;
   segmentSampleAvg *= 0.125; // divide by 8,  to compensate for later "sensitivty" upscaling
 
-  float mySampleAvg = mapf(segmentSampleAvg*2.0, 0,32, 0, (float)SEGLEN/2.0); // map to pixels availeable in current segment 
+  float mySampleAvg = mapf(segmentSampleAvg*2.0, 0,32, 0, (float)SEGLEN/2.0); // map to pixels availeable in current segment
   int tempsamp = constrain(mySampleAvg,0,SEGLEN/2);     // Keep the sample from overflowing.
   uint8_t gravity = 8 - SEGMENT.speed/32;
 

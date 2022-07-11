@@ -100,6 +100,38 @@ function setCSL(s) {
 	}
 }
 
+function isRgbBlack(a, s) {
+	return (a[s][0] == 0 && a[s][1] == 0 && a[s][2] == 0);
+}
+
+// returns RGB color from a given slot s 0-2 from color array a
+function rgbStr(a, s) {
+	return "rgb(" + a[s][0] + "," + a[s][1] + "," + a[s][2] + ")";
+}
+
+// brightness approximation for selecting white as text color if background bri < 127, and black if higher
+function rgbBri(a, s) {
+	var R = a[s][0], G = a[s][1], B = a[s][2];
+	return 0.2126*R + 0.7152*G + 0.0722*B;
+}
+
+// sets background of color slot selectors
+function setCSL(s) {
+	var cd = d.getElementsByClassName('cl')[s];
+	var w = whites[s];
+	if (hasRGB && !isRgbBlack(colors, s)) {
+		cd.style.background = rgbStr(colors, s);
+		cd.style.color = rgbBri(colors, s) > 127 ? "#000":"#fff";
+		if (hasWhite && w > 0) {
+			cd.style.background = `linear-gradient(180deg, ${rgbStr(colors, s)} 30%, ${rgbStr([[w,w,w]], 0)})`;
+		}
+	} else {
+		if (!hasWhite) w = 0;
+		cd.style.background = rgbStr([[w,w,w]], 0);
+		cd.style.color = w > 127 ? "#000":"#fff";
+	}
+}
+
 function applyCfg()
 {
 	cTheme(cfg.theme.base === "light");
@@ -437,28 +469,28 @@ function loadPresets(callback = null)
     url = `http://${locip}/presets.json`;
   }
 
-  fetch
-  (url, {
-    method: 'get'
-  })
-  .then(res => {
-    if (!res.ok) {
-       showErrorToast();
-    }
-    return res.json();
-  })
-  .then(json => {
-    pJson = json;
-    populatePresets();
-  })
-  .catch(function (error) {
-    showToast(error, true);
-    console.log(error);
-    presetError(false);
-  })
-  .finally(() => {
-    if (callback) setTimeout(callback,99);
-  });
+	fetch
+	(url, {
+		method: 'get'
+	})
+	.then(res => {
+		if (!res.ok) {
+			showErrorToast();
+		}
+		return res.json();
+	})
+	.then(json => {
+		pJson = json;
+		populatePresets();
+	})
+	.catch(function (error) {
+		showToast(error, true);
+		console.log(error);
+		presetError(false);
+	})
+	.finally(() => {
+		if (callback) setTimeout(callback,99);
+	});
 }
 
 var pQL = [];
@@ -551,28 +583,29 @@ function populateInfo(i)
 		}
 	}
 
-  var vcn = "Kuuhaku";
-  if (i.ver.startsWith("0.13.")) vcn = "Toki";
-  if (i.cn) vcn = i.cn;
+	var vcn = "Kuuhaku";
+	if (i.ver.startsWith("0.13.")) vcn = "Toki";
+	if (i.cn) vcn = i.cn;
 
-  cn += `v${i.ver} "${vcn}"<br><br><table class="infot">
-  ${urows}
-  ${inforow("Build",i.vid)}
-  ${inforow("Signal strength",i.wifi.signal +"% ("+ i.wifi.rssi, " dBm)")}
-  ${inforow("Uptime",getRuntimeStr(i.uptime))}
-  ${inforow("Free heap",heap," kB")}
-  ${inforow("Estimated current",pwru)}
-  ${inforow("Frames / second",i.leds.fps)}
-  ${inforow("MAC address",i.mac)}
-  ${inforow("Filesystem",i.fs.u + "/" + i.fs.t + " kB (" +Math.round(i.fs.u*100/i.fs.t) + "%)")}
-  ${inforow("Environment",i.arch + " " + i.core + " (" + i.lwip + ")")}
-  </table>`;
-  d.getElementById('kv').innerHTML = cn;
+	cn += `v${i.ver} "${vcn}"<br><br><table class="infot">
+	${urows}
+	${inforow("Build",i.vid)}
+	${inforow("Signal strength",i.wifi.signal +"% ("+ i.wifi.rssi, " dBm)")}
+	${inforow("Uptime",getRuntimeStr(i.uptime))}
+	${inforow("Free heap",heap," kB")}
+		${inforow("Estimated current",pwru)}
+		${inforow("Frames / second",i.leds.fps)}
+	${inforow("MAC address",i.mac)}
+	${inforow("Filesystem",i.fs.u + "/" + i.fs.t + " kB (" +Math.round(i.fs.u*100/i.fs.t) + "%)")}
+	${inforow("Environment",i.arch + " " + i.core + " (" + i.lwip + ")")}
+	</table>`;
+	d.getElementById('kv').innerHTML = cn;
 }
 
 function populateSegments(s)
 {
 	var cn = "";
+	let li = lastinfo;
 	segCount = 0; lowestUnused = 0; lSeg = 0;
 
 	for (var y = 0; y < (s.seg||[]).length; y++)
@@ -586,12 +619,13 @@ function populateSegments(s)
 		if (i > lSeg) lSeg = i;
 
 		//WLEDSR: add tooltip (title) and add reverse direction X / Y and rotation parameters and add onFocus/onBlur
-    cn += `<div title="Fx${inst.fx}: ${inst.start}-${inst.stop} (${inst.mi} ${inst.rev} ${inst.rev2D} ${inst.rot2D})" class="seg">
+    cn += `<div title="Fx${inst.fx}: ${inst.start}-${inst.stop} (${inst.mi} ${inst.rev} ${inst.rev2D} ${inst.rot2D})" class="seg ${i==s.mainseg ? 'selected' : ''}">
       <label class="check schkl">
         &nbsp;
         <input type="checkbox" id="seg${i}sel" onchange="selSeg(${i})" ${inst.sel ? "checked":""}>
         <span class="checkmark schk"></span>
       </label>
+			<i class="icons e-icon frz" id="seg${i}frz" onclick="event.preventDefault();tglFreeze(${i});" style="display:${inst.frz?"inline":"none"}">&#x${li.live && li.liveseg==i?'e410':'e325'};</i>
       <div class="segname">
         <div class="segntxt" onclick="selSegEx(${i})">${inst.n ? inst.n : "Segment "+i}</div>
         <i class="icons edit-icon ${expanded[i] ? "expanded":""}" id="seg${i}nedit" onclick="tglSegn(${i})">&#xe2c6;</i>
@@ -675,10 +709,13 @@ function populateSegments(s)
     noNewSegs = false;
   }
   for (var i = 0; i <= lSeg; i++) {
-  updateLen(i);
-  updateTrail(d.getElementById(`seg${i}bri`));
+		updateLen(i);
+		updateTrail(d.getElementById(`seg${i}bri`));
+		let segr = d.getElementById(`segr${i}`);
+		if (segr) segr.style.display = "none";
+	}
   if (segCount < 2) d.getElementById(`segd${lSeg}`).style.display = "none";
-  }
+  if (!noNewSegs && (cfg.comp.seglen?parseInt(d.getElementById(`seg${lSeg}s`).value):0)+parseInt(d.getElementById(`seg${lSeg}e`).value)<ledCount) d.getElementById(`segr${lSeg}`).style.display = "inline";
   d.getElementById('rsbtn').style.display = (segCount > 1) ? "inline":"none";
 }
 
@@ -928,16 +965,16 @@ function toggleBubble(e)
 //updates segment length upon input of segment values
 function updateLen(s)
 {
-  if (!d.getElementById(`seg${s}s`)) return;
-  var start = parseInt(d.getElementById(`seg${s}s`).value);
-  var stop	= parseInt(d.getElementById(`seg${s}e`).value);
-  var len = stop - (cfg.comp.seglen?0:start);
-  var out = "(delete)";
-  if (len > 1) {
-    out = `${len} LEDs`;
-  } else if (len == 1) {
-    out = "1 LED";
-  }
+	if (!d.getElementById(`seg${s}s`)) return;
+	var start = parseInt(d.getElementById(`seg${s}s`).value);
+	var stop  = parseInt(d.getElementById(`seg${s}e`).value);
+	var len = stop - (cfg.comp.seglen?0:start);
+	var out = "(delete)";
+	if (len > 1) {
+		out = `${len} LEDs`;
+	} else if (len == 1) {
+		out = "1 LED";
+	}
 
   if (d.getElementById(`seg${s}grp`) != null)
   {
@@ -1058,17 +1095,17 @@ function updateSelectedFx()
       selectedEffectNameHTML = "";
       sliderControl = "";
     }
-  
+
     setSliderAndColorControl(selectedFx, selectedEffectNameHTML, sliderControl, (fx || ps));
   }
 }
 
 function displayRover(i,s)
 {
-  d.getElementById('rover').style.transform = (i.live && s.lor == 0) ? "translateY(0px)":"translateY(100%)";
-  var sour = i.lip ? i.lip:""; if (sour.length > 2) sour = " from " + sour;
-  d.getElementById('lv').innerHTML = `WLED is receiving live ${i.lm} data${sour}`;
-  d.getElementById('roverstar').style.display = (i.live && s.lor) ? "block":"none";
+	d.getElementById('rover').style.transform = (i.live && s.lor == 0 && i.liveseg<0) ? "translateY(0px)":"translateY(100%)";
+	var sour = i.lip ? i.lip:""; if (sour.length > 2) sour = " from " + sour;
+	d.getElementById('lv').innerHTML = `WLED is receiving live ${i.lm} data${sour}`;
+	d.getElementById('roverstar').style.display = (i.live && s.lor) ? "block":"none";
 }
 
 function compare(a, b) {
@@ -1376,7 +1413,7 @@ function setSliderAndColorControl(idx, name, extra, applyDef=false) {
 
     if (paletteOnOff.length>0 && paletteOnOff[0] != "!")
       pallabel.innerHTML = paletteOnOff[0];
-    else 
+    else
       pallabel.innerHTML = "Color palette";
   }
   else {
@@ -1393,13 +1430,13 @@ function setSliderAndColorControl(idx, name, extra, applyDef=false) {
   // console.log(s);
   // console.log(lastinfo);
 
-  //WLEDSR enable/disable show/hide inputlever slider 
+  //WLEDSR enable/disable show/hide inputlever slider
   if (name.includes('♪') || name.includes('♫')) { //SR effect
     d.getElementById('divInputLevel').style.display = "inline-block"; //see .il in css
 
     // agc on and agc supported effect (commented for the time being as userLoop will update inputLevel directly in this situation)
     // would like to make the slider circle red if agc is on but did not manage to do that yet
-    // if (lastinfo.soundAgc) { 
+    // if (lastinfo.soundAgc) {
     //   // d.getElementById('sliderInputLevel').disabled = true;
     //   d.getElementById('sliderInputLevel').style.background = 'red';
     //   // d.getElementById('sliderInputLevel').parentNode.getElementsByClassName('sliderdisplay')[0].style.color = 'green';
@@ -1437,18 +1474,18 @@ function requestJson(command, rinfo = true) {
 
 	var useWs = ((command || rinfo) && ws && ws.readyState === WebSocket.OPEN);
 
-  var type = command ? 'post':'get';
-  if (command)
-  {
-    command.v = true; // get complete API response
-    command.time = Math.floor(Date.now() / 1000);
-    var t = d.getElementById('tt');
-    if (t.validity.valid && command.transition===undefined) {
-      var tn = parseInt(t.value*10);
-      if (tn != tr) command.transition = tn;
-    }
+	var type = command ? 'post':'get';
+	if (command)
+	{
+		command.v = true; //get complete API response
+		command.time = Math.floor(Date.now() / 1000);
+		var t = d.getElementById('tt');
+		if (t.validity.valid && command.transition===undefined) {
+			var tn = parseInt(t.value*10);
+			if (tn != tr) command.transition = tn;
+		}
 		req = JSON.stringify(command);
-    if (req.length > 1000) useWs = false; // do not send very long requests over websocket
+		if (req.length > 1000) useWs = false; //do not send very long requests over websocket
 	}
 
 	if (useWs) {
@@ -1483,7 +1520,6 @@ function requestJson(command, rinfo = true) {
 		}
 		var s = json;
 		if (reqsLegal && !ws) reconnectWS();
-
 		if (!command || rinfo) { //we have info object
 			if (!rinfo) { //entire JSON (on load)
 				populateEffects(json.effects);
@@ -1497,7 +1533,6 @@ function requestJson(command, rinfo = true) {
 						});
 					});
 				},25);
-
 				reqsLegal = true;
 			}
 
@@ -1828,7 +1863,6 @@ function makePlUtil() {
 		New playlist</div>
 	<div class="segin expanded" id="seg100">
 	${makeP(0,true)}</div></div>`;
-
 	refreshPlE(0);
 }
 
@@ -1865,6 +1899,29 @@ function selSeg(s){
   var sel = d.getElementById(`seg${s}sel`).checked;
   var obj = {"seg": {"id": s, "sel": sel}};
   requestJson(obj, false);
+}
+
+function rptSeg(s)
+{
+	var name = d.getElementById(`seg${s}t`).value;
+	var start = parseInt(d.getElementById(`seg${s}s`).value);
+	var stop = parseInt(d.getElementById(`seg${s}e`).value);
+	if (stop == 0) return;
+	var rev = d.getElementById(`seg${s}rev`).checked;
+	var mi = d.getElementById(`seg${s}mi`).checked;
+	var sel = d.getElementById(`seg${s}sel`).checked;
+	var obj = {"seg": {"id": s, "n": name, "start": start, "stop": (cfg.comp.seglen?start:0)+stop, "rev": rev, "mi": mi, "on": powered[s], "bri": parseInt(d.getElementById(`seg${s}bri`).value), "sel": sel}};
+	if (d.getElementById(`seg${s}grp`)) {
+		var grp = parseInt(d.getElementById(`seg${s}grp`).value);
+		var spc = parseInt(d.getElementById(`seg${s}spc`).value);
+		var ofs = parseInt(d.getElementById(`seg${s}of` ).value);
+		obj.seg.grp = grp;
+		obj.seg.spc = spc;
+		obj.seg.of  = ofs;
+	}
+	obj.seg.rpt = true;
+	expand(s);
+	requestJson(obj);
 }
 
 function rptSeg(s)
@@ -1956,7 +2013,11 @@ function setSegBri(s){
 function tglFreeze(s=null)
 {
 	var obj = {"seg": {"frz": "t"}}; // toggle
-	if (s!==null) obj.id = s;
+	if (s!==null) {
+		obj.seg.id = s;
+		// if live segment, enter live override (which also unfreezes)
+		if (lastinfo && s==lastinfo.liveseg && lastinfo.live) obj = {"lor":1};
+	}
 	requestJson(obj);
 }
 
@@ -2328,31 +2389,36 @@ function updatePSliders() {
 	s = d.getElementById('sliderB');
 	s.value = col.b; updateTrail(s,3);
 
-  // update hex field
+	//update hex field
 	var str = cpick.color.hexString.substring(1);
 	var w = whites[csel];
 	if (w > 0) str += w.toString(16);
 	d.getElementById('hexc').value = str;
 	d.getElementById('hexcnf').style.backgroundColor = "var(--c-3)";
 
-	// update value slider
-  var v = d.getElementById('sliderV');
-  v.value = cpick.color.value;
-	// background color as if color had full value
-  var hsv = {"h":cpick.color.hue,"s":cpick.color.saturation,"v":100};
-  var c = iro.Color.hsvToRgb(hsv);
-  var cs = 'rgb('+c.r+','+c.g+','+c.b+')';
-  v.parentNode.getElementsByClassName('sliderdisplay')[0].style.setProperty('--bg',cs);
-  updateTrail(v);
+	//update value slider
+	var v = d.getElementById('sliderV');
+	v.value = cpick.color.value;
+	//background color as if color had full value
+	var hsv = {"h":cpick.color.hue,"s":cpick.color.saturation,"v":100};
+	var c = iro.Color.hsvToRgb(hsv);
+	var cs = 'rgb('+c.r+','+c.g+','+c.b+')';
+	v.parentNode.getElementsByClassName('sliderdisplay')[0].style.setProperty('--bg',cs);
+	updateTrail(v);
 
 	// update Kelvin slider
-  d.getElementById('sliderK').value = cpick.color.kelvin;
+	d.getElementById('sliderK').value = cpick.color.kelvin;
 }
 
 // Fired when a key is pressed while in the HEX color input
 function hexEnter() {
   d.getElementById('hexcnf').style.backgroundColor = "var(--c-6)";
   if(event.keyCode == 13) fromHex();
+}
+
+// Fired when a key is pressed while in a segment input
+function segEnter(s) {
+	if(event.keyCode == 13) setSeg(s);
 }
 
 // Fired when a key is pressed while in a segment input
