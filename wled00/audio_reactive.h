@@ -20,6 +20,7 @@
 #include "audio_source.h"
 
 static AudioSource *audioSource;
+static volatile bool disableSoundProcessing = false;      // if true, sound processing (FFT, filters, AGC) will be suspended. "volatile" as its shared between tasks.
 
 // ALL AUDIO INPUT PINS DEFINED IN wled.h AND CONFIGURABLE VIA UI
 
@@ -36,10 +37,12 @@ static AudioSource *audioSource;
   #define DEBUGSR_PRINTF(x...)
 #endif
 
-// #define MIC_LOGGER
+// #define MIC_LOGGER                   // define for MIC input debugging (serial plotter)
 // #define MIC_SAMPLING_LOG
 // #define FFT_SAMPLING_LOG
 
+// hackers corner
+//#define USE_FILTER_OF_DEATH           // experimental: use very strict filters, to make effects move really slow'n'smooth. Currently the result is lagging behind considerably
 //#define MAJORPEAK_SUPPRESS_NOISE      // define to activate a dirty hack that ignores the lowest + hightest FFT bins
 
 constexpr i2s_port_t I2S_PORT = I2S_NUM_0;
@@ -238,7 +241,14 @@ void getSample() {
   }
   if (sampleMax < 0.5) sampleMax = 0.0;
 
+
+#if defined(USE_FILTER_OF_DEATH)
+  // note to self: This causes lagging. Need a **second-order** exponential filter here.
+  sampleAvg = ((sampleAvg * 511.0) + sampleAdj) / 512.0;
+#else
   sampleAvg = ((sampleAvg * 15.0) + sampleAdj) / 16.0;   // Smooth it out over the last 16 samples.
+#endif
+
 
 /*---------DEBUG---------*/
   DEBUGSR_PRINT("\t"); DEBUGSR_PRINT(sample);
@@ -350,11 +360,17 @@ void agcAvg() {
   // update global vars ONCE - multAgc, sampleAGC, rawSampleAgc
   multAgc = multAgcTemp;
   rawSampleAgc = 0.8 * tmpAgc + 0.2 * (float)rawSampleAgc;
+
+
   // update smoothed AGC sample
+#if defined(USE_FILTER_OF_DEATH)
+    sampleAgc = sampleAgc + (agcSampleSmooth[AGC_preset] * (1.0/32.0)) * (tmpAgc - sampleAgc);
+#else
   if(fabs(tmpAgc) < 1.0) 
     sampleAgc =  0.5 * tmpAgc + 0.5 * sampleAgc;      // fast path to zero
   else
     sampleAgc = sampleAgc + agcSampleSmooth[AGC_preset] * (tmpAgc - sampleAgc); // smooth path
+#endif
 
   userVar0 = sampleAvg * 4;
   if (userVar0 > 255) userVar0 = 255;
@@ -432,9 +448,11 @@ void FFTcode( void * parameter) {
     delay(1);           // DO NOT DELETE THIS LINE! It is needed to give the IDLE(0) task enough time and to keep the watchdog happy.
                         // taskYIELD(), yield(), vTaskDelay() and esp_task_wdt_feed() didn't seem to work.
 
-    // Only run the FFT computing code if we're not in Receive mode
-    if (audioSyncEnabled & (1 << 1))
+    // Only run the FFT computing code if we're not in "realime mode" or in Receive mode
+    if (disableSoundProcessing || (audioSyncEnabled & (1 << 1))) {
+      delay(7);   // release CPU - delay is implemeted using vTaskDelay()
       continue;
+    }
     audioSource->getSamples(vReal, samplesFFT);
 
     // old code - Last sample in vReal is our current mic sample
@@ -620,16 +638,16 @@ void FFTcode( void * parameter) {
 void logAudio() {
 #ifdef MIC_LOGGER
 
-  //Serial.print("micReal:");    Serial.print(micDataReal);   Serial.print("\t");
+  Serial.print("micReal:");    Serial.print(micDataReal);   Serial.print("\t");
   //Serial.print("micData:");    Serial.print(micData);   Serial.print("\t");
   //Serial.print("micDataSm:");  Serial.print(micDataSm); Serial.print("\t");
   //Serial.print("micIn:");      Serial.print(micIn);     Serial.print("\t");
   //Serial.print("micLev:");     Serial.print(micLev);      Serial.print("\t");
   //Serial.print("sample:");     Serial.print(sample);      Serial.print("\t");
   //Serial.print("sampleAvg:");  Serial.print(sampleAvg);   Serial.print("\t");
-  Serial.print("sampleReal:");     Serial.print(sampleReal);      Serial.print("\t");
+  //Serial.print("sampleReal:");     Serial.print(sampleReal);      Serial.print("\t");
   //Serial.print("sampleMax:");     Serial.print(sampleMax);      Serial.print("\t");
-  Serial.print("multAgc:");    Serial.print(multAgc, 4);   Serial.print("\t");
+  //Serial.print("multAgc:");    Serial.print(multAgc, 4);   Serial.print("\t");
   Serial.print("sampleAgc:");  Serial.print(sampleAgc);   Serial.print("\t");
   Serial.println(" ");
 

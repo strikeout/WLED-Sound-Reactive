@@ -16,6 +16,7 @@
 
 // This gets called once at boot. Do all initialization that doesn't depend on network here
 void userSetup() {
+  disableSoundProcessing = true; // just to be safe
   // Reset I2S peripheral for good measure
   i2s_driver_uninstall(I2S_NUM_0);
   periph_module_reset(PERIPH_I2S0_MODULE);
@@ -67,6 +68,8 @@ void userSetup() {
         1,                                // Priority of the task
         &FFT_Task,                        // Task handle
         0);                               // Core where the task should run
+
+  disableSoundProcessing = false; // let it run
 }
 
 // This gets called every time WiFi is (re-)connected. Initialize own network interfaces here
@@ -76,7 +79,46 @@ void userConnected() {
 // userLoop. You can use "if (WLED_CONNECTED)" to check for successful connection
 void userLoop() {
 
-  if (!(audioSyncEnabled & (1 << 1))) { // Only run the sampling code IF we're not in Receive mode
+  // suspend local sound processing when "real time mode" is active (E131, UDP, ADALIGHT, ARTNET)
+  if (  (realtimeOverride == REALTIME_OVERRIDE_NONE)
+      &&( (realtimeMode == REALTIME_MODE_GENERIC)
+        ||(realtimeMode == REALTIME_MODE_E131)
+        ||(realtimeMode == REALTIME_MODE_UDP)
+        ||(realtimeMode == REALTIME_MODE_ADALIGHT)
+        ||(realtimeMode == REALTIME_MODE_ARTNET) ) ) 
+  {
+    #ifdef WLED_DEBUG
+    if ((disableSoundProcessing == false) && (audioSyncEnabled == 0)) {  // we just switched to "disabled"
+      DEBUG_PRINTLN("[AS userLoop] realtime mode active - audio processing suspended.");
+      DEBUG_PRINTF( "              RealtimeMode = %d; RealtimeOverride = %d\n", int(realtimeMode), int(realtimeOverride));
+    }
+    #endif
+    disableSoundProcessing = true;
+  } else {
+    #ifdef WLED_DEBUG
+    if ((disableSoundProcessing == true) && (audioSyncEnabled == 0)) {    // we just switched to "disabled"
+      DEBUG_PRINTLN("[AS userLoop] realtime mode ended - audio processing resumed.");
+      DEBUG_PRINTF( "              RealtimeMode = %d; RealtimeOverride = %d\n", int(realtimeMode), int(realtimeOverride));
+    }
+    #endif
+    if ((disableSoundProcessing == true) && (audioSyncEnabled == 0)) lastTime = millis();  // just left "realtime mode" - update timekeeping
+    disableSoundProcessing = false;
+  }
+
+  if (audioSyncEnabled & (1 << 1)) disableSoundProcessing = true;   // make sure everything is disabled IF in audio Receive mode
+  if (audioSyncEnabled & (1 << 0)) disableSoundProcessing = false;  // keep running audio IF we're in audio Transmit mode
+
+  int userloopDelay = int(millis() - lastTime);
+  if (lastTime == 0) userloopDelay=0; // startup - don't have valid data from last run.
+
+  if ((!disableSoundProcessing) && (!(audioSyncEnabled & (1 << 1)))) { // Only run the sampling code IF we're not in realtime mode and not in audio Receive mode
+    #ifdef WLED_DEBUG
+    // compain when audio userloop has been delayed for long. Currently we need userloop running between 500 and 1500 times per second. 
+    if (userloopDelay > 23) {    // should not happen. Expect lagging in SR effects if you see this mesage !!!
+      DEBUG_PRINTF("[AS userLoop] hickup detected -> was inactive for last %d millis!\n", int(millis() - lastTime));
+    }
+    #endif
+
     lastTime = millis();
     if (soundAgc > AGC_NUM_PRESETS) soundAgc = 0; // make sure that AGC preset is valid (to avoid array bounds violation)
     getSample();                        // Sample the microphone
