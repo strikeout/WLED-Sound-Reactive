@@ -80,8 +80,9 @@ void userConnected() {
 void userLoop() {
 
   // suspend local sound processing when "real time mode" is active (E131, UDP, ADALIGHT, ARTNET)
-  if (  (realtimeOverride == REALTIME_OVERRIDE_NONE)
-      &&( (realtimeMode == REALTIME_MODE_GENERIC)
+  if (  (realtimeOverride == REALTIME_OVERRIDE_NONE)  // user override
+      &&(useMainSegmentOnly == false)                 // cannot suspend when "main segment only" is set - other segments may still need sound data.
+      &&( (realtimeMode == REALTIME_MODE_GENERIC)     // these realtime modes take complete control of all LEDs, so it's safe to disable sound processing
         ||(realtimeMode == REALTIME_MODE_E131)
         ||(realtimeMode == REALTIME_MODE_UDP)
         ||(realtimeMode == REALTIME_MODE_ADALIGHT)
@@ -90,7 +91,7 @@ void userLoop() {
     #ifdef WLED_DEBUG
     if ((disableSoundProcessing == false) && (audioSyncEnabled == 0)) {  // we just switched to "disabled"
       DEBUG_PRINTLN("[AS userLoop] realtime mode active - audio processing suspended.");
-      DEBUG_PRINTF( "              RealtimeMode = %d; RealtimeOverride = %d\n", int(realtimeMode), int(realtimeOverride));
+      DEBUG_PRINTF( "              RealtimeMode = %d; RealtimeOverride = %d useMainSegmentOnly=%d\n", int(realtimeMode), int(realtimeOverride), int(useMainSegmentOnly));
     }
     #endif
     disableSoundProcessing = true;
@@ -98,7 +99,7 @@ void userLoop() {
     #ifdef WLED_DEBUG
     if ((disableSoundProcessing == true) && (audioSyncEnabled == 0)) {    // we just switched to "disabled"
       DEBUG_PRINTLN("[AS userLoop] realtime mode ended - audio processing resumed.");
-      DEBUG_PRINTF( "              RealtimeMode = %d; RealtimeOverride = %d\n", int(realtimeMode), int(realtimeOverride));
+      DEBUG_PRINTF( "              RealtimeMode = %d; RealtimeOverride = %d useMainSegmentOnly=%d\n", int(realtimeMode), int(realtimeOverride), int(useMainSegmentOnly));
     }
     #endif
     if ((disableSoundProcessing == true) && (audioSyncEnabled == 0)) lastTime = millis();  // just left "realtime mode" - update timekeeping
