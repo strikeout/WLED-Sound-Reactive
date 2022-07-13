@@ -51,10 +51,6 @@ constexpr int SAMPLE_RATE = 10240;      // Base sample rate in Hz
 
 //Use userVar0 and userVar1 (API calls &U0=,&U1=, uint16_t)
 
-#if !defined(LED_BUILTIN) && !defined(BUILTIN_LED) // Set LED_BUILTIN if it is not defined by Arduino framework
-  #define LED_BUILTIN 3
-#endif
-
 #define UDP_SYNC_HEADER "00001"
 
 uint8_t maxVol = 10;                            // Reasonable value for constant volume for 'peak detector', as it won't always trigger

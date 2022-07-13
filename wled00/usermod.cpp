@@ -55,8 +55,6 @@ void userSetup() {
   audioSource->initialize();
   delay(250);
 
-  pinMode(LED_BUILTIN, OUTPUT);
-
   sampling_period_us = round(1000000*(1.0/SAMPLE_RATE));
 
   // Define the FFT Task and lock it to core 0
@@ -86,6 +84,7 @@ void userLoop() {
         ||(realtimeMode == REALTIME_MODE_E131)
         ||(realtimeMode == REALTIME_MODE_UDP)
         ||(realtimeMode == REALTIME_MODE_ADALIGHT)
+        ||(realtimeMode == REALTIME_MODE_TPM2NET)
         ||(realtimeMode == REALTIME_MODE_ARTNET) ) ) 
   {
     #ifdef WLED_DEBUG
