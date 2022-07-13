@@ -284,7 +284,7 @@ void getSample() {
  *    a) normal zone - very slow adjustment
  *    b) emergency zome (<10% or >90%) - very fast adjustment
  */
-void agcAvg() {
+void agcAvg(unsigned long the_time) {
   const int AGC_preset = (soundAgc > 0)? (soundAgc-1): 0; // make sure the _compiler_ knows this value will not change while we are inside the function
   static int last_soundAgc = -1;
 
@@ -302,6 +302,8 @@ void agcAvg() {
   // so let's make sure that the control loop is not running at insane speed
   static unsigned long last_time = 0;
   unsigned long time_now = millis();
+  if ((the_time > 0) && (the_time < time_now)) time_now = the_time;  // allow caller to override my clock
+
   if (time_now - last_time > 2)  {
     last_time = time_now;
 

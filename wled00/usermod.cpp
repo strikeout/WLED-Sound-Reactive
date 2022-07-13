@@ -76,6 +76,7 @@ void userConnected() {
 
 // userLoop. You can use "if (WLED_CONNECTED)" to check for successful connection
 void userLoop() {
+  static unsigned long lastUMRun = millis();          // time of last filter run
 
   // suspend local sound processing when "real time mode" is active (E131, UDP, ADALIGHT, ARTNET)
   if (  (realtimeOverride == REALTIME_OVERRIDE_NONE)  // user override
@@ -101,30 +102,37 @@ void userLoop() {
       DEBUG_PRINTF( "              RealtimeMode = %d; RealtimeOverride = %d useMainSegmentOnly=%d\n", int(realtimeMode), int(realtimeOverride), int(useMainSegmentOnly));
     }
     #endif
-    if ((disableSoundProcessing == true) && (audioSyncEnabled == 0)) lastTime = millis();  // just left "realtime mode" - update timekeeping
+    if ((disableSoundProcessing == true) && (audioSyncEnabled == 0)) lastUMRun = millis();  // just left "realtime mode" - update timekeeping
     disableSoundProcessing = false;
   }
 
   if (audioSyncEnabled & (1 << 1)) disableSoundProcessing = true;   // make sure everything is disabled IF in audio Receive mode
   if (audioSyncEnabled & (1 << 0)) disableSoundProcessing = false;  // keep running audio IF we're in audio Transmit mode
 
-  #ifdef WLED_DEBUG //(to suppress warning)
-  int userloopDelay = int(millis() - lastTime);
-  if (lastTime == 0) userloopDelay=0; // startup - don't have valid data from last run.
-  #endif
+  int userloopDelay = int(millis() - lastUMRun);
+  if (lastUMRun == 0) userloopDelay=0; // startup - don't have valid data from last run.
 
   if ((!disableSoundProcessing) && (!(audioSyncEnabled & (1 << 1)))) { // Only run the sampling code IF we're not in realtime mode and not in audio Receive mode
     #ifdef WLED_DEBUG
     // compain when audio userloop has been delayed for long. Currently we need userloop running between 500 and 1500 times per second. 
     if (userloopDelay > 23) {    // should not happen. Expect lagging in SR effects if you see this mesage !!!
-      DEBUG_PRINTF("[AS userLoop] hickup detected -> was inactive for last %d millis!\n", int(millis() - lastTime));
+      DEBUG_PRINTF("[AS userLoop] hickup detected -> was inactive for last %d millis!\n", int(millis() - lastUMRun));
     }
     #endif
 
-    lastTime = millis();
+    unsigned long t_now = millis();
+    lastTime = t_now;
+    lastUMRun = t_now;
     if (soundAgc > AGC_NUM_PRESETS) soundAgc = 0; // make sure that AGC preset is valid (to avoid array bounds violation)
-    getSample();                        // Sample the microphone
-    agcAvg();                           // Calculated the PI adjusted value as sampleAvg
+
+    if (userloopDelay <2) userloopDelay = 0;      // minor glitch, no problem
+    if (userloopDelay >150) userloopDelay = 150;  // limit number of filter re-runs  
+    do {
+      getSample();                        // Sample the microphone
+      agcAvg(t_now - userloopDelay);      // Calculated the PI adjusted value as sampleAvg
+      userloopDelay -= 2;                 // advance "simulated time" by 2ms
+    } while (userloopDelay > 0);
+
     myVals[millis()%32] = sampleAgc;
 
     static uint8_t lastMode = 0;
