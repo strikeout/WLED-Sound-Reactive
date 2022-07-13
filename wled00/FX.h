@@ -1253,7 +1253,7 @@ class WS2812FX {
 // Technical notes
 // ===============
 // If an effect name is followed by an @, slider and color control is effective.
-// See setSliderAndColorControl in index.js for implementation
+// See setEffectParameters in index.js for implementation
 // If not effective then:
 //      - For AC effects (id<128) 2 sliders and 3 colors and the palette will be shown
 //      - For SR effects (id>128) 5 sliders and 3 colors and the palette will be shown

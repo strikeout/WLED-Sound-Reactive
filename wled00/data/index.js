@@ -740,9 +740,9 @@ function populateEffects(effects)
     // WLEDSR: add slider and color control to setX (used by requestjson)
     if (effects[i].name.indexOf("Reserved") < 0) {
       var posAt = effects[i].name.indexOf("@");
-      var extra = '';
+      var effectPar = '';
       if (posAt > 0)
-        extra = effects[i].name.substr(posAt);
+        effectPar = effects[i].name.substr(posAt);
       else
         posAt = 999;
       html += generateListItemHtml(
@@ -752,7 +752,7 @@ function populateEffects(effects)
         'setX',
         '',
         effects[i].class,
-        extra
+        effectPar
       );
     }
   }
@@ -857,10 +857,10 @@ function genPalPrevCss(id)
   return `background: linear-gradient(to right,${gradient.join()});`;
 }
 
-// WLEDSR: add extraPar for slider and color control, add name to onClick
-function generateListItemHtml(listName, id, name, clickAction, extraHtml = '', extraClass = '', extraPar = '')
+// WLEDSR: add effectPar for slider and color control, add name to onClick
+function generateListItemHtml(listName, id, name, clickAction, extraHtml = '', extraClass = '', effectPar = '')
 {
-  return `<div id="${listName}${id}" class="lstI btn fxbtn ${extraClass}" data-id="${id}" onClick="${clickAction}(${id}, '${name}', '${extraPar}')">
+  return `<div id="${listName}${id}" class="lstI btn fxbtn ${extraClass}" data-id="${id}" onClick="${clickAction}(${id}, '${name}', '${effectPar}')">
       <label class="radio fxchkl">
         <input type="radio" value="${id}" name="${listName}">
         <span class="radiomark"></span>
@@ -1096,7 +1096,7 @@ function updateSelectedFx()
       sliderControl = "";
     }
 
-    setSliderAndColorControl(selectedFx, selectedEffectNameHTML, sliderControl, (fx || ps));
+    setEffectParameters(selectedFx, selectedEffectNameHTML, sliderControl, (fx || ps));
   }
 }
 
@@ -1261,17 +1261,17 @@ function readState(s,command=false) {
 }
 
 // WLEDSR: control HTML elements for Slider and Color Control
-function setSliderAndColorControl(idx, name, extra, applyDef=false) {
+function setEffectParameters(idx, name, effectPar, applyDef=false) {
   var topPosition = 0;
 
   var pcmode = localStorage.getItem('pcm') == "true";
 
-  var controlDefined = (extra.substr(0,1) == "@")?true:false;
-  extra = extra.substr(1);
-  var extras = (extra == '')?[]:extra.split(";");
-  var slidersOnOff = (extras.length==0 || extras[0] == '')?[]:extras[0].split(",");
-  var colorsOnOff  = (extras.length<2  || extras[1] == '')?[]:extras[1].split(",");
-  var paletteOnOff = (extras.length<3  || extras[2] == '')?[]:extras[2].split(",");
+  var controlDefined = (effectPar.substr(0,1) == "@")?true:false;
+  effectPar = effectPar.substr(1);
+  var effectPars = (effectPar == '')?[]:effectPar.split(";");
+  var slidersOnOff = (effectPars.length==0 || effectPars[0] == '')?[]:effectPars[0].split(",");
+  var colorsOnOff  = (effectPars.length<2  || effectPars[1] == '')?[]:effectPars[1].split(",");
+  var paletteOnOff = (effectPars.length<3  || effectPars[2] == '')?[]:effectPars[2].split(",");
   var obj = {"seg":{}};
 
   // set html slider items on/off
@@ -1455,7 +1455,7 @@ function setSliderAndColorControl(idx, name, extra, applyDef=false) {
 	if (!isEmpty(obj.seg) && applyDef) requestJson(obj); // update default values (may need throttling on ESP8266)
 
   // console.log(name, name.substr(2,2), d.getElementById('sliderInputLevel').parentNode.getElementsByClassName('sliderdisplay')[0]);
-} //setSliderAndColorControl
+} //setEffectParameters
 
 var jsonTimeout;
 var reqsLegal = false;
@@ -2021,8 +2021,8 @@ function tglFreeze(s=null)
 	requestJson(obj);
 }
 
-// WLEDSR: add name and extra parameter for slider and color control
-function setX(ind = null, name, extra) {
+// WLEDSR: add name and effectPar parameter for slider and color control
+function setX(ind = null, name, effectPar) {
   if (ind === null) {
     ind = parseInt(d.querySelector('#fxlist input[name="fx"]:checked').value);
   } else {
@@ -2038,8 +2038,8 @@ function setX(ind = null, name, extra) {
   requestJson(obj);
 }
 
-// WLEDSR: parameter extra added, used by generateListItemHtml (for setX)
-function setPalette(paletteId = null, extra)
+// WLEDSR: parameter effectPar added, used by generateListItemHtml (for setX)
+function setPalette(paletteId = null, effectPar)
 {
   if (paletteId === null) {
     paletteId = parseInt(d.querySelector('#pallist input[name="palette"]:checked').value);
@@ -2759,7 +2759,7 @@ function togglePcMode(fromB = false)
 
   //WLEDSR Blazoncek default slider values
   //looks like not needed anymore:
-  // if (selectedFx != -1) setSliderAndColorControl(selectedFx, selectedEffectNameHTML, sliderControl); // WLEDSR: to setSliderAndColorControl depending on pcmode
+  // if (selectedFx != -1) setEffectParameters(selectedFx, selectedEffectNameHTML, sliderControl); // WLEDSR: to setEffectParameters depending on pcmode
 }
 
 function isObject(item) {

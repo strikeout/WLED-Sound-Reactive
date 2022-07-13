@@ -109,7 +109,7 @@ void userLoop() {
   if (audioSyncEnabled & (1 << 1)) disableSoundProcessing = true;   // make sure everything is disabled IF in audio Receive mode
   if (audioSyncEnabled & (1 << 0)) disableSoundProcessing = false;  // keep running audio IF we're in audio Transmit mode
 
-  #ifdef WLED_DEBUG //(to surpress warning)
+  #ifdef WLED_DEBUG //(to suppress warning)
   int userloopDelay = int(millis() - lastTime);
   if (lastTime == 0) userloopDelay=0; // startup - don't have valid data from last run.
   #endif
