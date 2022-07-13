@@ -33,11 +33,11 @@ void updateBaudRate(uint32_t rate){
   Serial.flush();
   Serial.begin(rate);
 }
-  
+
 void handleSerial()
 {
   if (pinManager.isPinAllocated(3)) return;
-  
+
   #ifdef WLED_ENABLE_ADALIGHT
   static auto state = AdaState::Header_A;
   static uint16_t count = 0;
@@ -61,7 +61,7 @@ void handleSerial()
           return;
         } else if (next == 'v') {
           Serial.print("WLED"); Serial.write(' '); Serial.println(VERSION);
-     
+
         } else if (next == 0xB0) {updateBaudRate( 115200);
         } else if (next == 0xB1) {updateBaudRate( 230400);
         } else if (next == 0xB2) {updateBaudRate( 460800);
@@ -70,7 +70,7 @@ void handleSerial()
         } else if (next == 0xB5) {updateBaudRate( 921600);
         } else if (next == 0xB6) {updateBaudRate(1000000);
         } else if (next == 0xB7) {updateBaudRate(1500000);
-        
+
         } else if (next == 'l') { //RGB(W) LED data return as JSON array. Slow, but easy to use on the other end.
           if (!pinManager.isPinAllocated(1) || pinManager.getPinOwner(1) == PinOwner::DebugOut){
             uint16_t used = strip.getLengthTotal();
@@ -80,14 +80,14 @@ void handleSerial()
               if (i != used-1) Serial.write(',');
             }
             Serial.println("]");
-          }  
+          }
         } else if (next == 'L') { //RGB LED data returned as bytes in tpm2 format. Faster, and slightly less easy to use on the other end.
           if (!pinManager.isPinAllocated(1) || pinManager.getPinOwner(1) == PinOwner::DebugOut) {
             Serial.write(0xC9); Serial.write(0xDA);
             uint16_t used = strip.getLengthTotal();
             uint16_t len = used*3;
-            Serial.write((len << 8) & 0xFF);
-            Serial.write( len       & 0xFF);
+            Serial.write(highByte(len));
+            Serial.write(lowByte(len));
             for (uint16_t i=0; i < used; i++) {
               uint32_t c = strip.getPixelColor(i);
               Serial.write(qadd8(W(c), R(c))); //R, add white channel to RGB channels as a simple RGBW -> RGB map

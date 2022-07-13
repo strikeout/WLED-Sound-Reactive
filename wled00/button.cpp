@@ -132,7 +132,7 @@ void handleSwitch(uint8_t b)
 }
 
 #define ANALOG_BTN_READ_CYCLE 250   // min time between two analog reading cycles
-#define STRIP_WAIT_TIME 6           // max wait time in case of strip.isUpdating() 
+#define STRIP_WAIT_TIME 6           // max wait time in case of strip.isUpdating()
 #define POT_SMOOTHING 0.25f         // smoothing factor for raw potentiometer readings
 #define POT_SENSITIVITY 4           // changes below this amount are noise (POT scratching, or ADC noise)
 
@@ -165,7 +165,7 @@ void handleAnalog(uint8_t b)
   //while(strip.isUpdating() && (millis() - wait_started < STRIP_WAIT_TIME)) {
   //  delay(1);
   //}
-  //if (strip.isUpdating()) return; // give up 
+  //if (strip.isUpdating()) return; // give up
 
   oldRead[b] = aRead;
 

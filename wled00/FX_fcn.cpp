@@ -60,6 +60,11 @@
   #define DEFAULT_LED_TYPE TYPE_WS2812_RGB
 #endif
 
+#ifndef DEFAULT_LED_COLOR_ORDER
+  #define DEFAULT_LED_COLOR_ORDER COL_ORDER_GRB  //default to GRB
+#endif
+
+
 #if MAX_NUM_SEGMENTS < WLED_MAX_BUSSES
   #error "Max segments must be at least max number of busses!"
 #endif
@@ -77,6 +82,7 @@ void WS2812FX::finalizeInit(void)
 
   //if busses failed to load, add default (fresh install, FS issue, ...)
   if (busses.getNumBusses() == 0) {
+    DEBUG_PRINTLN(F("No busses, init default"));
     const uint8_t defDataPins[] = {DATA_PINS};
     const uint16_t defCounts[] = {PIXEL_COUNTS};
     const uint8_t defNumBusses = ((sizeof defDataPins) / (sizeof defDataPins[0]));
@@ -87,7 +93,7 @@ void WS2812FX::finalizeInit(void)
       uint16_t start = prevLen;
       uint16_t count = defCounts[(i < defNumCounts) ? i : defNumCounts -1];
       prevLen += count;
-      BusConfig defCfg = BusConfig(DEFAULT_LED_TYPE, defPin, start, count, COL_ORDER_GRB);
+      BusConfig defCfg = BusConfig(DEFAULT_LED_TYPE, defPin, start, count, DEFAULT_LED_COLOR_ORDER);
       busses.add(defCfg);
     }
   }
@@ -128,6 +134,8 @@ void WS2812FX::service() {
 
   for(uint8_t i=0; i < MAX_NUM_SEGMENTS; i++)
   {
+    //if (realtimeMode && useMainSegmentOnly && i == getMainSegmentId()) continue;
+
     _segment_index = i;
 
     // reset the segment runtime data if needed, called before isActive to ensure deleted
@@ -195,11 +203,7 @@ void WS2812FX::service() {
   _triggered = false;
 }
 
-void IRAM_ATTR WS2812FX::setPixelColor(uint16_t n, uint32_t c) {
-  setPixelColor(n, R(c), G(c), B(c), W(c));
-}
-
-// used to map from segment index to logical pixel, taking into account grouping, offsets, reverse and mirroring
+// WLEDSR used to map from segment index to logical pixel, taking into account grouping, offsets, reverse and mirroring
 uint16_t IRAM_ATTR WS2812FX::realPixelIndex(uint16_t i) { // ewowi20210703: will not map to physical pixel index but to rotated and mirrored logical pixel index as matrix panels will require mapping.
                                                 // Mapping is done in logicalToPhysical below. Function will not be renamed to keep it consistent with Aircoookie
   int16_t iGroup = i * SEGMENT.groupLength();
@@ -251,10 +255,9 @@ uint16_t IRAM_ATTR WS2812FX::realPixelIndex(uint16_t i) { // ewowi20210703: will
 
 void IRAM_ATTR WS2812FX::setPixelColor(uint16_t i, byte r, byte g, byte b, byte w)
 {
-  if (SEGLEN) {//from segment
-    uint16_t realIndex = realPixelIndex(i); // ewowi20210624: from segment index to logical index
-    uint16_t len = SEGMENT.length();
+  uint8_t segIdx;
 
+  if (SEGLEN) { // SEGLEN!=0 -> from segment/FX
     //color_blend(getpixel, col, _bri_t); (pseudocode for future blending of segments)
     if (_bri_t < 255) {
       r = scale8(r, _bri_t);
@@ -262,7 +265,25 @@ void IRAM_ATTR WS2812FX::setPixelColor(uint16_t i, byte r, byte g, byte b, byte 
       b = scale8(b, _bri_t);
       w = scale8(w, _bri_t);
     }
+    segIdx = _segment_index;
+  } else // from live/realtime
+    segIdx = _mainSegment;
+
+  if (SEGLEN || (realtimeMode && useMainSegmentOnly)) {
     uint32_t col = RGBW32(r, g, b, w);
+    uint16_t len = _segments[segIdx].length();
+    uint16_t realIndex = realPixelIndex(i); // ewowi20210624: from segment index to logical index
+
+    // get physical pixel address (taking into account start, grouping, spacing [and offset])
+    i = i * _segments[segIdx].groupLength();
+    if (_segments[segIdx].options & REVERSE) { // is segment reversed?
+      if (_segments[segIdx].options & MIRROR) { // is segment mirrored?
+        i = (len - 1) / 2 - i;  //only need to index half the pixels
+      } else {
+        i = (len - 1) - i;
+      }
+    }
+    i += _segments[segIdx].start;
 
     /* Set all the pixels in the group */
     for (uint16_t j = 0; j < SEGMENT.grouping; j++) {
@@ -274,19 +295,18 @@ void IRAM_ATTR WS2812FX::setPixelColor(uint16_t i, byte r, byte g, byte b, byte 
           indexMir += SEGMENT.offset;
           if (indexMir >= SEGMENT.stop) indexMir -= len;
 
+          if (indexMir >= _segments[segIdx].stop) indexMir -= len;
           if (indexMir < customMappingSize) indexMir = customMappingTable[indexMir];
           busses.setPixelColor(logicalToPhysical(indexSet), col);
           busses.setPixelColor(logicalToPhysical(indexMir), col); // ewowi20210624: logicalToPhysical: Maps logical led index to physical led index.
         }
-        /* offset/phase */
-        indexSet += SEGMENT.offset;
-        if (indexSet >= SEGMENT.stop) indexSet -= len;
+        indexSet += _segments[segIdx].offset; // offset/phase
 
         if (indexSet < customMappingSize) indexSet = customMappingTable[indexSet]; // This line is also on L292
         busses.setPixelColor(logicalToPhysical(indexSet), col);
       }
     }
-  } else { //live data, etc.
+  } else {
     if (i < customMappingSize) i = customMappingTable[i];
     busses.setPixelColor(i, RGBW32(r, g, b, w));
     busses.setPixelColor(logicalToPhysical(i), RGBW32(r, g, b, w)); // ewowi20210624: logicalToPhysical: Maps logical led index to physical led index.
@@ -597,7 +617,13 @@ uint8_t WS2812FX::getActiveSegmentsNum(void) {
 
 uint32_t WS2812FX::getPixelColor(uint16_t i)
 {
-  i = realPixelIndex(i);
+  // get physical pixel
+  i = i * SEGMENT.groupLength();;
+  if (IS_REVERSE) {
+    if (IS_MIRROR) i = (SEGMENT.length() - 1) / 2 - i;  //only need to index half the pixels
+    else           i = (SEGMENT.length() - 1) - i;
+  }
+  i += SEGMENT.start;
 
   if (SEGLEN) {
     /* offset/phase */
@@ -612,7 +638,7 @@ uint32_t WS2812FX::getPixelColor(uint16_t i)
 }
 
 WS2812FX::Segment& WS2812FX::getSegment(uint8_t id) {
-  if (id >= MAX_NUM_SEGMENTS) return _segments[0];
+  if (id >= MAX_NUM_SEGMENTS) return _segments[getMainSegmentId()];
   return _segments[id];
 }
 
@@ -661,7 +687,6 @@ uint8_t WS2812FX::Segment::differs(Segment& b) {
 
   if ((options & 0b00101110) != (b.options & 0b00101110)) d |= SEG_DIFFERS_OPT;
   if ((options & 0x01) != (b.options & 0x01)) d |= SEG_DIFFERS_SEL;
-
   for (uint8_t i = 0; i < NUM_COLORS; i++)
   {
     if (colors[i] != b.colors[i]) d |= SEG_DIFFERS_COL;
@@ -911,7 +936,6 @@ void WS2812FX::makeAutoSegments(bool forceReset) {
         setSegment(i, 0, 0);
       }
     }
-
     if (getActiveSegmentsNum() < 2) {
       setSegment(mainSeg, 0, _length);
     }
