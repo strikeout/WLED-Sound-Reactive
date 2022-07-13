@@ -356,7 +356,7 @@ bool deserializeState(JsonObject root, byte callMode, byte presetId)
     strip.getMainSegment().setOption(SEG_OPTION_FREEZE, !realtimeOverride, strip.getMainSegmentId());
   }
 
-  bool liveEnabled = false;
+  // bool liveEnabled = false; (to surpress warning)
   if (root.containsKey("live")) {
     if (root["live"].as<bool>()) {
       transitionDelayTemp = 0;

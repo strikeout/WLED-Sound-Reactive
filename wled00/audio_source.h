@@ -114,7 +114,7 @@ protected:
     AudioSource(int sampleRate, int blockSize, int16_t lshift, uint32_t mask) : _sampleRate(sampleRate), _blockSize(blockSize), _sampleNoDCOffset(0), _dcOffset(0.0f), _shift(lshift), _mask(mask), 
                 _initialized(false), _myADCchannel(0x0F), _lastADCsample(0), _broken_samples_counter(0) {};
 
-    uint32_t _sampleRate;           /* Microphone sampling rate */
+    int _sampleRate;                /* Microphone sampling rate (from uint16_t to int to surpress warning)*/ 
     int _blockSize;                 /* I2S block size */
     volatile int _sampleNoDCOffset; /* Up-to-date sample without DCOffset */
     float _dcOffset;                /* Rolling average DC offset */
