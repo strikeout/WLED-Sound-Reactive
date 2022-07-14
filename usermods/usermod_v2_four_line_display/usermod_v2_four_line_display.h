@@ -137,7 +137,6 @@ class FourLineDisplayUsermod : public Usermod {
   private:
 
     bool initDone = false;
-    bool enabled = true;
     unsigned long lastTime = 0;
 
     // HW interface & configuration
