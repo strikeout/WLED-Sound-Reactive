@@ -55,6 +55,9 @@ void userSetup() {
   audioSource->initialize();
   delay(250);
 
+  if(!audioSource->isInitialized())
+    Serial.println("AS: Failed to initialize sound input driver. Please check input PIN settings.");
+
   sampling_period_us = round(1000000*(1.0/SAMPLE_RATE));
 
   // Define the FFT Task and lock it to core 0
@@ -67,7 +70,8 @@ void userSetup() {
         &FFT_Task,                        // Task handle
         0);                               // Core where the task should run
 
-  disableSoundProcessing = false; // let it run
+  if(audioSource->isInitialized())
+    disableSoundProcessing = false; // let it run
 }
 
 // This gets called every time WiFi is (re-)connected. Initialize own network interfaces here
@@ -96,18 +100,22 @@ void userLoop() {
     #endif
     disableSoundProcessing = true;
   } else {
-    #ifdef WLED_DEBUG
-    if ((disableSoundProcessing == true) && (audioSyncEnabled == 0)) {    // we just switched to "disabled"
-      DEBUG_PRINTLN("[AS userLoop] realtime mode ended - audio processing resumed.");
-      DEBUG_PRINTF( "              RealtimeMode = %d; RealtimeOverride = %d useMainSegmentOnly=%d\n", int(realtimeMode), int(realtimeOverride), int(useMainSegmentOnly));
+    if(audioSource->isInitialized()) { // only enable if sound input driver was initialized successfully
+      #ifdef WLED_DEBUG
+      if ((disableSoundProcessing == true) && (audioSyncEnabled == 0)) {    // we just switched to "enabled"
+        DEBUG_PRINTLN("[AS userLoop] realtime mode ended - audio processing resumed.");
+        DEBUG_PRINTF( "              RealtimeMode = %d; RealtimeOverride = %d useMainSegmentOnly=%d\n", int(realtimeMode), int(realtimeOverride), int(useMainSegmentOnly));
+      }
+      #endif
+      if ((disableSoundProcessing == true) && (audioSyncEnabled == 0)) lastUMRun = millis();  // just left "realtime mode" - update timekeeping
+      disableSoundProcessing = false;
     }
-    #endif
-    if ((disableSoundProcessing == true) && (audioSyncEnabled == 0)) lastUMRun = millis();  // just left "realtime mode" - update timekeeping
-    disableSoundProcessing = false;
   }
 
-  if (audioSyncEnabled & (1 << 1)) disableSoundProcessing = true;   // make sure everything is disabled IF in audio Receive mode
-  if (audioSyncEnabled & (1 << 0)) disableSoundProcessing = false;  // keep running audio IF we're in audio Transmit mode
+  if (audioSyncEnabled & (1 << 1)) 
+    disableSoundProcessing = true;   // make sure everything is disabled IF in audio Receive mode
+  if (audioSyncEnabled & (1 << 0)  && audioSource->isInitialized()) 
+    disableSoundProcessing = false;  // keep running audio IF we're in audio Transmit mode
 
   int userloopDelay = int(millis() - lastUMRun);
   if (lastUMRun == 0) userloopDelay=0; // startup - don't have valid data from last run.

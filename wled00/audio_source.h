@@ -109,6 +109,9 @@ public:
     /* Get an up-to-date sample without DC offset */
     virtual int getSampleWithoutDCOffset() = 0;
 
+    /* check if the audio source driver was initialized successfully */
+    virtual bool isInitialized(void) {return(_initialized);}
+
 protected:
     // Private constructor, to make sure it is not callable except from derived classes
     AudioSource(int sampleRate, int blockSize, int16_t lshift, uint32_t mask) : _sampleRate(sampleRate), _blockSize(blockSize), _sampleNoDCOffset(0), _dcOffset(0.0f), _shift(lshift), _mask(mask), 
