@@ -200,8 +200,8 @@ void userLoop() {
     }
     lastMode = knownMode;
 
-#if defined(MIC_LOGGER) || defined(MIC_SAMPLING_LOG) || defined(FFT_SAMPLING_LOG)
-    EVERY_N_MILLIS(20) {
+#if defined(MIC_LOGGER) || defined(FFT_SAMPLING_LOG)
+    EVERY_N_MILLIS(25) {
       logAudio();
     }
 #endif

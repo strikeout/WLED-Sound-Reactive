@@ -25,7 +25,9 @@ static volatile bool disableSoundProcessing = false;      // if true, sound proc
 // ALL AUDIO INPUT PINS DEFINED IN wled.h AND CONFIGURABLE VIA UI
 
 // Comment/Uncomment to toggle usb serial debugging
-// #define SR_DEBUG
+// #define MIC_LOGGER                   // MIC sampling & sound input debugging (serial plotter)
+// #define FFT_SAMPLING_LOG             // FFT result debugging
+// #define SR_DEBUG                     // generic SR DEBUG messages
 
 #ifdef SR_DEBUG
   #define DEBUGSR_PRINT(x) Serial.print(x)
@@ -37,9 +39,6 @@ static volatile bool disableSoundProcessing = false;      // if true, sound proc
   #define DEBUGSR_PRINTF(x...)
 #endif
 
-// #define MIC_LOGGER                   // define for MIC input debugging (serial plotter)
-// #define MIC_SAMPLING_LOG
-// #define FFT_SAMPLING_LOG
 
 // hackers corner
 //#define USE_FILTER_OF_DEATH           // experimental: use very strict filters, to make effects move really slow'n'smooth. Currently the result is lagging behind considerably
@@ -175,53 +174,35 @@ bool isValidUdpSyncVersion(char header[6]) {
   }
 }
 
+/* get current max sample ("published" by the I2S and FFT thread) and perform some sound processing */
 void getSample() {
   static long peakTime;
-  //extern double FFT_Magnitude;                    // Optional inclusion for our volume routines // COMMENTED OUT - UNUSED VARIABLE COMPILER WARNINGS
-  //extern double FFT_MajorPeak;                    // Same here. Not currently used though       // COMMENTED OUT - UNUSED VARIABLE COMPILER WARNINGS
   const int AGC_preset = (soundAgc > 0)? (soundAgc-1): 0; // make sure the _compiler_ knows this value will not change while we are inside the function
 
   #ifdef WLED_DISABLE_SOUND
     micIn = inoise8(millis(), millis());          // Simulated analog read
-    micDataReal = micIn;
+    micDataReal = micIn;                          // Simulated I2S read
   #else
-    micIn = micDataSm;      // micDataSm = ((micData * 3) + micData)/4;
-/*---------DEBUG---------*/
-    DEBUGSR_PRINT("micIn:\tmicData:\tmicIn>>2:\tmic_In_abs:\tsample:\tsampleAdj:\tsampleAvg:\n");
-    DEBUGSR_PRINT(micIn); DEBUGSR_PRINT("\t"); DEBUGSR_PRINT(micData);
-/*-------END DEBUG-------*/
-// We're still using 10 bit, but changing the analog read resolution in usermod.cpp
-//    if (digitalMic == false) micIn = micIn >> 2;  // ESP32 has 2 more bits of A/D than ESP8266, so we need to normalize to 10 bit.
-/*---------DEBUG---------*/
-    DEBUGSR_PRINT("\t\t"); DEBUGSR_PRINT(micIn);
-/*-------END DEBUG-------*/
+    micIn = micDataSm;
   #endif
-  // Note to self: the next line kills 80% of sample - "miclev" filter runs at "full arduino loop" speed, following the signal almost instantly!
-  //micLev = ((micLev * 31) + micIn) / 32;                // Smooth it out over the last 32 samples for automatic centering
+
+  // remove remaining DC offset from sound signal
   micLev = ((micLev * 8191.0) + micDataReal) / 8192.0;                // takes a few seconds to "catch up" with the Mic Input
   if(micIn < micLev) micLev = ((micLev * 31.0) + micDataReal) / 32.0; // align MicLev to lowest input signal
-
   micIn -= micLev;                                // Let's center it to 0 now
-/*---------DEBUG---------*/
-  DEBUGSR_PRINT("\t\t"); DEBUGSR_PRINT(micIn);
-/*-------END DEBUG-------*/
 
-// Using an exponential filter to smooth out the signal. We'll add controls for this in a future release.
+  // Using an exponential filter to smooth out the signal. We'll add controls for this in a future release.
   float micInNoDC = fabs(micDataReal - micLev);
   expAdjF = weighting * micInNoDC + ((1.0-weighting) * expAdjF);
   expAdjF = fabs(expAdjF);                          // Now (!) take the absolute value
 
   expAdjF = (expAdjF <= soundSquelch) ? 0: expAdjF; // simple noise gate
   if ((soundSquelch == 0) && (expAdjF < 0.25f)) expAdjF = 0;
-  tmpSample = expAdjF;
 
-/*---------DEBUG---------*/
-  DEBUGSR_PRINT("\t\t"); DEBUGSR_PRINT(tmpSample);
-/*-------END DEBUG-------*/
+  tmpSample = expAdjF;
   micIn = abs(micIn);                             // And get the absolute value of each sample
 
   sampleAdj = tmpSample * sampleGain / 40 * inputLevel/128 + tmpSample / 16; // Adjust the gain. with inputLevel adjustment
-//  sampleReal = sampleAdj;
   sampleReal = tmpSample;
 
   sampleAdj = fmax(fmin(sampleAdj, 255), 0);           // Question: why are we limiting the value to 8 bits ???
@@ -246,12 +227,6 @@ void getSample() {
   sampleAvg = ((sampleAvg * 15.0) + sampleAdj) / 16.0;   // Smooth it out over the last 16 samples.
 #endif
 
-
-/*---------DEBUG---------*/
-  DEBUGSR_PRINT("\t"); DEBUGSR_PRINT(sample);
-  DEBUGSR_PRINT("\t\t"); DEBUGSR_PRINT(sampleAvg); DEBUGSR_PRINT("\n\n");
-/*-------END DEBUG-------*/
-
   // Fixes private class variable compiler error. Unsure if this is the correct way of fixing the root problem. -THATDONFC
   uint16_t MinShowDelay = strip.getMinShowDelay();
 
@@ -262,7 +237,6 @@ void getSample() {
 
   if (userVar1 == 0) samplePeak = 0;
   // Poor man's beat detection by seeing if sample > Average + some value.
-  //  Serial.print(binNum); Serial.print("\t"); Serial.print(fftBin[binNum]); Serial.print("\t"); Serial.print(fftAvg[binNum/16]); Serial.print("\t"); Serial.print(maxVol); Serial.print("\t"); Serial.println(samplePeak);
   if ((fftBin[binNum] > maxVol) && (millis() > (peakTime + 100))) {                     // This goe through ALL of the 255 bins
   //  if (sample > (sampleAvg + maxVol) && millis() > (peakTime + 200)) {
   // Then we got a peak, else we don't. The peak has to time out on its own in order to support UDP sound sync.
@@ -636,36 +610,22 @@ void FFTcode( void * parameter) {
 
 void logAudio() {
 #ifdef MIC_LOGGER
+  // Debugging functions for audio input and sound processing. Comment out the values you want to see
 
-  Serial.print("micReal:");    Serial.print(micDataReal);   Serial.print("\t");
-  //Serial.print("micData:");    Serial.print(micData);   Serial.print("\t");
-  //Serial.print("micDataSm:");  Serial.print(micDataSm); Serial.print("\t");
-  //Serial.print("micIn:");      Serial.print(micIn);     Serial.print("\t");
+  Serial.print("micReal:");    Serial.print(micDataReal);  Serial.print("\t");
+  //Serial.print("micData:");    Serial.print(micData);     Serial.print("\t");
+  //Serial.print("micDataSm:");  Serial.print(micDataSm);   Serial.print("\t");
+  //Serial.print("micIn:");      Serial.print(micIn);       Serial.print("\t");
   //Serial.print("micLev:");     Serial.print(micLev);      Serial.print("\t");
+  //Serial.print("sampleReal:"); Serial.print(sampleReal);  Serial.print("\t");
   //Serial.print("sample:");     Serial.print(sample);      Serial.print("\t");
   //Serial.print("sampleAvg:");  Serial.print(sampleAvg);   Serial.print("\t");
-  //Serial.print("sampleReal:");     Serial.print(sampleReal);      Serial.print("\t");
-  //Serial.print("sampleMax:");     Serial.print(sampleMax);      Serial.print("\t");
-  //Serial.print("multAgc:");    Serial.print(multAgc, 4);   Serial.print("\t");
-  Serial.print("sampleAgc:");  Serial.print(sampleAgc);   Serial.print("\t");
+  //Serial.print("sampleMax:");  Serial.print(sampleMax);   Serial.print("\t");
+  //Serial.print("samplePeak:");  Serial.print((samplePeak!=0) ? 128:0);   Serial.print("\t");
+  //Serial.print("multAgc:");    Serial.print(multAgc, 4);  Serial.print("\t");
+  Serial.print("sampleAgc:");   Serial.print(sampleAgc);   Serial.print("\t");
   Serial.println(" ");
 
-#endif
-
-#ifdef MIC_SAMPLING_LOG
-  //------------ Oscilloscope output ---------------------------
-  Serial.print(targetAgc); Serial.print(" ");
-  Serial.print(multAgc); Serial.print(" ");
-  Serial.print(sampleAgc); Serial.print(" ");
-
-  Serial.print(sample); Serial.print(" ");
-  Serial.print(sampleAvg); Serial.print(" ");
-  Serial.print(micLev); Serial.print(" ");
-  Serial.print(samplePeak); Serial.print(" ");    //samplePeak = 0;
-  Serial.print(micIn); Serial.print(" ");
-  Serial.print(100); Serial.print(" ");
-  Serial.print(0); Serial.print(" ");
-  Serial.println(" ");
 #endif
 
 #ifdef FFT_SAMPLING_LOG
