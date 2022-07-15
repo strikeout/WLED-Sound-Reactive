@@ -209,22 +209,22 @@ uint16_t IRAM_ATTR WS2812FX::segmentToLogical(uint16_t i) { // ewowi20210703: wi
   int16_t iGroup = i * SEGMENT.groupLength();
 
   /* reverse just an individual segment */
-  int16_t realIndex = iGroup;
+  int16_t logicalIndex = iGroup;
   if (IS_REVERSE && stripOrMatrixPanel == 0) { // in case of 1D
     if (IS_MIRROR) {
-      realIndex = (SEGMENT.length() -1) / 2 - iGroup;  // only need to index half the pixels
+      logicalIndex = (SEGMENT.length() -1) / 2 - iGroup;  // only need to index half the pixels
     } else {
-      realIndex = (SEGMENT.length() - 1) - iGroup;
+      logicalIndex = (SEGMENT.length() - 1) - iGroup;
     }
   }
 
   // segment index to segment XY
-  uint16_t x = realIndex;
+  uint16_t x = logicalIndex;
   uint16_t y = 0;
   if (SEGMENT.width) { // ewowi20210624: in case of 2D: index needs to be mapped from segment index to matrix index. Also works for 1D strips
                         // need to check SEGMENT.width as it looks like Peek is using segment 15 with Width=0
-    x = realIndex % SEGMENT.width;
-    y = realIndex / SEGMENT.width;
+    x = logicalIndex % SEGMENT.width;
+    y = logicalIndex / SEGMENT.width;
   }
 
   // ewowi20210703: apply rotation, mirrorX and mirrorY.
@@ -248,9 +248,9 @@ uint16_t IRAM_ATTR WS2812FX::segmentToLogical(uint16_t i) { // ewowi20210703: wi
   }
 
   // segment XY to rotated and mirrored logical index
-  realIndex = newX + SEGMENT.startX + (newY + SEGMENT.startY) * matrixWidth;
+  logicalIndex = newX + SEGMENT.startX + (newY + SEGMENT.startY) * matrixWidth;
 
-  return realIndex;
+  return logicalIndex;
 }
 
 void IRAM_ATTR WS2812FX::setPixelColor(uint16_t i, byte r, byte g, byte b, byte w)
@@ -272,7 +272,7 @@ void IRAM_ATTR WS2812FX::setPixelColor(uint16_t i, byte r, byte g, byte b, byte 
   if (SEGLEN || (realtimeMode && useMainSegmentOnly)) {
     uint32_t col = RGBW32(r, g, b, w);
     uint16_t len = _segments[segIdx].length();
-    uint16_t realIndex = segmentToLogical(i); // ewowi20210624: from segment index to logical index
+    uint16_t logicalIndex = segmentToLogical(i); // ewowi20210624: from segment index to logical index
 
     // get physical pixel address (taking into account start, grouping, spacing [and offset])
     i = i * _segments[segIdx].groupLength();
@@ -287,7 +287,7 @@ void IRAM_ATTR WS2812FX::setPixelColor(uint16_t i, byte r, byte g, byte b, byte 
 
     /* Set all the pixels in the group */
     for (uint16_t j = 0; j < SEGMENT.grouping; j++) {
-      uint16_t indexSet = realIndex + (IS_REVERSE ? -j : j);
+      uint16_t indexSet = logicalIndex + (IS_REVERSE ? -j : j);
       if (indexSet >= SEGMENT.start && indexSet < SEGMENT.stop) {
         if (IS_MIRROR) { // set the corresponding mirrored pixel
           uint16_t indexMir = SEGMENT.stop - indexSet + SEGMENT.start - 1;
