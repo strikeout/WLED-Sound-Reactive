@@ -39,6 +39,10 @@ static volatile bool disableSoundProcessing = false;      // if true, sound proc
   #define DEBUGSR_PRINTF(x...)
 #endif
 
+// legacy support
+#if defined(SR_DEBUG) && !defined(MIC_LOGGER) && !defined(NO_MIC_LOGGER)
+#define MIC_LOGGER
+#endif
 
 // hackers corner
 //#define USE_FILTER_OF_DEATH           // experimental: use very strict filters, to make effects move really slow'n'smooth. Currently the result is lagging behind considerably
