@@ -208,10 +208,11 @@ void getSample() {
 
 // Using an exponential filter to smooth out the signal. We'll add controls for this in a future release.
   float micInNoDC = fabs(micDataReal - micLev);
-  expAdjF = (weighting * micInNoDC + (1.0-weighting) * expAdjF);
-  expAdjF = (expAdjF <= soundSquelch) ? 0: expAdjF; // simple noise gate
-
+  expAdjF = weighting * micInNoDC + ((1.0-weighting) * expAdjF);
   expAdjF = fabs(expAdjF);                          // Now (!) take the absolute value
+
+  expAdjF = (expAdjF <= soundSquelch) ? 0: expAdjF; // simple noise gate
+  if ((soundSquelch == 0) && (expAdjF < 0.25f)) expAdjF = 0;
   tmpSample = expAdjF;
 
 /*---------DEBUG---------*/
