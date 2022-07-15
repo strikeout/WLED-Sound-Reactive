@@ -169,7 +169,7 @@ struct audioSyncPacket {
 double mapf(double x, double in_min, double in_max, double out_min, double out_max);
 
 bool isValidUdpSyncVersion(char header[6]) {
-  if (strncmp(header, UDP_SYNC_HEADER, 6) == 0) {
+  if (strncmp(header, UDP_SYNC_HEADER, 5) == 0) {
     return true;
   } else {
     return false;
@@ -372,17 +372,9 @@ void agcAvg() {
 
 void transmitAudioData() {
   if (!udpSyncConnected) return;
-  extern uint8_t myVals[];
-  extern float sampleAgc;
-  extern int sample;
-  extern float sampleAvg;
-  extern bool udpSamplePeak;
-  extern int fftResult[];
-  extern double FFT_Magnitude;
-  extern double FFT_MajorPeak;
+  static audioSyncPacket transmitData;                    // softhack007: added "static"
 
-  audioSyncPacket transmitData;
-
+  strncpy(transmitData.header, UDP_SYNC_HEADER, 6);       // softhack007: I don't trust in type initialization
   for (int i = 0; i < 32; i++) {
     transmitData.myVals[i] = myVals[i];
   }

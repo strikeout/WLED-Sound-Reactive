@@ -159,19 +159,19 @@ void userLoop() {
   // Begin UDP Microphone Sync
   if (audioSyncEnabled & (1 << 1)) {    // Only run the audio listener code if we're in Receive mode
     if (millis()-lastTime > delayMs) {
+      lastTime = millis();
       if (udpSyncConnected) {
         //Serial.println("Checking for UDP Microphone Packet");
         int packetSize = fftUdp.parsePacket();
-        if (packetSize) {
+        if (packetSize > 6) {  // packet is big enough to contain a t least the header
           // Serial.println("Received UDP Sync Packet");
           uint8_t fftBuff[packetSize];
           fftUdp.read(fftBuff, packetSize);
-          audioSyncPacket receivedPacket;
-          memcpy(&receivedPacket, fftBuff, packetSize);
+          static audioSyncPacket receivedPacket;                                      // softhack007: added "static"
+          memcpy(&receivedPacket, fftBuff, MIN(sizeof(receivedPacket), packetSize));  // don't copy more that what fits into audioSyncPacket
+          receivedPacket.header[5] = '\0';                                            // ensure string termination
           // VERIFY THAT THIS IS A COMPATIBLE PACKET
-          char packetHeader[6];
-          memcpy(&receivedPacket, packetHeader, 6);
-          if (isValidUdpSyncVersion(packetHeader)) {
+          if (isValidUdpSyncVersion(receivedPacket.header)) {
             for (int i = 0; i < 32; i++ ){
               myVals[i] = receivedPacket.myVals[i];
             }
