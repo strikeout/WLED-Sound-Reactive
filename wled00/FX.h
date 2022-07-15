@@ -1241,7 +1241,7 @@ class WS2812FX {
     friend class ColorTransition;
 
     uint16_t
-      realPixelIndex(uint16_t i),
+      segmentToLogical(uint16_t i),
       transitionProgress(uint8_t tNr);
   public:
     inline bool hasWhiteChannel(void) {return _hasWhiteChannel;}

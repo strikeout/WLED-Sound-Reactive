@@ -204,8 +204,8 @@ void WS2812FX::service() {
 }
 
 // WLEDSR used to map from segment index to logical pixel, taking into account grouping, offsets, reverse and mirroring
-uint16_t IRAM_ATTR WS2812FX::realPixelIndex(uint16_t i) { // ewowi20210703: will not map to physical pixel index but to rotated and mirrored logical pixel index as matrix panels will require mapping.
-                                                // Mapping is done in logicalToPhysical below. Function will not be renamed to keep it consistent with Aircoookie
+uint16_t IRAM_ATTR WS2812FX::segmentToLogical(uint16_t i) { // ewowi20210703: will not map to physical pixel index but to rotated and mirrored logical pixel index as matrix panels will require mapping.
+                                                // Mapping is done in logicalToPhysical below. 
   int16_t iGroup = i * SEGMENT.groupLength();
 
   /* reverse just an individual segment */
@@ -272,7 +272,7 @@ void IRAM_ATTR WS2812FX::setPixelColor(uint16_t i, byte r, byte g, byte b, byte 
   if (SEGLEN || (realtimeMode && useMainSegmentOnly)) {
     uint32_t col = RGBW32(r, g, b, w);
     uint16_t len = _segments[segIdx].length();
-    uint16_t realIndex = realPixelIndex(i); // ewowi20210624: from segment index to logical index
+    uint16_t realIndex = segmentToLogical(i); // ewowi20210624: from segment index to logical index
 
     // get physical pixel address (taking into account start, grouping, spacing [and offset])
     i = i * _segments[segIdx].groupLength();

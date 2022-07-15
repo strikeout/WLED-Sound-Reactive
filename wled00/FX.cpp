@@ -4298,9 +4298,9 @@ double mapf(double x, double in_min, double in_max, double out_min, double out_m
 //       set Pixels       //
 ////////////////////////////
 
-void WS2812FX::setPixels(CRGB* leds) { // ewowi20210703: use realPixelIndex (rotated and mirrored) to find the right led
+void WS2812FX::setPixels(CRGB* leds) { // ewowi20210703: use segmentToLogical (rotated and mirrored) to find the right led
    for (int i=0; i < SEGLEN; i++) {
-     setPixelColor(i, leds[realPixelIndex(i)].red, leds[realPixelIndex(i)].green, leds[realPixelIndex(i)].blue);
+     setPixelColor(i, leds[segmentToLogical(i)].red, leds[segmentToLogical(i)].green, leds[segmentToLogical(i)].blue);
    }
 }
 
@@ -4338,7 +4338,7 @@ uint16_t WS2812FX::mode_wavesins(void) {                          // Uses beatsi
   for (int i = 0; i < SEGLEN; i++) {
     uint8_t bri = sin8(millis()/4+i* (int)SEGMENT.intensity);
 //    leds[i] = CHSV(beatsin8(SEGMENT.speed, SEGMENT.custom1, SEGMENT.custom1+SEGMENT.custom2, 0, i * SEGMENT.custom3), 255, bri);
-    leds[realPixelIndex(i)] = ColorFromPalette(currentPalette, beatsin8(SEGMENT.speed, SEGMENT.custom1, SEGMENT.custom1+SEGMENT.custom2, 0, i * SEGMENT.custom3), bri, LINEARBLEND);
+    leds[segmentToLogical(i)] = ColorFromPalette(currentPalette, beatsin8(SEGMENT.speed, SEGMENT.custom1, SEGMENT.custom1+SEGMENT.custom2, 0, i * SEGMENT.custom3), bri, LINEARBLEND);
   }
 
   setPixels(leds);
@@ -4361,7 +4361,7 @@ uint16_t WS2812FX::mode_FlowStripe(void) {                        // By: ldirko 
     c = sin8(c);
     c = sin8(c / 2 + t);
     byte b = sin8(c + t/8);
-    leds[realPixelIndex(i)] = CHSV(b + hue, 255, 255);
+    leds[segmentToLogical(i)] = CHSV(b + hue, 255, 255);
   }
 
   setPixels(leds);
@@ -4483,7 +4483,7 @@ void  WS2812FX::nscale8( CRGB* leds, uint8_t scale)
 
 
 uint16_t WS2812FX::XY(uint16_t x, uint16_t y) {                              // ewowi20210703: new XY: segmentToReal: Maps XY in 2D segment to to rotated and mirrored logical index. Works for 1D strips and 2D panels
-    return realPixelIndex(x%SEGMENT.width + y%SEGMENT.height * SEGMENT.width);
+    return segmentToLogical(x%SEGMENT.width + y%SEGMENT.height * SEGMENT.width);
 }
 
 //Use https://wokwi.com/arduino/projects/300565972972995085 to create layout examples
@@ -5741,8 +5741,8 @@ uint16_t WS2812FX::mode_matripix(void) {                  // Matripix. By Andrew
     SEGENV.aux0 = secondHand;
     uint8_t tmpSound = (soundAgc) ? rawSampleAgc : sample;
     int pixBri = tmpSound * SEGMENT.intensity / 64;
-    leds[realPixelIndex(SEGLEN-1)] = color_blend(SEGCOLOR(1), color_from_palette(millis(), false, PALETTE_SOLID_WRAP, 0), pixBri);
-    for (int i=0; i<SEGLEN-1; i++) leds[realPixelIndex(i)] = leds[realPixelIndex(i+1)];
+    leds[segmentToLogical(SEGLEN-1)] = color_blend(SEGCOLOR(1), color_from_palette(millis(), false, PALETTE_SOLID_WRAP, 0), pixBri);
+    for (int i=0; i<SEGLEN-1; i++) leds[segmentToLogical(i)] = leds[segmentToLogical(i+1)];
   }
 
   setPixels(leds);
@@ -5800,7 +5800,7 @@ uint16_t WS2812FX::mode_noisefire(void) {                 // Noisefire. By Andre
     uint8_t tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
 
     CRGB color = ColorFromPalette(currentPalette, index, tmpSound*2, LINEARBLEND);     // Use the my own palette.
-    leds[realPixelIndex(i)] = color;
+    leds[segmentToLogical(i)] = color;
   }
 
   setPixels(leds);
@@ -5866,13 +5866,13 @@ uint16_t WS2812FX::mode_pixelwave(void) {                 // Pixelwave. By Andre
 
     uint8_t tmpSound = (soundAgc) ? rawSampleAgc : sample;
     int pixBri = tmpSound * SEGMENT.intensity / 64;
-    leds[realPixelIndex(SEGLEN/2)] = color_blend(SEGCOLOR(1), color_from_palette(millis(), false, PALETTE_SOLID_WRAP, 0), pixBri);
+    leds[segmentToLogical(SEGLEN/2)] = color_blend(SEGCOLOR(1), color_from_palette(millis(), false, PALETTE_SOLID_WRAP, 0), pixBri);
 
     for (int i=SEGLEN-1; i>SEGLEN/2; i--) {               // Move to the right.
-      leds[realPixelIndex(i)] = leds[realPixelIndex(i-1)];
+      leds[segmentToLogical(i)] = leds[segmentToLogical(i-1)];
     }
     for (int i=0; i<SEGLEN/2; i++) {                      // Move to the left.
-      leds[realPixelIndex(i)]=leds[realPixelIndex(i+1)];
+      leds[segmentToLogical(i)]=leds[segmentToLogical(i+1)];
     }
   }
 
@@ -5910,7 +5910,7 @@ uint16_t WS2812FX::mode_plasmoid(void) {                  // Plasmoid. By Andrew
     int tmpSound = (soundAgc) ? sampleAgc : sampleAvg;
     if (tmpSound * SEGMENT.intensity / 64 < thisbright) {thisbright = 0;}
 
-    leds[realPixelIndex(i)] += color_blend(SEGCOLOR(1), color_from_palette(colorIndex, false, PALETTE_SOLID_WRAP, 0), thisbright);
+    leds[segmentToLogical(i)] += color_blend(SEGCOLOR(1), color_from_palette(colorIndex, false, PALETTE_SOLID_WRAP, 0), thisbright);
   }
 
   setPixels(leds);
@@ -6129,7 +6129,7 @@ uint16_t WS2812FX::mode_blurz(void) {                    // Blurz. By Andrew Tul
   fade_out(SEGMENT.speed);
 
   uint16_t segLoc = random(SEGLEN);
-  leds[realPixelIndex(segLoc)] = color_blend(SEGCOLOR(1), color_from_palette(2*fftResult[SEGENV.aux0 % 16]*240/(SEGLEN-1), false, PALETTE_SOLID_WRAP, 0), 2*fftResult[SEGENV.aux0 % 16]);
+  leds[segmentToLogical(segLoc)] = color_blend(SEGCOLOR(1), color_from_palette(2*fftResult[SEGENV.aux0 % 16]*240/(SEGLEN-1), false, PALETTE_SOLID_WRAP, 0), 2*fftResult[SEGENV.aux0 % 16]);
   SEGENV.aux0++;
   SEGENV.aux0 = SEGENV.aux0 % 16;
 
@@ -6153,16 +6153,16 @@ uint16_t WS2812FX::mode_DJLight(void) {                   // Written by ??? Adap
   if (SEGENV.aux0 != secondHand) {                        // Triggered millis timing.
     SEGENV.aux0 = secondHand;
 
-    leds[realPixelIndex(mid)] = CRGB(fftResult[15]/2, fftResult[5]/2, fftResult[0]/2); // 16-> 15 as 16 is out of bounds
-    leds[realPixelIndex(mid)].fadeToBlackBy(map(fftResult[1*4], 0, 255, 255, 10)); // TODO - Update
+    leds[segmentToLogical(mid)] = CRGB(fftResult[15]/2, fftResult[5]/2, fftResult[0]/2); // 16-> 15 as 16 is out of bounds
+    leds[segmentToLogical(mid)].fadeToBlackBy(map(fftResult[1*4], 0, 255, 255, 10)); // TODO - Update
 
     //move to the left
     for (int i = NUM_LEDS - 1; i > mid; i--) {
-      leds[realPixelIndex(i)] = leds[realPixelIndex(i - 1)];
+      leds[segmentToLogical(i)] = leds[segmentToLogical(i - 1)];
     }
     // move to the right
     for (int i = 0; i < mid; i++) {
-      leds[realPixelIndex(i)] = leds[realPixelIndex(i + 1)];
+      leds[segmentToLogical(i)] = leds[segmentToLogical(i + 1)];
     }
   }
 
@@ -6236,11 +6236,11 @@ uint16_t WS2812FX::mode_freqmatrix(void) {                // Freqmatrix. By Andr
     }
 
     // Serial.println(color);
-    leds[realPixelIndex(0)] = color;
+    leds[segmentToLogical(0)] = color;
 
     // shift the pixels one pixel up
     for (int i = SEGLEN; i > 0; i--) {                    // Move up
-      leds[realPixelIndex(i)] = leds[realPixelIndex(i-1)];
+      leds[segmentToLogical(i)] = leds[segmentToLogical(i-1)];
     }
 
     //fadeval = fade;
@@ -6345,14 +6345,14 @@ uint16_t WS2812FX::mode_freqwave(void) {                  // Freqwave. By Andrea
     }
 
     // Serial.println(color);
-    leds[realPixelIndex(SEGLEN/2)] = color;
+    leds[segmentToLogical(SEGLEN/2)] = color;
 
 // shift the pixels one pixel outwards
     for (int i = SEGLEN; i > SEGLEN/2; i--) {             // Move to the right.
-      leds[realPixelIndex(i)] = leds[realPixelIndex(i-1)];
+      leds[segmentToLogical(i)] = leds[segmentToLogical(i-1)];
     }
     for (int i = 0; i < SEGLEN/2; i++) {                  // Move to the left.
-      leds[realPixelIndex(i)] = leds[realPixelIndex(i+1)];
+      leds[segmentToLogical(i)] = leds[segmentToLogical(i+1)];
     }
 
     // DISPLAY ARRAY
@@ -6460,7 +6460,7 @@ uint16_t WS2812FX::mode_rocktaves(void) {                 // Rocktaves. Same not
 
 //    leds[beatsin8(8+octCount*4,0,SEGLEN-1,0,octCount*8)] += CHSV((uint8_t)frTemp,255,volTemp);                 // Back and forth with different frequencies and phase shift depending on current octave.
 
-  leds[realPixelIndex(mapf(beatsin8(8+octCount*4,0,255,0,octCount*8),0,255,0,SEGLEN-1))] += color_blend(SEGCOLOR(1), color_from_palette((uint8_t)frTemp, false, PALETTE_SOLID_WRAP, 0), volTemp);
+  leds[segmentToLogical(mapf(beatsin8(8+octCount*4,0,255,0,octCount*8),0,255,0,SEGLEN-1))] += color_blend(SEGCOLOR(1), color_from_palette((uint8_t)frTemp, false, PALETTE_SOLID_WRAP, 0), volTemp);
 
 
   setPixels(leds);
@@ -6494,11 +6494,11 @@ uint16_t WS2812FX::mode_waterfall(void) {                   // Waterfall. By: An
     uint8_t pixCol = (log10((int)FFT_MajorPeak) - 2.26) * 177;  // log10 frequency range is from 2.26 to 3.7. Let's scale accordingly.
 
     if (samplePeak) {
-      leds[realPixelIndex(SEGLEN-1)] = CHSV(92,92,92);
+      leds[segmentToLogical(SEGLEN-1)] = CHSV(92,92,92);
     } else {
-      leds[realPixelIndex(SEGLEN-1)] = color_blend(SEGCOLOR(1), color_from_palette(pixCol+SEGMENT.intensity, false, PALETTE_SOLID_WRAP, 0), (int)my_magnitude);
+      leds[segmentToLogical(SEGLEN-1)] = color_blend(SEGCOLOR(1), color_from_palette(pixCol+SEGMENT.intensity, false, PALETTE_SOLID_WRAP, 0), (int)my_magnitude);
     }
-      for (int i=0; i<SEGLEN-1; i++) leds[realPixelIndex(i)] = leds[realPixelIndex(i+1)];
+      for (int i=0; i<SEGLEN-1; i++) leds[segmentToLogical(i)] = leds[segmentToLogical(i+1)];
   }
 
   setPixels(leds);

@@ -438,7 +438,7 @@ void WS2812FX::arti_set_external_variable(float value, uint8_t variable, float p
           errorOccurred = true;
         }
         else if (par2 == floatNull)
-          leds[realPixelIndex((uint16_t)par1%SEGLEN)] = value;
+          leds[segmentToLogical((uint16_t)par1%SEGLEN)] = value;
         else
           leds[XY((uint16_t)par1%SEGMENT.width, (uint16_t)par2%SEGMENT.height)] = value; //2D value!!
 
