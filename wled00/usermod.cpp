@@ -129,7 +129,6 @@ void userLoop() {
     #endif
 
     unsigned long t_now = millis();
-    lastTime = t_now;
     lastUMRun = t_now;
     if (soundAgc > AGC_NUM_PRESETS) soundAgc = 0; // make sure that AGC preset is valid (to avoid array bounds violation)
 
@@ -219,6 +218,7 @@ void userLoop() {
   // Begin UDP Microphone Sync
   if (audioSyncEnabled & (1 << 1)) {    // Only run the audio listener code if we're in Receive mode
     if (millis()-lastTime > delayMs) {
+      lastTime = millis();
       if (udpSyncConnected) {
         //Serial.println("Checking for UDP Microphone Packet");
         int packetSize = fftUdp.parsePacket();
