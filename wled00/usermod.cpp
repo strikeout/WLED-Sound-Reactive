@@ -180,10 +180,21 @@ void userLoop() {
             sample = receivedPacket.sample;
             sampleAvg = receivedPacket.sampleAvg;
 
+            // auto-reset sample peak. Need to do it here, because getSample() is not running
+            uint16_t MinShowDelay = strip.getMinShowDelay();
+            if (millis() - timeOfPeak > MinShowDelay) {   // Auto-reset of samplePeak after a complete frame has passed.
+                samplePeak = 0;
+                udpSamplePeak = 0;
+            }
+            if (userVar1 == 0) samplePeak = 0;
+
             // Only change samplePeak IF it's currently false.
             // If it's true already, then the animation still needs to respond.
             if (!samplePeak) {
               samplePeak = receivedPacket.samplePeak;
+              if (samplePeak) timeOfPeak = millis();
+              udpSamplePeak = samplePeak;
+              userVar1 = samplePeak;
             }
             //These values are only available on the ESP32
             for (int i = 0; i < 16; i++) {
