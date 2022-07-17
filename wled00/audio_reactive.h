@@ -44,8 +44,10 @@ static volatile bool disableSoundProcessing = false;      // if true, sound proc
 #define MIC_LOGGER
 #endif
 
+
 // hackers corner
-//nothing ATM
+// #define SOUND_DYNAMICS_LIMITER        // experimental: define to enable a dynamics limiter that avoids "sudden flashes" at onsets. Make some effects look more "smooth and fluent"
+
 
 constexpr i2s_port_t I2S_PORT = I2S_NUM_0;
 constexpr int BLOCK_SIZE = 128;
@@ -344,6 +346,48 @@ void agcAvg(unsigned long the_time) {
   last_soundAgc = soundAgc;
 } // agcAvg()
 
+
+/* limit sound dynamics by contraining "attack" and "decay" times */
+constexpr float bigChange = 196;           // just a representative number - a large, expected sample value
+/* values below will be made user-configurable later */
+constexpr float attackTime = 800;          // attack time -> 0.8sec
+constexpr float decayTime = 2800;          // decay time  -> 2.8sec
+
+/* This fuctions limits the dynamics of sampleAvg and sampleAgc. It does not affect FFTResult[] or raw samples (sample, rawSampleAgc) */
+// effects: Gravimeter, Gravcenter, Gravcentric, Noisefire, Plasmoid, Freqpixels, Freqwave, Gravfreq, (2D Swirl, 2D Waverly)
+// experimental, as it still has side-effects on AGC - AGC detects "silence" to late (due to long decay time) and ditches up the gain multiplier. 
+void limitSampleDynamics(void) {
+#ifdef SOUND_DYNAMICS_LIMITER
+  static unsigned long last_time = 0;
+  static float last_sampleAvg = 0.0f;
+  static float last_sampleAgc = 0.0f;
+
+  long delta_time = millis() - last_time;
+  delta_time = constrain(delta_time , 1, 1000); // below 1ms -> 1ms; above 1sec -> sily lil hick-up
+  float maxAttack =   bigChange * float(delta_time) / attackTime;
+  float maxDecay  = - bigChange * float(delta_time) / decayTime;
+  float deltaSample;
+
+  // non-AGC sample
+  if ((attackTime > 0) && (decayTime > 0)) {
+    deltaSample = sampleAvg - last_sampleAvg;
+    if (deltaSample > maxAttack) deltaSample = maxAttack;
+    if (deltaSample < maxDecay) deltaSample = maxDecay;
+    sampleAvg = last_sampleAvg + deltaSample; 
+  }
+  // same for AGC sample
+  if ((attackTime > 0) && (decayTime > 0)) {
+    deltaSample = sampleAgc - last_sampleAgc;
+    if (deltaSample > maxAttack) deltaSample = maxAttack;
+    if (deltaSample < maxDecay) deltaSample = maxDecay;
+    sampleAgc = last_sampleAgc + deltaSample; 
+  }
+
+  last_sampleAvg = sampleAvg;
+  last_sampleAgc = sampleAgc;
+  last_time = millis();
+#endif
+}
 
 
 ////////////////////

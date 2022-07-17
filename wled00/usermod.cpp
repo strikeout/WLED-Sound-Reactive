@@ -206,6 +206,10 @@ void userLoop() {
 #endif
 
   }
+
+  // limit dynamics (experimental)
+  limitSampleDynamics();
+
   if (audioSyncEnabled & (1 << 0)) {    // Only run the transmit code IF we're in Transmit mode
     //Serial.println("Transmitting UDP Mic Packet");
 
