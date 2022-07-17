@@ -226,24 +226,15 @@ void userLoop() {
       if (udpSyncConnected) {
         //Serial.println("Checking for UDP Microphone Packet");
         int packetSize = fftUdp.parsePacket();
-        if (packetSize) {
+        if (packetSize > 6) {  // packet is big enough to contain a t least the header
           // Serial.println("Received UDP Sync Packet");
           uint8_t fftBuff[packetSize];
           fftUdp.read(fftBuff, packetSize);
-          audioSyncPacket receivedPacket;
-          memcpy(&receivedPacket, fftBuff, packetSize);
-          for (int i = 0; i < 32; i++ ){
-            myVals[i] = receivedPacket.myVals[i];
-          }
-          sampleAgc = receivedPacket.sampleAgc;
-          rawSampleAgc = receivedPacket.sampleAgc;
-          sample = receivedPacket.sample;
-          sampleAvg = receivedPacket.sampleAvg;
+          static audioSyncPacket receivedPacket;                                      // softhack007: added "static"
+          memcpy(&receivedPacket, fftBuff, MIN(sizeof(receivedPacket), packetSize));  // don't copy more that what fits into audioSyncPacket
+          receivedPacket.header[5] = '\0';                                            // ensure string termination
           // VERIFY THAT THIS IS A COMPATIBLE PACKET
-          char packetHeader[6];
-          memcpy(&receivedPacket, packetHeader, 6);
-          if (!(isValidUdpSyncVersion(packetHeader))) {
-            memcpy(&receivedPacket, fftBuff, packetSize);
+          if (isValidUdpSyncVersion(receivedPacket.header)) {
             for (int i = 0; i < 32; i++ ){
               myVals[i] = receivedPacket.myVals[i];
             }
@@ -252,10 +243,21 @@ void userLoop() {
             sample = receivedPacket.sample;
             sampleAvg = receivedPacket.sampleAvg;
 
+            // auto-reset sample peak. Need to do it here, because getSample() is not running
+            uint16_t MinShowDelay = strip.getMinShowDelay();
+            if (millis() - timeOfPeak > MinShowDelay) {   // Auto-reset of samplePeak after a complete frame has passed.
+                samplePeak = 0;
+                udpSamplePeak = 0;
+            }
+            if (userVar1 == 0) samplePeak = 0;
+
             // Only change samplePeak IF it's currently false.
             // If it's true already, then the animation still needs to respond.
             if (!samplePeak) {
               samplePeak = receivedPacket.samplePeak;
+              if (samplePeak) timeOfPeak = millis();
+              udpSamplePeak = samplePeak;
+              userVar1 = samplePeak;
             }
             //These values are only available on the ESP32
             for (int i = 0; i < 16; i++) {
