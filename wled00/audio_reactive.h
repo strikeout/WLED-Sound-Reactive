@@ -45,8 +45,7 @@ static volatile bool disableSoundProcessing = false;      // if true, sound proc
 #endif
 
 // hackers corner
-//#define USE_FILTER_OF_DEATH           // experimental: use very strict filters, to make effects move really slow'n'smooth. Currently the result is lagging behind considerably
-//#define MAJORPEAK_SUPPRESS_NOISE      // define to activate a dirty hack that ignores the lowest + hightest FFT bins
+//nothing ATM
 
 constexpr i2s_port_t I2S_PORT = I2S_NUM_0;
 constexpr int BLOCK_SIZE = 128;
@@ -223,13 +222,7 @@ void getSample() {
   }
   if (sampleMax < 0.5) sampleMax = 0.0;
 
-
-#if defined(USE_FILTER_OF_DEATH)
-  // note to self: This causes lagging. Need a **second-order** exponential filter here.
-  sampleAvg = ((sampleAvg * 511.0) + sampleAdj) / 512.0;
-#else
   sampleAvg = ((sampleAvg * 15.0) + sampleAdj) / 16.0;   // Smooth it out over the last 16 samples.
-#endif
 
   // Fixes private class variable compiler error. Unsure if this is the correct way of fixing the root problem. -THATDONFC
   uint16_t MinShowDelay = strip.getMinShowDelay();
@@ -340,14 +333,10 @@ void agcAvg(unsigned long the_time) {
 
 
   // update smoothed AGC sample
-#if defined(USE_FILTER_OF_DEATH)
-    sampleAgc = sampleAgc + (agcSampleSmooth[AGC_preset] * (1.0/32.0)) * (tmpAgc - sampleAgc);
-#else
   if(fabs(tmpAgc) < 1.0) 
     sampleAgc =  0.5 * tmpAgc + 0.5 * sampleAgc;      // fast path to zero
   else
     sampleAgc = sampleAgc + agcSampleSmooth[AGC_preset] * (tmpAgc - sampleAgc); // smooth path
-#endif
 
   userVar0 = sampleAvg * 4;
   if (userVar0 > 255) userVar0 = 255;
@@ -417,9 +406,6 @@ double fftAdd( int from, int to) {
 // FFT main code
 void FFTcode( void * parameter) {
   DEBUG_PRINT("FFT running on core: "); DEBUG_PRINTLN(xPortGetCoreID());
-#ifdef MAJORPEAK_SUPPRESS_NOISE
-  static double xtemp[24] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-#endif
 
   for(;;) {
     delay(1);           // DO NOT DELETE THIS LINE! It is needed to give the IDLE(0) task enough time and to keep the watchdog happy.
@@ -471,66 +457,8 @@ void FFTcode( void * parameter) {
     // vReal[3 .. 255] contain useful data, each a 20Hz interval (60Hz - 5120Hz).
     // There could be interesting data at bins 0 to 2, but there are too many artifacts.
     //
-#ifdef MAJORPEAK_SUPPRESS_NOISE
-    // teporarily reduce signal strength in the highest + lowest bins
-    xtemp[0] = vReal[0]; vReal[0] *= 0.005;
-    xtemp[1] = vReal[1]; vReal[1] *= 0.005;
-    xtemp[2] = vReal[2]; vReal[2] *= 0.005;
-    xtemp[3] = vReal[3]; vReal[3] *= 0.02;
-    xtemp[4] = vReal[4]; vReal[4] *= 0.02;
-    xtemp[5] = vReal[5]; vReal[5] *= 0.02;
-    xtemp[6] = vReal[6]; vReal[6] *= 0.05;
-    xtemp[7] = vReal[7]; vReal[7] *= 0.08;
-    xtemp[8] = vReal[8]; vReal[8] *= 0.1;
-    xtemp[9] = vReal[9]; vReal[9] *= 0.2;
-    xtemp[10] = vReal[10]; vReal[10] *= 0.2;
-    xtemp[11] = vReal[11]; vReal[11] *= 0.25;
-    xtemp[12] = vReal[12]; vReal[12] *= 0.3;
-    xtemp[13] = vReal[13]; vReal[13] *= 0.3;
-    xtemp[14] = vReal[14]; vReal[14] *= 0.4;
-    xtemp[15] = vReal[15]; vReal[15] *= 0.4;
-    xtemp[16] = vReal[16]; vReal[16] *= 0.4;
-    xtemp[17] = vReal[17]; vReal[17] *= 0.5;
-    xtemp[18] = vReal[18]; vReal[18] *= 0.5;
-    xtemp[19] = vReal[19]; vReal[19] *= 0.6;
-    xtemp[20] = vReal[20]; vReal[20] *= 0.7;
-    xtemp[21] = vReal[21]; vReal[21] *= 0.8;
-
-    xtemp[22] = vReal[samplesFFT-2]; vReal[samplesFFT-2] =0.0;
-    xtemp[23] = vReal[samplesFFT-1]; vReal[samplesFFT-1] =0.0;
-#endif
 
     FFT.MajorPeak(&FFT_MajorPeak, &FFT_Magnitude);          // let the effects know which freq was most dominant
-
-#ifdef MAJORPEAK_SUPPRESS_NOISE
-	// dirty hack: limit suppressed channel intensities to FFT_Magnitude
-	for (int k=0; k < 24; k++) if(xtemp[k] > FFT_Magnitude) xtemp[k] = FFT_Magnitude;
-    // restore bins
-    vReal[0] = xtemp[0];
-    vReal[1] = xtemp[1];
-    vReal[2] = xtemp[2];
-    vReal[3] = xtemp[3];
-    vReal[4] = xtemp[4];
-    vReal[5] = xtemp[5];
-    vReal[6] = xtemp[6];
-    vReal[7] = xtemp[7];
-    vReal[8] = xtemp[8];
-    vReal[9] = xtemp[9];
-    vReal[10] = xtemp[10];
-    vReal[11] = xtemp[11];
-    vReal[12] = xtemp[12];
-    vReal[13] = xtemp[13];
-    vReal[14] = xtemp[14];
-    vReal[15] = xtemp[15];
-    vReal[16] = xtemp[16];
-    vReal[17] = xtemp[17];
-    vReal[18] = xtemp[18];
-    vReal[19] = xtemp[19];
-    vReal[20] = xtemp[20];
-    vReal[21] = xtemp[21];
-    vReal[samplesFFT-2] = xtemp[22];
-    vReal[samplesFFT-1] = xtemp[23];
-#endif
 
     for (int i = 0; i < samplesFFT; i++) {                     // Values for bins 0 and 1 are WAY too large. Might as well start at 3.
       double t = 0.0;
