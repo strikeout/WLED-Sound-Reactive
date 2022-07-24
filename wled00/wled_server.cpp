@@ -63,6 +63,10 @@ void initServer()
     server.on("/liveview", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send_P(200, "text/html", PAGE_liveviewws);
     });
+    // WLEDSR
+    server.on("/liveview2D", HTTP_GET, [](AsyncWebServerRequest *request){
+      request->send_P(200, "text/html", PAGE_liveviewws2D);
+    });
  #else
     server.on("/liveview", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send_P(200, "text/html", PAGE_liveview);
