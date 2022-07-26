@@ -86,6 +86,7 @@ void applyBri() {
   if (!realtimeMode || !arlsForceMaxBri)
   {
     strip.setBrightness(scaledBri(briT));
+    stateChanged = true; //WLEDSR temporary fix, until solved in upstream
   }
 }
 
