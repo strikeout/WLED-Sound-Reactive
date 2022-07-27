@@ -86,13 +86,15 @@ void applyBri() {
   if (!realtimeMode || !arlsForceMaxBri)
   {
     strip.setBrightness(scaledBri(briT));
-    stateChanged = true; //WLEDSR temporary fix, until solved in upstream
   }
 }
 
 
 //applies global brightness and sets it as the "current" brightness (no transition)
 void applyFinalBri() {
+#ifdef USERMOD_AUTO_SAVE                  //WLEDSR - make autosave mod happy. A bit dangerous, as it may trigger unnecessary WS broadcasts (and other notificatios) 
+  if (briOld != bri) stateChanged = true; //WLEDSR temporary fix, until solved in upstream
+#endif
   briOld = bri;
   briT = bri;
   applyBri();
