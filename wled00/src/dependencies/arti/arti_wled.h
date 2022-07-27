@@ -23,6 +23,8 @@
   #include "arti.h"
 //  #include "FX.h"
   extern float sampleAvg;
+  extern float sampleAgc;
+  extern byte soundAgc;
 #else
   #include "../arti.h"
   #include <string.h>
@@ -366,7 +368,7 @@ float WS2812FX::arti_get_external_variable(uint8_t variable, float par1, float p
       case F_custom3Slider:
         return SEGMENT.custom3;
       case F_sampleAvg:
-        return sampleAvg;
+        return((soundAgc) ? sampleAgc : sampleAvg);
 
       case F_hour:
         return ((float)hour(localTime));
