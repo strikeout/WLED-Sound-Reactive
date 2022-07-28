@@ -18,7 +18,7 @@
   <script>
     var canvas = document.getElementById('liveviewCanvas');
     canvas.width  = window.innerWidth * 0.98; //remove scroll bars
-    canvas.height = window.innerHeight * 0.98;  //remove scroll bars
+    canvas.height = window.innerHeight * 0.98; //remove scroll bars
     var leds = "";
     var matrixWidth = 0;
     var pixelsPerLed = 0;
@@ -74,7 +74,7 @@
       matrixWidth = leds[2];
       matrixHeight = leds[3];
       pixelsPerLed = Math.min(canvas.width / matrixWidth, canvas.height / matrixHeight);
-      console.log(canvas.width, matrixWidth, canvas.height, matrixHeight, pixelsPerLed, leds);
+      // console.log(canvas.width, matrixWidth, canvas.height, matrixHeight, pixelsPerLed, leds);
       paintLeds();
     }
 
