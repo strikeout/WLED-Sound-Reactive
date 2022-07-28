@@ -127,7 +127,7 @@ void sendDataWs(AsyncWebSocketClient * client)
   }
 }
 
-#define MAX_LIVE_LEDS_WS 256
+#define MAX_LIVE_LEDS_WS 1024 //WLEDSR: support 32x32 matrices max
 
 bool sendLiveLedsWs(uint32_t wsClient)
 {
@@ -142,8 +142,10 @@ bool sendLiveLedsWs(uint32_t wsClient)
   uint8_t* buffer = wsBuf->get();
   buffer[0] = 'L';
   buffer[1] = 1; //version
+  buffer[2] = strip.matrixWidth; //WLEDSR: send width and height
+  buffer[3] = strip.matrixHeight; //WLEDSR: send width and height
 
-  uint16_t pos = 2;
+  uint16_t pos = 4;
   for (uint16_t i= 0; pos < bufSize -2; i += n)
   {
     uint32_t c = strip.getPixelColor(i);

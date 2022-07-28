@@ -1624,11 +1624,6 @@ function toggleLiveview() {
 		}
 
 		gId('mliveview2D').style.transform = (isLv) ? "translateY(0px)":"translateY(100%)";
-		gId('buttonSr').lastChild.innerHTML = "Peek2D"; //lastchild is <p>Peek</p>
-	}
-	else
-	{
-		gId('buttonSr').lastChild.innerHTML = "Peek"; //lastchild is <p>Peek</p>
 	}
 
 	gId(lvID).style.display = (isLv) ? "block":"none";
