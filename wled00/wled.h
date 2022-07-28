@@ -3,12 +3,16 @@
 /*
    Main sketch, global variable declarations
    @title WLED project sketch
-   @version 0.13.2-a1
+   @version 0.13.2-a0
    @author Christian Schwinne
  */
 
 // version code in format yymmddb (b = daily build)
-#define VERSION 2207241
+#define VERSION 2207271             // WLEDSR specific version
+#define SR_VERSION_NAME "0.13.2-b1" // WLEDSR version name --> some files need manual updating: package.json, package-lock.json, improv.cpp
+
+#define AC_VERSION 2207021             // AC WLED base version; last updated by PR #217 Merge AC-main into SR-dev
+#define AC_VERSION_NAME "0.13.2-a0"    // AC WLED base version name; last change 02.July 2022
 
 //uncomment this if you have a "my_config.h" file you'd like to use
 //#define WLED_USE_MY_CONFIG
