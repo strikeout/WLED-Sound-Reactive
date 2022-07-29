@@ -206,6 +206,15 @@ button {
 	border: 0px;
 }
 
+/* WLEDSR */
+#liveview2D {
+	height: 90%;
+	display: none;
+	width: 90%;
+	border: 0px;
+	margin: 0 auto;
+}
+
 .tab {
 	background-color: transparent;
 	color: var(--c-d);
@@ -874,6 +883,19 @@ input[type=number]::-webkit-outer-spin-button {
 	position: absolute;
 	bottom: 8px;
 	right: 8px;
+}
+
+.frz {
+	left: 36px;
+	position: absolute;
+	top: 0px;
+	cursor: pointer;
+	padding: 8px;
+}
+
+/* TODO expanded does not seem to apply to .frz, what is this for? */
+.expanded .frz {
+	display: none;
 }
 
 .check, .radio {

@@ -6,6 +6,10 @@
   #define MULTI_RELAY_MAX_RELAYS 4
 #endif
 
+#ifndef MULTI_RELAY_PINS
+  #define MULTI_RELAY_PINS -1
+#endif
+
 #define WLED_DEBOUNCE_THRESHOLD 50 //only consider button input of at least 50ms as valid (debouncing)
 
 #define ON  true
@@ -71,7 +75,7 @@ class MultiRelay : public Usermod {
     }
 
     /**
-     * switch off the strip if the delay has elapsed 
+     * switch off the strip if the delay has elapsed
      */
     void handleOffTimer() {
       unsigned long now = millis();
@@ -177,8 +181,9 @@ class MultiRelay : public Usermod {
      * constructor
      */
     MultiRelay() {
+      const int8_t defPins[] = {MULTI_RELAY_PINS};
       for (uint8_t i=0; i<MULTI_RELAY_MAX_RELAYS; i++) {
-        _relay[i].pin      = -1;
+        _relay[i].pin      = i<sizeof(defPins) ? defPins[i] : -1;
         _relay[i].delay    = 0;
         _relay[i].mode     = false;
         _relay[i].active   = false;
@@ -395,7 +400,7 @@ class MultiRelay : public Usermod {
         }
 
         if (buttonLongPressed[b] == buttonPressedBefore[b]) return handled;
-          
+
         if (now - buttonPressedTime[b] > WLED_DEBOUNCE_THRESHOLD) { //fire edge event only after 50ms without change (debounce)
           for (uint8_t i=0; i<MULTI_RELAY_MAX_RELAYS; i++) {
             if (_relay[i].pin>=0 && _relay[i].button == b) {
@@ -453,7 +458,7 @@ class MultiRelay : public Usermod {
       }
       return handled;
     }
-  
+
     /**
      * addToJsonInfo() can be used to add custom entries to the /json/info part of the JSON API.
      */
@@ -557,7 +562,7 @@ class MultiRelay : public Usermod {
     /**
      * restore the changeable values
      * readFromConfig() is called before setup() to populate properties from values stored in cfg.json
-     * 
+     *
      * The function should return true if configuration was successfully loaded or false if there was no configuration.
      */
     bool readFromConfig(JsonObject &root) {
@@ -619,7 +624,7 @@ class MultiRelay : public Usermod {
         DEBUG_PRINTLN(F(" config (re)loaded."));
       }
       // use "return !top["newestParameter"].isNull();" when updating Usermod with new features
-      return !top[FPSTR(_broadcast)].isNull();
+      return !top[FPSTR(_HAautodiscovery)].isNull();
     }
 
     /**

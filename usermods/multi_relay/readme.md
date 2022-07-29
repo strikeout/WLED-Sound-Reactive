@@ -3,12 +3,12 @@
 This usermod-v2 modification allows the connection of multiple relays each with individual delay and on/off mode.
 
 ## HTTP API
-All responses are returned as JSON. 
+All responses are returned as JSON.
 
 * Status Request: `http://[device-ip]/relays`
 * Switch Command: `http://[device-ip]/relays?switch=1,0,1,1`
 
-The number of numbers behind the switch parameter must correspond to the number of relays. The number 1 switches the relay on. The number 0 switches the relay off. 
+The number of numbers behind the switch parameter must correspond to the number of relays. The number 1 switches the relay on. The number 0 switches the relay off.
 
 * Toggle Command: `http://[device-ip]/relays?toggle=1,0,1,1`
 
@@ -81,13 +81,15 @@ void registerUsermods()
 Usermod can be configured in Usermods settings page.
 
 * `enabled` - enable/disable usermod
-* `pin` - GPIO pin where relay is attached to ESP
+* `pin` - GPIO pin where relay is attached to ESP (can be configured at compile time `-D MULTI_RELAY_PINS=xx,xx,...`)
 * `delay-s` - delay in seconds after on/off command is received
 * `active-high` - toggle high/low activation of relay (can be used to reverse relay states)
 * `external` - if enabled WLED does not control relay, it can only be triggered by external command (MQTT, HTTP, JSON or button)
 * `button` - button (from LED Settings) that controls this relay
+* `broadcast`- time in seconds between state broadcasts using MQTT
+* `HA-discovery`- enable Home Assistant auto discovery
 
-If there is no MultiRelay section, just save current configuration and re-open Usermods settings page. 
+If there is no MultiRelay section, just save current configuration and re-open Usermods settings page.
 
 Have fun - @blazoncek
 

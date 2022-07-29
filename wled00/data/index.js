@@ -9,10 +9,12 @@ var expanded = [false];
 var powered = [true];
 var nlDur = 60, nlTar = 0;
 var nlMode = false;
-var selectedFx = -1;    //WLEDSR: used by togglePcMode, init to nonexisting effect
-var sliderControl = ""; //WLEDSR: used by togglePcMode
+var selectedFx = 0; prevFx = -1   //WLEDSR
+var selectedEffectNameHTML = "" //WLEDSR
+var sliderControl = ""; //WLEDSR
+var selectedPal = 0; //WLEDSR Blazoncek default slider values
 var csel = 0; // selected color slot (0-2)
-var currentPreset = -1;
+var currentPreset = -1; prevPS = -1; //WLEDSR Blazoncek default slider values
 var lastUpdate = 0;
 var segCount = 0, ledCount = 0, lowestUnused = 0, maxSeg = 0, lSeg = 0;
 var pcMode = false, pcModeA = false, lastw = 0;
@@ -39,6 +41,9 @@ var hol = [
   [2024,2,31,2,"https://aircoookie.github.io/easter.png"]
 ];
 
+//WLEDSR (from blaz)
+function gId(c) {return d.getElementById(c);}
+
 var cpick = new iro.ColorPicker("#picker", {
 	width: 260,
 	wheelLightness: false,
@@ -52,6 +57,8 @@ var cpick = new iro.ColorPicker("#picker", {
 	]
 });
 
+var isInInputField = false; //WLEDSR: do not (re)populateSegment if editing segment
+
 function handleVisibilityChange() {
   if (!d.hidden && new Date () - lastUpdate > 3000) {
     requestJson(null);
@@ -60,6 +67,40 @@ function handleVisibilityChange() {
 
 function sCol(na, col) {
   d.documentElement.style.setProperty(na, col);
+}
+
+function isEmpty(o) {return Object.keys(o).length === 0;} //WLEDSR Blazoncek default slider values
+
+function isRgbBlack(a, s) {
+	return (a[s][0] == 0 && a[s][1] == 0 && a[s][2] == 0);
+}
+
+// returns RGB color from a given slot s 0-2 from color array a
+function rgbStr(a, s) {
+	return "rgb(" + a[s][0] + "," + a[s][1] + "," + a[s][2] + ")";
+}
+
+// brightness approximation for selecting white as text color if background bri < 127, and black if higher
+function rgbBri(a, s) {
+	var R = a[s][0], G = a[s][1], B = a[s][2];
+	return 0.2126*R + 0.7152*G + 0.0722*B;
+}
+
+// sets background of color slot selectors
+function setCSL(s) {
+	var cd = d.getElementsByClassName('cl')[s];
+	var w = whites[s];
+	if (hasRGB && !isRgbBlack(colors, s)) {
+		cd.style.background = rgbStr(colors, s);
+		cd.style.color = rgbBri(colors, s) > 127 ? "#000":"#fff";
+		if (hasWhite && w > 0) {
+			cd.style.background = `linear-gradient(180deg, ${rgbStr(colors, s)} 30%, ${rgbStr([[w,w,w]], 0)})`;
+		}
+	} else {
+		if (!hasWhite) w = 0;
+		cd.style.background = rgbStr([[w,w,w]], 0);
+		cd.style.color = w > 127 ? "#000":"#fff";
+	}
 }
 
 function isRgbBlack(a, s) {
@@ -431,28 +472,28 @@ function loadPresets(callback = null)
     url = `http://${locip}/presets.json`;
   }
 
-  fetch
-  (url, {
-    method: 'get'
-  })
-  .then(res => {
-    if (!res.ok) {
-       showErrorToast();
-    }
-    return res.json();
-  })
-  .then(json => {
-    pJson = json;
-    populatePresets();
-  })
-  .catch(function (error) {
-    showToast(error, true);
-    console.log(error);
-    presetError(false);
-  })
-  .finally(() => {
-    if (callback) setTimeout(callback,99);
-  });
+	fetch
+	(url, {
+		method: 'get'
+	})
+	.then(res => {
+		if (!res.ok) {
+			showErrorToast();
+		}
+		return res.json();
+	})
+	.then(json => {
+		pJson = json;
+		populatePresets();
+	})
+	.catch(function (error) {
+		showToast(error, true);
+		console.log(error);
+		presetError(false);
+	})
+	.finally(() => {
+		if (callback) setTimeout(callback,99);
+	});
 }
 
 var pQL = [];
@@ -545,28 +586,29 @@ function populateInfo(i)
 		}
 	}
 
-  var vcn = "Kuuhaku";
-  if (i.ver.startsWith("0.13.")) vcn = "Toki";
-  if (i.cn) vcn = i.cn;
+	var vcn = "Kuuhaku";
+	if (i.ver.startsWith("0.13.")) vcn = "Toki-SR";
+	if (i.cn) vcn = i.cn;
 
-  cn += `v${i.ver} "${vcn}"<br><br><table class="infot">
-  ${urows}
-  ${inforow("Build",i.vid)}
-  ${inforow("Signal strength",i.wifi.signal +"% ("+ i.wifi.rssi, " dBm)")}
-  ${inforow("Uptime",getRuntimeStr(i.uptime))}
-  ${inforow("Free heap",heap," kB")}
-  ${inforow("Estimated current",pwru)}
-  ${inforow("Frames / second",i.leds.fps)}
-  ${inforow("MAC address",i.mac)}
-  ${inforow("Filesystem",i.fs.u + "/" + i.fs.t + " kB (" +Math.round(i.fs.u*100/i.fs.t) + "%)")}
-  ${inforow("Environment",i.arch + " " + i.core + " (" + i.lwip + ")")}
-  </table>`;
-  d.getElementById('kv').innerHTML = cn;
+	cn += `v${i.ver} "${vcn}"<br><br><table class="infot">
+	${urows}
+	${inforow("Build",i.vid)}
+	${inforow("Signal strength",i.wifi.signal +"% ("+ i.wifi.rssi, " dBm)")}
+	${inforow("Uptime",getRuntimeStr(i.uptime))}
+	${inforow("Free heap",heap," kB")}
+		${inforow("Estimated current",pwru)}
+		${inforow("Frames / second",i.leds.fps)}
+	${inforow("MAC address",i.mac)}
+	${inforow("Filesystem",i.fs.u + "/" + i.fs.t + " kB (" +Math.round(i.fs.u*100/i.fs.t) + "%)")}
+	${inforow("Environment",i.arch + " " + i.core + " (" + i.lwip + ")")}
+	</table>`;
+	d.getElementById('kv').innerHTML = cn;
 }
 
 function populateSegments(s)
 {
 	var cn = "";
+	let li = lastinfo;
 	segCount = 0; lowestUnused = 0; lSeg = 0;
 
 	for (var y = 0; y < (s.seg||[]).length; y++)
@@ -579,20 +621,21 @@ function populateSegments(s)
 		if (i == lowestUnused) lowestUnused = i+1;
 		if (i > lSeg) lSeg = i;
 
-		//WLEDSR: add tooltip (title) and add reverse direction X / Y and rotation parameters
-    cn += `<div title="Fx${inst.fx}: ${inst.start}-${inst.stop} (${inst.mi} ${inst.rev} ${inst.rev2D} ${inst.rot2D})" class="seg">
+		//WLEDSR: add tooltip (title) and add reverse direction X / Y and rotation parameters and add onFocus/onBlur
+    cn += `<div title="Fx${inst.fx}: ${inst.start}-${inst.stop} (${inst.mi} ${inst.rev} ${inst.rev2D} ${inst.rot2D})" class="seg ${i==s.mainseg ? 'selected' : ''}">
       <label class="check schkl">
         &nbsp;
         <input type="checkbox" id="seg${i}sel" onchange="selSeg(${i})" ${inst.sel ? "checked":""}>
         <span class="checkmark schk"></span>
       </label>
+			<i class="icons e-icon frz" id="seg${i}frz" onclick="event.preventDefault();tglFreeze(${i});" style="display:${inst.frz?"inline":"none"}">&#x${li.live && li.liveseg==i?'e410':'e325'};</i>
       <div class="segname">
         <div class="segntxt" onclick="selSegEx(${i})">${inst.n ? inst.n : "Segment "+i}</div>
         <i class="icons edit-icon ${expanded[i] ? "expanded":""}" id="seg${i}nedit" onclick="tglSegn(${i})">&#xe2c6;</i>
       </div>
       <i class="icons e-icon flr ${expanded[i] ? "exp":""}" id="sege${i}" onclick="expand(${i})">&#xe395;</i>
       <div class="segin ${expanded[i] ? "expanded":""}" id="seg${i}">
-        <input type="text" class="ptxt stxt noslide" id="seg${i}t" autocomplete="off" maxlength=32 value="${inst.n?inst.n:""}" placeholder="Enter name..."/>
+        <input type="text" class="ptxt stxt noslide" id="seg${i}t" autocomplete="off" maxlength=32 value="${inst.n?inst.n:""}" placeholder="Enter name..." onfocus="focusOn('name')" onblur="focusOff('name')"/>
         <div class="sbs">
         <i class="icons e-icon pwr ${powered[i] ? "act":""}" id="seg${i}pwr" onclick="setSegPwr(${i})">&#xe08f;</i>
         <div class="sliderwrap il sws">
@@ -607,9 +650,9 @@ function populateSegments(s)
             <td class="segtd">Offset</td>
           </tr>
           <tr>
-            <td class="segtd"><input class="noslide segn" id="seg${i}s" type="number" min="0" max="${ledCount-1}" value="${inst.start}" oninput="updateLen(${i})" onkeydown="segEnter(${i})"></td>
-            <td class="segtd"><input class="noslide segn" id="seg${i}e" type="number" min="0" max="${ledCount-(cfg.comp.seglen?inst.start:0)}" value="${inst.stop-(cfg.comp.seglen?inst.start:0)}" oninput="updateLen(${i})" onkeydown="segEnter(${i})"></td>
-            <td class="segtd"><input class="noslide segn" id="seg${i}of" type="number" value="${inst.of}" oninput="updateLen(${i})"></td>
+            <td class="segtd"><input class="noslide segn" id="seg${i}s" type="number" min="0" max="${ledCount-1}" value="${inst.start}" oninput="updateLen(${i})" onkeydown="segEnter(${i})" onfocus="focusOn(${i})" onblur="focusOff(${i})"></td>
+            <td class="segtd"><input class="noslide segn" id="seg${i}e" type="number" min="0" max="${ledCount-(cfg.comp.seglen?inst.start:0)}" value="${inst.stop-(cfg.comp.seglen?inst.start:0)}" oninput="updateLen(${i})" onkeydown="segEnter(${i})" onfocus="focusOn(${i})" onblur="focusOff(${i})"></td>
+            <td class="segtd"><input class="noslide segn" id="seg${i}of" type="number" value="${inst.of}" oninput="updateLen(${i})" onfocus="focusOn(${i})" onblur="focusOff(${i})"></td>
           </tr>
         </table>
         <table class="infot">
@@ -619,8 +662,8 @@ function populateSegments(s)
             <td class="segtd">Apply</td>
           </tr>
           <tr>
-            <td class="segtd"><input class="noslide segn" id="seg${i}grp" type="number" min="1" max="255" value="${inst.grp}" oninput="updateLen(${i})" onkeydown="segEnter(${i})"></td>
-            <td class="segtd"><input class="noslide segn" id="seg${i}spc" type="number" min="0" max="255" value="${inst.spc}" oninput="updateLen(${i})" onkeydown="segEnter(${i})"></td>
+            <td class="segtd"><input class="noslide segn" id="seg${i}grp" type="number" min="1" max="255" value="${inst.grp}" oninput="updateLen(${i})" onkeydown="segEnter(${i})" onfocus="focusOn(${i})" onblur="focusOff(${i})"></td>
+            <td class="segtd"><input class="noslide segn" id="seg${i}spc" type="number" min="0" max="255" value="${inst.spc}" oninput="updateLen(${i})" onkeydown="segEnter(${i})" onfocus="focusOn(${i})" onblur="focusOff(${i})"></td>
             <td class="segtd"><i class="icons e-icon cnf" id="segc${i}" onclick="setSeg(${i})">&#xe390;</i></td>
           </tr>
         </table>
@@ -669,10 +712,13 @@ function populateSegments(s)
     noNewSegs = false;
   }
   for (var i = 0; i <= lSeg; i++) {
-  updateLen(i);
-  updateTrail(d.getElementById(`seg${i}bri`));
+		updateLen(i);
+		updateTrail(d.getElementById(`seg${i}bri`));
+		let segr = d.getElementById(`segr${i}`);
+		if (segr) segr.style.display = "none";
+	}
   if (segCount < 2) d.getElementById(`segd${lSeg}`).style.display = "none";
-  }
+  if (!noNewSegs && (cfg.comp.seglen?parseInt(d.getElementById(`seg${lSeg}s`).value):0)+parseInt(d.getElementById(`seg${lSeg}e`).value)<ledCount) d.getElementById(`segr${lSeg}`).style.display = "inline";
   d.getElementById('rsbtn').style.display = (segCount > 1) ? "inline":"none";
 }
 
@@ -697,9 +743,9 @@ function populateEffects(effects)
     // WLEDSR: add slider and color control to setX (used by requestjson)
     if (effects[i].name.indexOf("Reserved") < 0) {
       var posAt = effects[i].name.indexOf("@");
-      var extra = '';
+      var effectPar = '';
       if (posAt > 0)
-        extra = effects[i].name.substr(posAt);
+        effectPar = effects[i].name.substr(posAt);
       else
         posAt = 999;
       html += generateListItemHtml(
@@ -709,7 +755,7 @@ function populateEffects(effects)
         'setX',
         '',
         effects[i].class,
-        extra
+        effectPar
       );
     }
   }
@@ -814,10 +860,10 @@ function genPalPrevCss(id)
   return `background: linear-gradient(to right,${gradient.join()});`;
 }
 
-// WLEDSR: add extraPar for slider and color control
-function generateListItemHtml(listName, id, name, clickAction, extraHtml = '', extraClass = '', extraPar = '')
+// WLEDSR: add effectPar for slider and color control, add name to onClick
+function generateListItemHtml(listName, id, name, clickAction, extraHtml = '', extraClass = '', effectPar = '')
 {
-    return `<div id="${listName}${id}" class="lstI btn fxbtn ${extraClass}" data-id="${id}" onClick="${clickAction}(${id}, '${extraPar}')">
+  return `<div id="${listName}${id}" class="lstI btn fxbtn ${extraClass}" data-id="${id}" onClick="${clickAction}(${id}, '${name}', '${effectPar}')">
       <label class="radio fxchkl">
         <input type="radio" value="${id}" name="${listName}">
         <span class="radiomark"></span>
@@ -922,16 +968,16 @@ function toggleBubble(e)
 //updates segment length upon input of segment values
 function updateLen(s)
 {
-  if (!d.getElementById(`seg${s}s`)) return;
-  var start = parseInt(d.getElementById(`seg${s}s`).value);
-  var stop	= parseInt(d.getElementById(`seg${s}e`).value);
-  var len = stop - (cfg.comp.seglen?0:start);
-  var out = "(delete)";
-  if (len > 1) {
-    out = `${len} LEDs`;
-  } else if (len == 1) {
-    out = "1 LED";
-  }
+	if (!d.getElementById(`seg${s}s`)) return;
+	var start = parseInt(d.getElementById(`seg${s}s`).value);
+	var stop  = parseInt(d.getElementById(`seg${s}e`).value);
+	var len = stop - (cfg.comp.seglen?0:start);
+	var out = "(delete)";
+	if (len > 1) {
+		out = `${len} LEDs`;
+	} else if (len == 1) {
+		out = "1 LED";
+	}
 
   if (d.getElementById(`seg${s}grp`) != null)
   {
@@ -943,6 +989,14 @@ function updateLen(s)
   }
 
   d.getElementById(`seg${s}len`).innerHTML = out;
+}
+
+//WLEDSR: do not (re)populateSegment if editing segment
+function focusOn(name) {
+  isInInputField = true;
+}
+function focusOff(name) {
+  isInInputField = false;
 }
 
 // updates background color of currently selected preset
@@ -972,7 +1026,12 @@ function updateUI()
   d.getElementById('buttonNl').className = (nlA) ? "active":"";
   d.getElementById('buttonSync').className = (syncSend) ? "active":"";
 
+  //WLEDSR Blazoncek default slider values
+  updateSelectedPalette();
+  updateSelectedFx();
+
   updateTrail(d.getElementById('sliderBri'));
+  updateTrail(d.getElementById('sliderInputLevel')); //WLEDSR
   updateTrail(d.getElementById('sliderSpeed'));
   updateTrail(d.getElementById('sliderIntensity'));
   updateTrail(d.getElementById('sliderCustom1'));
@@ -992,12 +1051,64 @@ function updateUI()
 	updatePSliders();
 }
 
+//WLEDSR Blazoncek default slider values
+function updateSelectedPalette()
+{
+  // Palettes
+  pallist.querySelector(`input[name="palette"][value="${selectedPal}"]`).checked = true;
+  selElement = pallist.querySelector('.selected');
+  if (selElement) {
+    selElement.classList.remove('selected')
+  }
+  pallist.querySelector(`.lstI[data-id="${selectedPal}"]`).classList.add('selected');
+
+}
+
+//WLEDSR Blazoncek default slider values
+function updateSelectedFx()
+{
+  // Effects
+  var selFx = fxlist.querySelector(`input[name="fx"][value="${selectedFx}"]`);
+  if (selFx) selFx.checked = true;
+  else location.reload(); // effect list is gone (e.g. if restoring tab). Reload.
+
+  var selElement = fxlist.querySelector('.selected');
+  if (selElement) {
+    selElement.classList.remove('selected')
+  }
+  var selectedEffect = fxlist.querySelector(`.lstI[data-id="${selectedFx}"]`);
+
+  if (selectedEffect) {
+    selectedEffect.classList.add('selected');
+
+    //Blazoncek default value
+    var fx = (selectedFx != prevFx) && currentPreset==-1; // effect changed & preset==none
+		var ps = (prevPS != currentPreset) && currentPreset==-1; // preset changed & preset==none
+
+    // WLEDSR: extract the Slider and color control string from the HTML element and set it.
+    sliderControl = selectedEffect.outerHTML.replace(/&amp;/g, "&");
+    var posAt = sliderControl.indexOf("@");
+    if (posAt > 0) {
+      selectedEffectNameHTML = sliderControl.substring(0, posAt);
+      sliderControl = sliderControl.substring(posAt);
+      var posAt = sliderControl.indexOf(')"');
+      sliderControl = sliderControl.substring(0,posAt-1);
+    }
+    else {
+      selectedEffectNameHTML = "";
+      sliderControl = "";
+    }
+
+    setEffectParameters(selectedFx, selectedEffectNameHTML, sliderControl, (fx || ps));
+  }
+}
+
 function displayRover(i,s)
 {
-  d.getElementById('rover').style.transform = (i.live && s.lor == 0) ? "translateY(0px)":"translateY(100%)";
-  var sour = i.lip ? i.lip:""; if (sour.length > 2) sour = " from " + sour;
-  d.getElementById('lv').innerHTML = `WLED is receiving live ${i.lm} data${sour}`;
-  d.getElementById('roverstar').style.display = (i.live && s.lor) ? "block":"none";
+	d.getElementById('rover').style.transform = (i.live && s.lor == 0 && i.liveseg<0) ? "translateY(0px)":"translateY(100%)";
+	var sour = i.lip ? i.lip:""; if (sour.length > 2) sour = " from " + sour;
+	d.getElementById('lv').innerHTML = `WLED is receiving live ${i.lm} data${sour}`;
+	d.getElementById('roverstar').style.display = (i.live && s.lor) ? "block":"none";
 }
 
 function compare(a, b) {
@@ -1059,16 +1170,19 @@ function makeWS() {
 function readState(s,command=false) {
   isOn = s.on;
   d.getElementById('sliderBri').value= s.bri;
+  d.getElementById('sliderInputLevel').value= s.inputLevel; //WLEDSR
   nlA = s.nl.on;
   nlDur = s.nl.dur;
   nlTar = s.nl.tbri;
   nlMode = s.nl.mode;
   syncSend = s.udpn.send;
+  prevPS = currentPreset; //WLEDSR Blazoncek default slider values
   currentPreset = s.ps;
   tr = s.transition;
   d.getElementById('tt').value = tr/10;
 
-  populateSegments(s);
+  if (!isInInputField) //WLEDSR: do not (re)populateSegment if editing segment
+    populateSegments(s);
   var selc=0;
   var sellvl=0; // 0: selc is invalid, 1: selc is mainseg, 2: selc is first selected
   hasRGB = hasWhite = hasCCT = false;
@@ -1115,48 +1229,13 @@ function readState(s,command=false) {
   d.getElementById('sliderCustom2').value  = i.c2x;
   d.getElementById('sliderCustom3').value  = i.c3x;
 
-  // Effects
-  var selFx = fxlist.querySelector(`input[name="fx"][value="${i.fx}"]`);
-  if (selFx) selFx.checked = true;
-  else location.reload(); // effect list is gone (e.g. if restoring tab). Reload.
-
-  var selElement = fxlist.querySelector('.selected');
-  if (selElement) {
-    selElement.classList.remove('selected')
-  }
-  var selectedEffect = fxlist.querySelector(`.lstI[data-id="${i.fx}"]`);
-  selectedEffect.classList.add('selected');
-  selectedFx = i.fx;
-
-  // WLEDSR: extract the Slider and color control string from the HTML element and set it.
-  sliderControl = selectedEffect.outerHTML.replace(/&amp;/g, "&");
-  var posAt = sliderControl.indexOf("@");
-  if (posAt > 0) {
-    sliderControl = sliderControl.substring(posAt);
-    var posAt = sliderControl.indexOf(')"');
-    sliderControl = sliderControl.substring(0,posAt-1);
-  }
-  else {
-    sliderControl = "";
-  }
-
-  setSliderAndColorControl(selectedFx, sliderControl);
-
-
-  // Palettes
-  pallist.querySelector(`input[name="palette"][value="${i.pal}"]`).checked = true;
-  selElement = pallist.querySelector('.selected');
-  if (selElement) {
-    selElement.classList.remove('selected')
-  }
-  pallist.querySelector(`.lstI[data-id="${i.pal}"]`).classList.add('selected');
-
-  if (!command) {
-    selectedEffect.scrollIntoView({
-      behavior: 'smooth',
-      block: 'nearest',
-    });
-  }
+  //WLEDSR Blazoncek default slider values
+  // if (!command) {
+  //   selectedEffect.scrollIntoView({
+  //     behavior: 'smooth',
+  //     block: 'nearest',
+  //   });
+  // }
 
   if (s.error && s.error != 0) {
     var errstr = "";
@@ -1176,21 +1255,27 @@ function readState(s,command=false) {
       }
     showToast('Error ' + s.error + ": " + errstr, true);
   }
+
+  //WLEDSR Blazoncek default slider values
+  prevFx = selectedFx;
+  selectedPal = i.pal;
+  selectedFx = i.fx;
   updateUI();
 }
 
 // WLEDSR: control HTML elements for Slider and Color Control
-function setSliderAndColorControl(idx, extra) {
+function setEffectParameters(idx, name, effectPar, applyDef=false) {
   var topPosition = 0;
 
   var pcmode = localStorage.getItem('pcm') == "true";
 
-  var controlDefined = (extra.substr(0,1) == "@")?true:false;
-  extra = extra.substr(1);
-  var extras = (extra == '')?[]:extra.split(";");
-  var slidersOnOff = (extras.length==0 || extras[0] == '')?[]:extras[0].split(",");
-  var colorsOnOff  = (extras.length<2  || extras[1] == '')?[]:extras[1].split(",");
-  var paletteOnOff = (extras.length<3  || extras[2] == '')?[]:extras[2].split(",");
+  var controlDefined = (effectPar.substr(0,1) == "@")?true:false;
+  effectPar = effectPar.substr(1);
+  var effectPars = (effectPar == '')?[]:effectPar.split(";");
+  var slidersOnOff = (effectPars.length==0 || effectPars[0] == '')?[]:effectPars[0].split(",");
+  var colorsOnOff  = (effectPars.length<2  || effectPars[1] == '')?[]:effectPars[1].split(",");
+  var paletteOnOff = (effectPars.length<3  || effectPars[2] == '')?[]:effectPars[2].split(",");
+  var obj = {"seg":{}};
 
   // set html slider items on/off
   for (let i=0; i<5; i++) {
@@ -1199,6 +1284,18 @@ function setSliderAndColorControl(idx, extra) {
     // if (not controlDefined and for AC speed or intensity and for SR alle sliders) or slider has a value
     if ((!controlDefined && i < ((idx<128)?2:5)) || (slidersOnOff.length>i && slidersOnOff[i] != "")) {
       label.style.display = "block";
+
+      //WLEDSR Blazoncek default slider values
+      if (slidersOnOff.length>i && slidersOnOff[i].indexOf("=")>0) {
+				// embeded default values
+				var dPos = slidersOnOff[i].indexOf("=");
+				var v = Math.max(0,Math.min(255,parseInt(slidersOnOff[i].substr(dPos+1))));
+				if      (i==0) { if (applyDef) d.getElementById("sliderSpeed").value     = v; obj.seg.sx = v; }
+				else if (i==1) { if (applyDef) d.getElementById("sliderIntensity").value = v; obj.seg.ix = v; }
+				else           { if (applyDef) d.getElementById("sliderCustom"+(i-1)).value   = v; obj.seg["c"+(i-1)+"x"] = v}
+				slidersOnOff[i] = slidersOnOff[i].substring(0,dPos); //remove the default value
+			}
+
       if (slidersOnOff.length>i && slidersOnOff[i] != "!")
         label.innerHTML = slidersOnOff[i];
       else if (i==0) label.innerHTML = "Effect speed";
@@ -1299,20 +1396,69 @@ function setSliderAndColorControl(idx, extra) {
   // var selectPalette = d.getElementById("selectPalette");
   var pallabel = d.getElementById("paletteLabel");
   // if not controlDefined or palette has a value
-  if ((!controlDefined) || (paletteOnOff.length>0 && paletteOnOff[0] != "")) {
+  if ((!controlDefined) || (paletteOnOff.length>0 && paletteOnOff[0] != "" && isNaN(paletteOnOff[0]))) {
     pallist.style.display = "block";
 
     pallabel.style.display = "block";
+
+    //WLEDSR Blazoncek default slider values
+    if (paletteOnOff.length>0 && paletteOnOff[0].indexOf("=")>0) {
+			// embeded default values
+			var dPos = paletteOnOff[0].indexOf("=");
+			var v = Math.max(0,Math.min(255,parseInt(paletteOnOff[0].substr(dPos+1))));
+			var p = d.querySelector(`#pallist input[name="palette"][value="${v}"]`);
+			if (applyDef && p) {
+				p.checked = true;
+				obj.seg.pal = v;
+			}
+			paletteOnOff[0] = paletteOnOff[0].substring(0,dPos);
+		}
+
     if (paletteOnOff.length>0 && paletteOnOff[0] != "!")
-    pallabel.innerHTML = paletteOnOff[0];
-    else pallabel.innerHTML = "Color palette";
+      pallabel.innerHTML = paletteOnOff[0];
+    else
+      pallabel.innerHTML = "Color palette";
   }
   else {
     // disable label and slider
     pallist.style.display = "none";
     pallabel.style.display = "none";
+
+    //WLEDSR Blazoncek default slider values
+    if (paletteOnOff.length>0 && paletteOnOff[0]!="" && !isNaN(paletteOnOff[0]) && parseInt(paletteOnOff[0])!=selectedPal) obj.seg.pal = parseInt(paletteOnOff[0]);
   }
-} //setSliderAndColorControl
+
+  // console.log("setSlider InputLevel s:"); //WLEDSR inputLevel slider debug...
+  // console.log(name);
+  // console.log(s);
+  // console.log(lastinfo);
+
+  //WLEDSR enable/disable show/hide inputlever slider
+  if (name.includes('♪') || name.includes('♫')) { //SR effect
+    d.getElementById('divInputLevel').style.display = "inline-block"; //see .il in css
+
+    // agc on and agc supported effect (commented for the time being as userLoop will update inputLevel directly in this situation)
+    // would like to make the slider circle red if agc is on but did not manage to do that yet
+    // if (lastinfo.soundAgc) {
+    //   // d.getElementById('sliderInputLevel').disabled = true;
+    //   d.getElementById('sliderInputLevel').style.background = 'red';
+    //   // d.getElementById('sliderInputLevel').parentNode.getElementsByClassName('sliderdisplay')[0].style.color = 'green';
+    // }
+    // else {
+    //   // d.getElementById('sliderInputLevel').disabled = false;
+    //   d.getElementById('sliderInputLevel').style.background = 'white';
+    //   // d.getElementById('sliderInputLevel').parentNode.getElementsByClassName('sliderdisplay')[0].style.color = 'blue';
+    // }
+  }
+  else {
+    d.getElementById('divInputLevel').style.display = "none";
+  }
+
+  // WLEDSR Blazoncek default slider values
+	if (!isEmpty(obj.seg) && applyDef) requestJson(obj); // update default values (may need throttling on ESP8266)
+
+  // console.log(name, name.substr(2,2), d.getElementById('sliderInputLevel').parentNode.getElementsByClassName('sliderdisplay')[0]);
+} //setEffectParameters
 
 var jsonTimeout;
 var reqsLegal = false;
@@ -1331,18 +1477,18 @@ function requestJson(command, rinfo = true) {
 
 	var useWs = ((command || rinfo) && ws && ws.readyState === WebSocket.OPEN);
 
-  var type = command ? 'post':'get';
-  if (command)
-  {
-    command.v = true; // get complete API response
-    command.time = Math.floor(Date.now() / 1000);
-    var t = d.getElementById('tt');
-    if (t.validity.valid && command.transition===undefined) {
-      var tn = parseInt(t.value*10);
-      if (tn != tr) command.transition = tn;
-    }
+	var type = command ? 'post':'get';
+	if (command)
+	{
+		command.v = true; //get complete API response
+		command.time = Math.floor(Date.now() / 1000);
+		var t = d.getElementById('tt');
+		if (t.validity.valid && command.transition===undefined) {
+			var tn = parseInt(t.value*10);
+			if (tn != tr) command.transition = tn;
+		}
 		req = JSON.stringify(command);
-    if (req.length > 1000) useWs = false; // do not send very long requests over websocket
+		if (req.length > 1000) useWs = false; //do not send very long requests over websocket
 	}
 
 	if (useWs) {
@@ -1377,7 +1523,6 @@ function requestJson(command, rinfo = true) {
 		}
 		var s = json;
 		if (reqsLegal && !ws) reconnectWS();
-
 		if (!command || rinfo) { //we have info object
 			if (!rinfo) { //entire JSON (on load)
 				populateEffects(json.effects);
@@ -1391,7 +1536,6 @@ function requestJson(command, rinfo = true) {
 						});
 					});
 				},25);
-
 				reqsLegal = true;
 			}
 
@@ -1464,11 +1608,28 @@ function toggleSync() {
 }
 
 function toggleLiveview() {
+  //WLEDSR adding liveview2D support
+	if (isInfo) toggleInfo();
+	if (isNodes) toggleNodes();
+
 	isLv = !isLv;
-	d.getElementById('liveview').style.display = (isLv) ? "block":"none";
-	var url = loc ? `http://${locip}/liveview`:"/liveview";
-	d.getElementById('liveview').src = (isLv) ? url:"about:blank";
-	d.getElementById('buttonSr').className = (isLv) ? "active":"";
+
+	var lvID = "liveview";
+  var isM = true; //tbd: check if matrix, now always assumed
+	if (isM) { 
+		lvID = "liveview2D"
+		if (isLv) {
+			var cn = '<iframe id="liveview2D" src="about:blank"></iframe>';
+			d.getElementById('kliveview2D').innerHTML = cn;
+		}
+
+		gId('mliveview2D').style.transform = (isLv) ? "translateY(0px)":"translateY(100%)";
+	}
+
+	gId(lvID).style.display = (isLv) ? "block":"none";
+	var url = (loc?`http://${locip}`:'') + "/" + lvID;
+	gId(lvID).src = (isLv) ? url:"about:blank";
+	gId('buttonSr').className = (isLv) ? "active":"";
 	if (!isLv && ws && ws.readyState === WebSocket.OPEN) ws.send('{"lv":false}');
 	size();
 }
@@ -1476,6 +1637,7 @@ function toggleLiveview() {
 function toggleInfo() {
   if (isNodes) toggleNodes();
   if (isCEEditor) toggleCEEditor();// WLEDSR Custom Effects
+	if (isLv) toggleLiveview();
   isInfo = !isInfo;
   if (isInfo) populateInfo(lastinfo);
   d.getElementById('info').style.transform = (isInfo) ? "translateY(0px)":"translateY(100%)";
@@ -1485,6 +1647,7 @@ function toggleInfo() {
 function toggleNodes() {
   if (isInfo) toggleInfo();
   if (isCEEditor) toggleCEEditor();// WLEDSR Custom Effects
+	if (isLv) toggleLiveview();
   isNodes = !isNodes;
   d.getElementById('nodes').style.transform = (isNodes) ? "translateY(0px)":"translateY(100%)";
   d.getElementById('buttonNodes').className = (isNodes) ? "active":"";
@@ -1722,7 +1885,6 @@ function makePlUtil() {
 		New playlist</div>
 	<div class="segin expanded" id="seg100">
 	${makeP(0,true)}</div></div>`;
-
 	refreshPlE(0);
 }
 
@@ -1759,6 +1921,29 @@ function selSeg(s){
   var sel = d.getElementById(`seg${s}sel`).checked;
   var obj = {"seg": {"id": s, "sel": sel}};
   requestJson(obj, false);
+}
+
+function rptSeg(s)
+{
+	var name = d.getElementById(`seg${s}t`).value;
+	var start = parseInt(d.getElementById(`seg${s}s`).value);
+	var stop = parseInt(d.getElementById(`seg${s}e`).value);
+	if (stop == 0) return;
+	var rev = d.getElementById(`seg${s}rev`).checked;
+	var mi = d.getElementById(`seg${s}mi`).checked;
+	var sel = d.getElementById(`seg${s}sel`).checked;
+	var obj = {"seg": {"id": s, "n": name, "start": start, "stop": (cfg.comp.seglen?start:0)+stop, "rev": rev, "mi": mi, "on": powered[s], "bri": parseInt(d.getElementById(`seg${s}bri`).value), "sel": sel}};
+	if (d.getElementById(`seg${s}grp`)) {
+		var grp = parseInt(d.getElementById(`seg${s}grp`).value);
+		var spc = parseInt(d.getElementById(`seg${s}spc`).value);
+		var ofs = parseInt(d.getElementById(`seg${s}of` ).value);
+		obj.seg.grp = grp;
+		obj.seg.spc = spc;
+		obj.seg.of  = ofs;
+	}
+	obj.seg.rpt = true;
+	expand(s);
+	requestJson(obj);
 }
 
 function rptSeg(s)
@@ -1850,12 +2035,16 @@ function setSegBri(s){
 function tglFreeze(s=null)
 {
 	var obj = {"seg": {"frz": "t"}}; // toggle
-	if (s!==null) obj.id = s;
+	if (s!==null) {
+		obj.seg.id = s;
+		// if live segment, enter live override (which also unfreezes)
+		if (lastinfo && s==lastinfo.liveseg && lastinfo.live) obj = {"lor":1};
+	}
 	requestJson(obj);
 }
 
-// WLEDSR: add extra parameter for slider and color control
-function setX(ind = null, extra) {
+// WLEDSR: add name and effectPar parameter for slider and color control
+function setX(ind = null, name, effectPar) {
   if (ind === null) {
     ind = parseInt(d.querySelector('#fxlist input[name="fx"]:checked').value);
   } else {
@@ -1871,8 +2060,8 @@ function setX(ind = null, extra) {
   requestJson(obj);
 }
 
-// WLEDSR: parameter extra added, used by generateListItemHtml (for setX)
-function setPalette(paletteId = null, extra)
+// WLEDSR: parameter effectPar added, used by generateListItemHtml (for setX)
+function setPalette(paletteId = null, effectPar)
 {
   if (paletteId === null) {
     paletteId = parseInt(d.querySelector('#pallist input[name="palette"]:checked').value);
@@ -1890,6 +2079,12 @@ function setPalette(paletteId = null, extra)
 
 function setBri() {
   var obj = {"bri": parseInt(d.getElementById('sliderBri').value)};
+  requestJson(obj);
+}
+
+//WLEDSR
+function setInputLevel() {
+  var obj = {"inputLevel": parseInt(d.getElementById('sliderInputLevel').value)};
   requestJson(obj);
 }
 
@@ -2216,31 +2411,36 @@ function updatePSliders() {
 	s = d.getElementById('sliderB');
 	s.value = col.b; updateTrail(s,3);
 
-  // update hex field
+	//update hex field
 	var str = cpick.color.hexString.substring(1);
 	var w = whites[csel];
 	if (w > 0) str += w.toString(16);
 	d.getElementById('hexc').value = str;
 	d.getElementById('hexcnf').style.backgroundColor = "var(--c-3)";
 
-	// update value slider
-  var v = d.getElementById('sliderV');
-  v.value = cpick.color.value;
-	// background color as if color had full value
-  var hsv = {"h":cpick.color.hue,"s":cpick.color.saturation,"v":100};
-  var c = iro.Color.hsvToRgb(hsv);
-  var cs = 'rgb('+c.r+','+c.g+','+c.b+')';
-  v.parentNode.getElementsByClassName('sliderdisplay')[0].style.setProperty('--bg',cs);
-  updateTrail(v);
+	//update value slider
+	var v = d.getElementById('sliderV');
+	v.value = cpick.color.value;
+	//background color as if color had full value
+	var hsv = {"h":cpick.color.hue,"s":cpick.color.saturation,"v":100};
+	var c = iro.Color.hsvToRgb(hsv);
+	var cs = 'rgb('+c.r+','+c.g+','+c.b+')';
+	v.parentNode.getElementsByClassName('sliderdisplay')[0].style.setProperty('--bg',cs);
+	updateTrail(v);
 
 	// update Kelvin slider
-  d.getElementById('sliderK').value = cpick.color.kelvin;
+	d.getElementById('sliderK').value = cpick.color.kelvin;
 }
 
 // Fired when a key is pressed while in the HEX color input
 function hexEnter() {
   d.getElementById('hexcnf').style.backgroundColor = "var(--c-6)";
   if(event.keyCode == 13) fromHex();
+}
+
+// Fired when a key is pressed while in a segment input
+function segEnter(s) {
+	if(event.keyCode == 13) setSeg(s);
 }
 
 // Fired when a key is pressed while in a segment input
@@ -2490,6 +2690,7 @@ function expand(i,a)
 
 function unfocusSliders() {
   d.getElementById("sliderBri").blur();
+  d.getElementById("sliderInputLevel").blur(); //WLEDSR
   d.getElementById("sliderSpeed").blur();
   d.getElementById("sliderIntensity").blur();
   d.getElementById("sliderCustom1").blur();
@@ -2577,7 +2778,10 @@ function togglePcMode(fromB = false)
   sCol('--bh', d.getElementById('bot').clientHeight + "px");
   _C.style.width = (pcMode)?'100%':'400%';
   lastw = w;
-  if (selectedFx != -1) setSliderAndColorControl(selectedFx, sliderControl); // WLEDSR: to setSliderAndColorControl depending on pcmode
+
+  //WLEDSR Blazoncek default slider values
+  //looks like not needed anymore:
+  // if (selectedFx != -1) setEffectParameters(selectedFx, selectedEffectNameHTML, sliderControl); // WLEDSR: to setEffectParameters depending on pcmode
 }
 
 function isObject(item) {

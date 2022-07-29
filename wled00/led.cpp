@@ -92,6 +92,9 @@ void applyBri() {
 
 //applies global brightness and sets it as the "current" brightness (no transition)
 void applyFinalBri() {
+#ifdef USERMOD_AUTO_SAVE                  //WLEDSR - make autosave mod happy. A bit dangerous, as it may trigger unnecessary WS broadcasts (and other notificatios) 
+  if (briOld != bri) stateChanged = true; //WLEDSR temporary fix, until solved in upstream
+#endif
   briOld = bri;
   briT = bri;
   applyBri();
@@ -106,7 +109,6 @@ void stateUpdated(byte callMode) {
   setValuesFromFirstSelectedSeg();
 
   if (bri != briOld || stateChanged) {
-    if (realtimeTimeout == UINT32_MAX) realtimeTimeout = 0;
     if (stateChanged) currentPreset = 0; //something changed, so we are no longer in the preset
 
     if (callMode != CALL_MODE_NOTIFICATION && callMode != CALL_MODE_NO_NOTIFY) notify(callMode);
@@ -134,7 +136,6 @@ void stateUpdated(byte callMode) {
 
   //deactivate nightlight if target brightness is reached
   if (bri == nightlightTargetBri && callMode != CALL_MODE_NO_NOTIFY && nightlightMode != NL_MODE_SUN) nightlightActive = false;
-
   if (fadeTransition) {
     //set correct delay if not using notification delay
     if (callMode != CALL_MODE_NOTIFICATION && !jsonTransitionOnce) transitionDelayTemp = transitionDelay;
@@ -166,7 +167,6 @@ void updateInterfaces(uint8_t callMode)
   sendDataWs();
   lastInterfaceUpdate = millis();
   if (callMode == CALL_MODE_WS_SEND) return;
-
   #ifndef WLED_DISABLE_ALEXA
   if (espalexaDevice != nullptr && callMode != CALL_MODE_ALEXA) {
     espalexaDevice->setValue(bri);
@@ -205,7 +205,6 @@ void handleTransitions()
     if (tper - tperLast < 0.004) return;
     tperLast = tper;
     briT    = briOld   +((bri    - briOld   )*tper);
-
     applyBri();
   }
 }
