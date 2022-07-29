@@ -240,7 +240,7 @@ void userLoop() {
             }
             sampleAgc = receivedPacket.sampleAgc;
             rawSampleAgc = receivedPacket.sampleAgc;
-            sample = receivedPacket.sample;
+            sampleRaw = receivedPacket.sampleRaw;
             sampleAvg = receivedPacket.sampleAvg;
 
             // auto-reset sample peak. Need to do it here, because getSample() is not running

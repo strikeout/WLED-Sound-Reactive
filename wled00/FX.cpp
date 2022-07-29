@@ -4264,7 +4264,7 @@ uint16_t WS2812FX::mode_aurora(void) {
 
 
 // Sound reactive external variables.
-extern int sample;
+extern int sampleRaw;
 extern float sampleAvg;
 extern bool samplePeak;
 extern uint8_t myVals[32];
@@ -5459,7 +5459,7 @@ uint16_t WS2812FX::mode_2DSwirl(void) {             // By: Mark Kriegsman https:
   uint8_t nj = (SEGMENT.width - 1) - j;
   uint16_t ms = millis();
 
-  int tmpSound = (soundAgc) ? rawSampleAgc : sample;
+  int tmpSound = (soundAgc) ? rawSampleAgc : sampleRaw;
 
   leds[XY( i, j)]  += ColorFromPalette(currentPalette, (ms / 11 + sampleAvg*4), tmpSound * SEGMENT.intensity / 64, LINEARBLEND); //CHSV( ms / 11, 200, 255);
   leds[XY( j, i)]  += ColorFromPalette(currentPalette, (ms / 13 + sampleAvg*4), tmpSound * SEGMENT.intensity / 64, LINEARBLEND); //CHSV( ms / 13, 200, 255);
@@ -5739,7 +5739,7 @@ uint16_t WS2812FX::mode_matripix(void) {                  // Matripix. By Andrew
   uint8_t secondHand = micros()/(256-SEGMENT.speed)/500 % 16;
   if(SEGENV.aux0 != secondHand) {
     SEGENV.aux0 = secondHand;
-    uint8_t tmpSound = (soundAgc) ? rawSampleAgc : sample;
+    uint8_t tmpSound = (soundAgc) ? rawSampleAgc : sampleRaw;
     int pixBri = tmpSound * SEGMENT.intensity / 64;
     leds[segmentToLogical(SEGLEN-1)] = color_blend(SEGCOLOR(1), color_from_palette(millis(), false, PALETTE_SOLID_WRAP, 0), pixBri);
     for (int i=0; i<SEGLEN-1; i++) leds[segmentToLogical(i)] = leds[segmentToLogical(i+1)];
@@ -5817,7 +5817,7 @@ uint16_t WS2812FX::mode_noisemeter(void) {                // Noisemeter. By Andr
   uint8_t fadeRate = map(SEGMENT.speed,0,255,224,255);
   fade_out(fadeRate);
 
-  float tmpSound = (soundAgc) ? rawSampleAgc : sample;
+  float tmpSound = (soundAgc) ? rawSampleAgc : sampleRaw;
   float tmpSound2 = tmpSound * 2.0 * (float)SEGMENT.intensity / 255.0;
   int maxLen = mapf(tmpSound2, 0, 255, 0, SEGLEN); // map to pixels availeable in current segment              // Still a bit too sensitive.
   if (maxLen >SEGLEN) maxLen = SEGLEN;
@@ -5864,7 +5864,7 @@ uint16_t WS2812FX::mode_pixelwave(void) {                 // Pixelwave. By Andre
   if(SEGENV.aux0 != secondHand) {
     SEGENV.aux0 = secondHand;
 
-    uint8_t tmpSound = (soundAgc) ? rawSampleAgc : sample;
+    uint8_t tmpSound = (soundAgc) ? rawSampleAgc : sampleRaw;
     int pixBri = tmpSound * SEGMENT.intensity / 64;
     leds[segmentToLogical(SEGLEN/2)] = color_blend(SEGCOLOR(1), color_from_palette(millis(), false, PALETTE_SOLID_WRAP, 0), pixBri);
 
@@ -5961,7 +5961,7 @@ uint16_t WS2812FX::mode_puddles(void) {                   // Puddles. By Andrew 
 
   fade_out(fadeVal);
 
-  float tmpSound = (soundAgc) ? rawSampleAgc : sample;
+  float tmpSound = (soundAgc) ? rawSampleAgc : sampleRaw;
 
   if (tmpSound>1 ) {
     size = tmpSound * SEGMENT.intensity /256 /8 + 1;        // Determine size of the flash based on the volume.

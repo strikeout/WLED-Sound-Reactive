@@ -109,7 +109,7 @@ bool samplePeak = 0;                            // Boolean flag for peak. Respon
 bool udpSamplePeak = 0;                         // Boolean flag for peak. Set at the same tiem as samplePeak, but reset by transmitAudioData
 constexpr int delayMs = 10;                     // I don't want to sample too often and overload WLED
 static int micIn = 0.0;                         // Current sample starts with negative values and large values, which is why it's 16 bit signed
-int sample;                                     // Current sample. Must only be updated ONCE!!!
+int sampleRaw;                                  // Current sample. Must only be updated ONCE!!!
 float sampleReal = 0.0;					                // "sample" as float, to provide bits that are lost otherwise. Needed for AGC.
 static float tmpSample;                         // An interim sample variable used for calculations.
 static float sampleAdj;                         // Gain adjusted sample value
@@ -161,7 +161,7 @@ struct audioSyncPacket {
   char header[6] = UDP_SYNC_HEADER;
   uint8_t myVals[32];     //  32 Bytes
   int sampleAgc;          //  04 Bytes
-  int sample;             //  04 Bytes
+  int sampleRaw;          //  04 Bytes
   float sampleAvg;        //  04 Bytes
   bool samplePeak;        //  01 Bytes
   uint8_t fftResult[16];  //  16 Bytes
@@ -211,7 +211,7 @@ void getSample() {
   sampleReal = tmpSample;
 
   sampleAdj = fmax(fmin(sampleAdj, 255), 0);           // Question: why are we limiting the value to 8 bits ???
-  sample = (int)sampleAdj;                             // ONLY update sample ONCE!!!!
+  sampleRaw = (int)sampleAdj;                             // ONLY update sample ONCE!!!!
 
   // keep "peak" sample, but decay value if current sample is below peak
   if ((sampleMax < sampleReal) && (sampleReal > 0.5)) {
@@ -406,7 +406,7 @@ void transmitAudioData() {
   }
 
   transmitData.sampleAgc = sampleAgc;
-  transmitData.sample = sample;
+  transmitData.sampleRaw = sampleRaw;
   transmitData.sampleAvg = sampleAvg;
   transmitData.samplePeak = udpSamplePeak;
   udpSamplePeak = 0;                              // Reset udpSamplePeak after we've transmitted it
