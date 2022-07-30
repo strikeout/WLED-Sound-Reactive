@@ -28,16 +28,25 @@
 			<button onclick="window.location.href = '/settings';"><i class="icons">&#xe0a2;</i><p class="tab-label">Config</p></button>
 		  <button id="buttonPcm" onclick="togglePcMode(true)"><i class="icons">&#xe23d;</i><p class="tab-label">PC Mode</p></button>
 		</div>
-		<div id="briwrap">
-			<p class="hd">Brightness</p>
-			<div class="il">
-				<i class="icons slider-icon" onclick="tglTheme()">&#xe2a6;</i>
-				<div class="sliderwrap il">
-					<input id="sliderBri" onchange="setBri()" oninput="updateTrail(this)" max="255" min="1" type="range" value="128" />
-					<div class="sliderdisplay"></div>
-				</div>
-			</div>
-		</div>
+        <div id="briwrap">
+            <div class="il">
+                <p class="hd">Brightness</p>
+                <i class="icons slider-icon" onclick="tglTheme()">&#xe2a6;</i>
+                <div class="sliderwrap il">
+                    <input id="sliderBri" onchange="setBri()" oninput="updateTrail(this)" max="255" min="1" type="range" value="128" />
+                    <div class="sliderdisplay"></div>
+                </div>
+            </div>
+			<!-- WLEDSR inputLevel slider -->
+            <div class="il" id="divInputLevel">
+                <p class="hd">Input Level</p>
+                <i class="icons slider-icon" onclick="tglTheme()">🎚</i>
+                <div class="sliderwrap il">
+                    <input id="sliderInputLevel" onchange="setInputLevel()" oninput="updateTrail(this)" max="255" min="0" type="range" value="128" />
+                    <div class="sliderdisplay"></div>
+                </div>
+            </div>
+        </div>
 		<iframe id="liveview" src="about:blank"></iframe>
 	</div>
 </div>
@@ -138,7 +147,7 @@
   <div id="Effects" class="tabcontent">
     <p id="sliderLabel0" class="staytop">Effect speed</p>
     <div class="staytop" id="slider0">
-      <i class="icons slider-icon" style="cursor: pointer;" onclick="tglFreeze()">&#xe325;</i>
+      <i class="icons slider-icon" style="cursor: pointer;" title="Freeze" onclick="tglFreeze()">&#xe325;</i>
       <div class="sliderwrap il">
 				<input id="sliderSpeed" class="noslide" onchange="setSpeed()" oninput="updateTrail(this)" max="255" min="0" type="range" value="128" />
 				<output class="sliderbubble hidden"></output>
@@ -245,6 +254,11 @@
 <!-- WLEDSR Custom Effects -->
 <div id="ceEditor" class="modal">
 	<div id="kceEditor">Loading...</div><br>
+</div>
+
+<!-- WLEDSR 2D -->
+<div id="mliveview2D" class="modal">
+	<div id="kliveview2D" style="width:100%; height:100%">Loading...</div><br>
 </div>
 
 <div id="rover" class="modal">

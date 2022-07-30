@@ -1,5 +1,22 @@
 ## WLED changelog
 
+### Builds after release 0.13.1
+
+#### Build 2203191
+
+-   Fixed sunrise/set calculation (once again)
+
+#### Build 2203190
+
+-   Fixed `/json/cfg` unable to set busses (#2589)
+-   Fixed Peek with odd LED counts > 255 (#2586)
+
+#### Build 2203160
+
+-   Version bump to v0.13.2-a0 "Toki"
+-   Add ability to skip up to 255 LEDs
+-   Dependency version bumps
+
 ### WLED release 0.13.1
 
 #### Build 2203150
@@ -27,7 +44,7 @@
 #### Build 2203080
 
 -   Disabled auto white mode in segments with no RGB bus
--   Fixed hostname string not 0-terminated 
+-   Fixed hostname string not 0-terminated
 -   Fixed Popcorn mode not lighting first LED on pop
 
 #### Build 2203060
@@ -80,7 +97,7 @@
 
 -   Initial ESP32-C3 and ESP32-S2 support (PRs #2452, #2454, #2502)
 -   Full segment sync (PR #2427)
--   Allow overriding of color order by ranges (PR #2463) 
+-   Allow overriding of color order by ranges (PR #2463)
 -   Added white channel to Peek
 
 #### Build 2112080

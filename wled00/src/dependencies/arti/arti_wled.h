@@ -23,6 +23,8 @@
   #include "arti.h"
 //  #include "FX.h"
   extern float sampleAvg;
+  extern float sampleAgc;
+  extern byte soundAgc;
 #else
   #include "../arti.h"
   #include <string.h>
@@ -366,7 +368,7 @@ float WS2812FX::arti_get_external_variable(uint8_t variable, float par1, float p
       case F_custom3Slider:
         return SEGMENT.custom3;
       case F_sampleAvg:
-        return sampleAvg;
+        return((soundAgc) ? sampleAgc : sampleAvg);
 
       case F_hour:
         return ((float)hour(localTime));
@@ -438,7 +440,7 @@ void WS2812FX::arti_set_external_variable(float value, uint8_t variable, float p
           errorOccurred = true;
         }
         else if (par2 == floatNull)
-          leds[realPixelIndex((uint16_t)par1%SEGLEN)] = value;
+          leds[segmentToLogical((uint16_t)par1%SEGLEN)] = value;
         else
           leds[XY((uint16_t)par1%SEGMENT.width, (uint16_t)par2%SEGMENT.height)] = value; //2D value!!
 

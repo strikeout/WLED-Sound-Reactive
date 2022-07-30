@@ -63,6 +63,10 @@ void initServer()
     server.on("/liveview", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send_P(200, "text/html", PAGE_liveviewws);
     });
+    // WLEDSR
+    server.on("/liveview2D", HTTP_GET, [](AsyncWebServerRequest *request){
+      request->send_P(200, "text/html", PAGE_liveviewws2D);
+    });
  #else
     server.on("/liveview", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send_P(200, "text/html", PAGE_liveview);
@@ -159,7 +163,6 @@ void initServer()
   server.on("/u", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/html", PAGE_usermod);
     });
-
   //Deprecated, use of /json/state and presets recommended instead
   server.on("/url", HTTP_GET, [](AsyncWebServerRequest *request){
     URL_response(request);
