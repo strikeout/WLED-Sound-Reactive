@@ -1,6 +1,6 @@
 <p align="center">
   <img src="/images/wled_logo_akemi.png">
-  <a href="https://github.com/atuline/WLED/releases"><img src="https://img.shields.io/github/release/Aircoookie/WLED.svg?style=flat-square"></a>
+  <a href="https://github.com/atuline/WLED/releases"><img src="https://img.shields.io/github/release/atuline/WLED.svg?style=flat-square"></a>
   <a href="https://raw.githubusercontent.com/Aircoookie/WLED/master/LICENSE"><img src="https://img.shields.io/github/license/Aircoookie/wled?color=blue&style=flat-square"></a>
   <a href="https://wled.discourse.group"><img src="https://img.shields.io/discourse/topics?colorB=blue&label=forum&server=https%3A%2F%2Fwled.discourse.group%2F&style=flat-square"></a>
   <a href="https://discord.gg/4CQRmfR"><img src="https://img.shields.io/discord/700041398778331156.svg?colorB=blue&label=discord&style=flat-square"></a>
