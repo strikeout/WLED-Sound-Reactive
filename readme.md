@@ -14,7 +14,7 @@
 This is the SR `master` branch - the source code for our latest release version [SR WLED v0.13.2](https://github.com/atuline/WLED/releases/tag/v0.13.2).
 
 - *This* branch (`master`) can be a stable baseline for your own project. Use it.
-- *Pull Requests* should be created against the [`dev`elopment branch](https://github.com/atuline/WLED/tree/dev).
+- *Pull Requests* should be created against our [`dev`elopment branch](https://github.com/atuline/WLED/tree/dev).
 
 
 
