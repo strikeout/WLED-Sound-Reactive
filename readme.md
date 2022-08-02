@@ -11,7 +11,7 @@
   </p>
 
 # Development Branch
-This is the SR `dev`elopment branch, where we test new features and enhancement. The code may or may not work - it is work in progress.
+This is the SR `dev`elopment branch, where we test new features and enhancements. The code may or may not work - it is work in progress.
 
 - *Pull Requests* should be created against this `dev` branch.
 - If you are looking for a stable baseline for your own project, please use the released source code from [`master` branch](https://github.com/atuline/WLED/tree/master)
