@@ -588,6 +588,9 @@ void serializeInfo(JsonObject root)
     lcarr.add(lc);
   }
 
+  //WLEDSR
+  leds[F("somp")] = strip.stripOrMatrixPanel;
+
   leds["lc"] = totalLC;
 
   leds[F("rgbw")] = strip.hasRGBWBus(); // deprecated, use info.leds.lc

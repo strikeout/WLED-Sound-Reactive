@@ -15,6 +15,7 @@ var sliderControl = ""; //WLEDSR
 var selectedPal = 0; //WLEDSR Blazoncek default slider values
 var csel = 0; // selected color slot (0-2)
 var currentPreset = -1; prevPS = -1; //WLEDSR Blazoncek default slider values
+var somp = 0;//WLEDSR: stripOrMatrixPanel
 var lastUpdate = 0;
 var segCount = 0, ledCount = 0, lowestUnused = 0, maxSeg = 0, lSeg = 0;
 var pcMode = false, pcModeA = false, lastw = 0;
@@ -1556,7 +1557,9 @@ function requestJson(command, rinfo = true) {
 			syncTglRecv = info.str;
 			maxSeg = info.leds.maxseg;
 			pmt = info.fs.pmt;
-
+      //WLEDSR
+      somp = info.leds.somp;
+    
       if (!command && rinfo) setTimeout(loadPresets, 99);
 
 			d.getElementById('buttonNodes').style.display = (info.ndc > 0 && window.innerWidth > 770) ? "block":"none";
@@ -1615,8 +1618,7 @@ function toggleLiveview() {
 	isLv = !isLv;
 
 	var lvID = "liveview";
-  var isM = true; //tbd: check if matrix, now always assumed
-	if (isM) { 
+	if (somp != 0) { //not 1D 
 		lvID = "liveview2D"
 		if (isLv) {
 			var cn = '<iframe id="liveview2D" src="about:blank"></iframe>';

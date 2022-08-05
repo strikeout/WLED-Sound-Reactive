@@ -86,10 +86,11 @@ Total LEDs: <span id="lc">?</span> <span id="pc"></span><br><i>
 Recommended power supply for brightest white:</i><br><b><span id="psu">?</span>
 </b><br><span id="psu2"><br></span><br>Strip or panel: <select id="somp" 
 name="SOMP" onchange="MPDiv()"><option value="0" selected="selected">1D Strip
-</option><option value="1">2D Matrix panel</option></select><br><div id="mpdiv">
-<h3>2D Matrix</h3>Width <input id="mxw" name="MXW" type="number" min="1" 
-max="1500" oninput="UI()"> x Height <input id="mxh" name="MXH" type="number" 
-min="1" max="1500" oninput="UI()"><br><div id="2dwarning" 
+</option><option value="1">2D Matrix panel</option><option value="2">
+3D Cube (Experimental)</option></select><br><div id="mpdiv"><h3>2D Matrix</h3>
+Width <input id="mxw" name="MXW" type="number" min="1" max="1500" 
+oninput="UI()"> x Height <input id="mxh" name="MXH" type="number" min="1" 
+max="1500" oninput="UI()"><br><div id="2dwarning" 
 style="color:orange;display:inline">
 &#9888; width x height should match LED count!<br></div><h3>2D Panels</h3><i>
 A matrix is made of 1 or more identical physical led panels</i><br>
