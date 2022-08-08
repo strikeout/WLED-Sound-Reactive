@@ -4281,9 +4281,9 @@ extern float sampleReal;			                 // "sample" as float, to provide bit
 extern float multAgc;                          // sampleReal * multAgc = sampleAgc. Our multiplier
 
 // FFT based variables
-extern double FFT_MajorPeak;
-extern double FFT_Magnitude;
-extern double fftBin[];                         // raw FFT data
+extern float FFT_MajorPeak;
+extern float FFT_Magnitude;
+extern float fftBin[];                         // raw FFT data
 extern int fftResult[];                         // summary of bins array. 16 summary bins.
 extern float fftAvg[];
 

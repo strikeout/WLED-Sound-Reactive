@@ -104,7 +104,7 @@ public:
        Read num_samples from the microphone, and store them in the provided
        buffer
     */
-    virtual void getSamples(double *buffer, uint16_t num_samples) = 0;
+    virtual void getSamples(float *buffer, uint16_t num_samples) = 0;
 
     /* Get an up-to-date sample without DC offset */
     virtual int getSampleWithoutDCOffset() = 0;
@@ -208,7 +208,7 @@ public:
         }
     }
 
-    virtual void getSamples(double *buffer, uint16_t num_samples) {
+    virtual void getSamples(float *buffer, uint16_t num_samples) {
         if(_initialized) {
             esp_err_t err;
             size_t bytes_read = 0;        /* Counter variable to check if we actually got enough data */
@@ -251,17 +251,17 @@ public:
                 if (_shift != 0)
                     newSamples[i] >>= 16;
 #endif
-                double currSample = 0.0;
+                float currSample = 0.0;
                 if(_shift > 0)
-                  currSample = (double) (newSamples[i] >> _shift);
+                  currSample = (float) (newSamples[i] >> _shift);
                 else {
                   if(_shift < 0)
-                    currSample = (double) (newSamples[i] << (- _shift)); // need to "pump up" 12bit ADC to full 16bit as delivered by other digital mics
+                    currSample = (float) (newSamples[i] << (- _shift)); // need to "pump up" 12bit ADC to full 16bit as delivered by other digital mics
                   else
 #ifdef I2S_SAMPLE_DOWNSCALE_TO_16BIT
-                    currSample = (double) newSamples[i] / 65536.0;        // _shift == 0 -> use the chance to keep lower 16bits
+                    currSample = (float) newSamples[i] / 65536.0f;        // _shift == 0 -> use the chance to keep lower 16bits
 #else
-                    currSample = (double) newSamples[i];
+                    currSample = (float) newSamples[i];
 #endif
                 }
                 buffer[i] = currSample;
@@ -498,7 +498,7 @@ public:
         _initialized = true;
     }
 
-    void getSamples(double *buffer, uint16_t num_samples) {
+    void getSamples(float *buffer, uint16_t num_samples) {
 
     /* Enable ADC. This has to be enabled and disabled directly before and
     after sampling, otherwise Wifi dies and analogRead() hangs
