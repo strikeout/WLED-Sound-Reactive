@@ -155,11 +155,13 @@ int fftResult[16];                              // Our calculated result table, 
 float fftResultMax[16];                        // A table used for testing to determine how our post-processing is working.
 float fftAvg[16];
 
+#define FFTBIN_DOWNSCALE 0.65   // scale down FFT results, so we end up at ~128 average
+
 // Table of linearNoise results to be multiplied by soundSquelch in order to reduce squelch across fftResult bins.
-int linearNoise[16] = { 34, 28, 26, 25, 20, 12, 9, 6, 4, 4, 3, 2, 2, 2, 2, 2 };
+static int linearNoise[16] = { 34, 28, 26, 25, 20, 12, 9, 6, 4, 4, 3, 2, 2, 2, 2, 2 };
 
 // Table of multiplication factors so that we can even out the frequency response.
-float fftResultPink[16] = {1.70,1.71,1.73,1.78,1.68,1.56,1.55,1.63,1.79,1.62,1.80,2.06,2.47,3.35,6.83,9.55};
+static float fftResultPink[16] = {1.70,1.71,1.73,1.78,1.68,1.56,1.55,1.63,1.79,1.62,1.80,2.06,2.47,3.35,6.83,9.55};
 
 
 struct audioSyncPacket {
@@ -499,7 +501,8 @@ void FFTcode( void * parameter) {
     micDataReal = maxSample1;
 
     FFT.dcRemoval();                                            // remove DC offset
-    FFT.windowing(FFTWindow::Flat_top, FFTDirection::Forward);  // Weigh data using "Flat Top" window
+    //FFT.windowing(FFTWindow::Flat_top, FFTDirection::Forward);  // Weigh data using "Flat Top" window - better amplitude accuracy
+    FFT.windowing(FFTWindow::Blackman_Harris, FFTDirection::Forward);  // Weigh data using "Blackman- Harris" window - sharp peaks due to excellent sideband rejection 
     FFT.compute(FFTDirection::Forward );                        // Compute FFT
     FFT.complexToMagnitude();                                   // Compute magnitudes
     //
@@ -555,6 +558,7 @@ void FFTcode( void * parameter) {
 // Adjustment for frequency curves.
   for (int i=0; i < 16; i++) {
     fftCalc[i] = fftCalc[i] * fftResultPink[i];
+    fftCalc[i] *= FFTBIN_DOWNSCALE;   // correct magnitutude to fit into [0 ... 255]
   }
 
 // Manual linear adjustment of gain using sampleGain adjustment for different input types.
