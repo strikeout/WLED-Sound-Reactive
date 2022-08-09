@@ -430,6 +430,10 @@ void transmitAudioData() {
   transmitData.FFT_Magnitude = FFT_Magnitude;
   transmitData.FFT_MajorPeak = FFT_MajorPeak;
 
+  if (sampleAvg < 1) {  // silence - noise gate closed
+    transmitData.samplePeak = false;  // don't claim "peak" where we have silence.
+  }
+
   fftUdp.beginMulticastPacket();
   fftUdp.write(reinterpret_cast<uint8_t *>(&transmitData), sizeof(transmitData));
   fftUdp.endPacket();
@@ -558,7 +562,7 @@ void FFTcode( void * parameter) {
 // Adjustment for frequency curves.
   for (int i=0; i < 16; i++) {
     fftCalc[i] = fftCalc[i] * fftResultPink[i];
-    fftCalc[i] *= FFTBIN_DOWNSCALE;   // correct magnitutude to fit into [0 ... 255]
+    //fftCalc[i] *= FFTBIN_DOWNSCALE;   // correct magnitutude to fit into [0 ... 255]
   }
 
 // Manual linear adjustment of gain using sampleGain adjustment for different input types.
