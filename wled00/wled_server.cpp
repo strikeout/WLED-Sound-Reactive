@@ -208,6 +208,10 @@ void initServer()
         DEBUG_PRINTLN(F("OTA Update Start"));
         DEBUG_PRINT("OTA running on core: "); DEBUG_PRINTLN(xPortGetCoreID());
         vTaskDelete(FFT_Task);//WLEDSR: Avoid crash due to angry watchdog
+        if (udpSyncConnected) { //WLEDSR: close UDP sync connection (if open)
+          udpSyncConnected = false;
+          fftUdp.stop();
+        }
         #ifdef ESP8266
         Update.runAsync(true);
         #endif
