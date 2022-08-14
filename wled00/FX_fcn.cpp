@@ -308,7 +308,7 @@ void IRAM_ATTR WS2812FX::setPixelColor(uint16_t i, byte r, byte g, byte b, byte 
     }
   } else {
     if (i < customMappingSize) i = customMappingTable[i];
-    busses.setPixelColor(i, RGBW32(r, g, b, w));
+    // busses.setPixelColor(i, RGBW32(r, g, b, w));
     busses.setPixelColor(logicalToPhysical(i), RGBW32(r, g, b, w)); // ewowi20210624: logicalToPhysical: Maps logical led index to physical led index.
   }
 }
