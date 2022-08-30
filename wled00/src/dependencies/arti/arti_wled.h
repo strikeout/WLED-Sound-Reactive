@@ -147,10 +147,9 @@ float WS2812FX::arti_external_function(uint8_t function, float par1, float par2,
         setPixels(leds);
         return floatNull;
       case F_hsv:
-        return crgb_to_col(CHSV(par1, par2, par3));
+        return crgb_to_col(CHSV((uint8_t)par1, (uint8_t)par2, (uint8_t)par3));
       case F_rgbw:
-        return RGBW32(par1, par2, par3, par4);
-
+        return RGBW32((uint8_t)par1, (uint8_t)par2, (uint8_t)par3, (uint8_t)par4);
       case F_setRange: {
         setRange((uint16_t)par1, (uint16_t)par2, (uint32_t)par3);
         return floatNull;
@@ -164,7 +163,10 @@ float WS2812FX::arti_external_function(uint8_t function, float par1, float par2,
       case F_colorWheel:
         return color_wheel((uint8_t)par1);
       case F_colorFromPalette:
-        return crgb_to_col(ColorFromPalette(currentPalette, (uint8_t)par1, (uint8_t)par2, LINEARBLEND));
+        if (par2 == floatNull)
+          return crgb_to_col(ColorFromPalette(currentPalette, (uint8_t)par1);
+        else
+          return crgb_to_col(ColorFromPalette(currentPalette, (uint8_t)par1, (uint8_t)par2); //brightness
       case F_beatSin:
         return beatsin8((uint8_t)par1, (uint8_t)par2, (uint8_t)par3, (uint8_t)par4, (uint8_t)par5);
       case F_fadeToBlackBy:
