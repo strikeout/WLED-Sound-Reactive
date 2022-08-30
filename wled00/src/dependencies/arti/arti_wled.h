@@ -137,14 +137,10 @@ float WS2812FX::arti_external_function(uint8_t function, float par1, float par2,
   #if ARTI_PLATFORM == ARTI_ARDUINO
     switch (function) {
       case F_setPixelColor: {
-        if (par2 == 0)
-          setPixelColor(((uint16_t)par1)%SEGLEN, CRGB::Black);
-        else {
-          if (par3 == 0)
-            setPixelColor(((uint16_t)par1)%SEGLEN, (uint32_t)par2);
-          else
-            setPixelColor(XY((uint16_t)par1, (uint16_t)par2), (uint32_t)par3);
-        }
+        if (par3 == floatNull)
+          setPixelColor(((uint16_t)par1)%SEGLEN, (uint32_t)par2);
+        else
+          setPixelColor(XY((uint16_t)par1, (uint16_t)par2), (uint32_t)par3);
         return floatNull;
       }
       case F_setPixels:
