@@ -164,9 +164,9 @@ float WS2812FX::arti_external_function(uint8_t function, float par1, float par2,
         return color_wheel((uint8_t)par1);
       case F_colorFromPalette:
         if (par2 == floatNull)
-          return crgb_to_col(ColorFromPalette(currentPalette, (uint8_t)par1);
+          return crgb_to_col(ColorFromPalette(currentPalette, (uint8_t)par1));
         else
-          return crgb_to_col(ColorFromPalette(currentPalette, (uint8_t)par1, (uint8_t)par2); //brightness
+          return crgb_to_col(ColorFromPalette(currentPalette, (uint8_t)par1, (uint8_t)par2)); //brightness
       case F_beatSin:
         return beatsin8((uint8_t)par1, (uint8_t)par2, (uint8_t)par3, (uint8_t)par4, (uint8_t)par5);
       case F_fadeToBlackBy:

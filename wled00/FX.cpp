@@ -5674,7 +5674,7 @@ uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andre
   float tmpSound = multAgc;                                                         // AGC gain
   if (soundAgc == 0) {
     if ((sampleAvg> 1.0) && (sampleReal > 0.05))
-      tmpSound = (float)sample / sampleReal;                                        // current non-AGC gain
+      tmpSound = (float)sampleRaw / sampleReal;                                     // current non-AGC gain
     else
       tmpSound = ((float)sampleGain/40.0 * (float)inputLevel/128.0) + 1.0/16.0;     // non-AGC gain from presets
   }

@@ -481,10 +481,15 @@ void FFTcode( void * parameter) {
       vTaskDelayUntil( &xLastWakeTime, xFrequency_2);        // release CPU
       continue;
     }
-    
-    vTaskDelayUntil( &xLastWakeTime, xFrequency_2);        // release CPU, and give I2S some time to fill its buffers. Might not work well with ADC analog sources.
+
+    #if !defined(I2S_GRAB_ADC1_COMPLETELY)    
+    if (dmType > 0)  // the "delay trick" does not help for analog, because I2S ADC is disabled outside of getSamples()
+    #endif
+      vTaskDelayUntil( &xLastWakeTime, xFrequency_2);        // release CPU, and give I2S some time to fill its buffers. Might not work well with ADC analog sources.
+
     audioSource->getSamples(vReal, samplesFFT);
 
+    xLastWakeTime = xTaskGetTickCount();       // update "last unblocked time" for vTaskDelay
     // old code - Last sample in vReal is our current mic sample
     //micDataSm = (uint16_t)vReal[samples - 1]; // will do a this a bit later
 
@@ -588,7 +593,10 @@ void FFTcode( void * parameter) {
         fftAvg[i] = (float)fftResult[i]*.05 + (1-.05)*fftAvg[i];
     }
 
-    vTaskDelayUntil( &xLastWakeTime, xFrequency_2);        // release CPU, by waiting until FFT_MIN_CYCLE is over
+    #if !defined(I2S_GRAB_ADC1_COMPLETELY)    
+    if (dmType > 0)  // the "delay trick" does not help for analog
+    #endif
+      vTaskDelayUntil( &xLastWakeTime, xFrequency_2);        // release CPU, by waiting until FFT_MIN_CYCLE is over
 
     // release second sample to volume reactive effects. 
 	  // Releasing a second sample now effectively doubles the "sample rate" 
