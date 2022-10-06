@@ -204,9 +204,9 @@ void getSample() {
   micIn -= micLev;                                // Let's center it to 0 now
 
   // Using an exponential filter to smooth out the signal. We'll add controls for this in a future release.
-  float micInNoDC = fabs(micDataReal - micLev);
+  float micInNoDC = fabsf(micDataReal - micLev);
   expAdjF = weighting * micInNoDC + ((1.0-weighting) * expAdjF);
-  expAdjF = fabs(expAdjF);                          // Now (!) take the absolute value
+  expAdjF = fabsf(expAdjF);                          // Now (!) take the absolute value
 
   expAdjF = (expAdjF <= soundSquelch) ? 0: expAdjF; // simple noise gate
   if ((soundSquelch == 0) && (expAdjF < 0.25f)) expAdjF = 0;
@@ -239,6 +239,7 @@ void getSample() {
   if (sampleMax < 0.5) sampleMax = 0.0;
 
   sampleAvg = ((sampleAvg * 15.0) + sampleAdj) / 16.0;   // Smooth it out over the last 16 samples.
+  sampleAvg = fabsf(sampleAvg);                          // make sure we have a positive value
 
   // Fixes private class variable compiler error. Unsure if this is the correct way of fixing the root problem. -THATDONFC
   uint16_t MinShowDelay = strip.getMinShowDelay();
@@ -295,7 +296,7 @@ void agcAvg(unsigned long the_time) {
   if (time_now - last_time > 2)  {
     last_time = time_now;
 
-    if((fabs(sampleReal) < 2.0) || (sampleMax < 1.0)) {
+    if((fabsf(sampleReal) < 2.0) || (sampleMax < 1.0)) {
       // MIC signal is "squelched" - deliver silence
       multAgcTemp = multAgc;          // keep old control value (no change)
       tmpAgc = 0;
@@ -339,7 +340,7 @@ void agcAvg(unsigned long the_time) {
 
   // NOW finally amplify the signal
   tmpAgc = sampleReal * multAgcTemp;                  // apply gain to signal
-  if(fabs(sampleReal) < 2.0) tmpAgc = 0;              // apply squelch threshold
+  if(fabsf(sampleReal) < 2.0) tmpAgc = 0;              // apply squelch threshold
   if (tmpAgc > 255) tmpAgc = 255;                     // limit to 8bit
   if (tmpAgc < 1) tmpAgc = 0;                         // just to be sure
 
@@ -349,11 +350,12 @@ void agcAvg(unsigned long the_time) {
 
 
   // update smoothed AGC sample
-  if(fabs(tmpAgc) < 1.0) 
+  if(fabsf(tmpAgc) < 1.0) 
     sampleAgc =  0.5 * tmpAgc + 0.5 * sampleAgc;      // fast path to zero
   else
     sampleAgc = sampleAgc + agcSampleSmooth[AGC_preset] * (tmpAgc - sampleAgc); // smooth path
 
+  sampleAgc = fabsf(sampleAgc);
   userVar0 = sampleAvg * 4;
   if (userVar0 > 255) userVar0 = 255;
 
@@ -506,9 +508,9 @@ void FFTcode( void * parameter) {
 	    if ((vReal[i] <= (INT16_MAX - 1024)) && (vReal[i] >= (INT16_MIN + 1024)))  //skip extreme values - normally these are artefacts
 	    {
 	        if (i <= halfSamplesFFT) {
-		       if (fabs(vReal[i]) > maxSample1) maxSample1 = fabs(vReal[i]);
+		       if (fabsf(vReal[i]) > maxSample1) maxSample1 = fabsf(vReal[i]);
 	        } else {
-		       if (fabs(vReal[i]) > maxSample2) maxSample2 = fabs(vReal[i]);
+		       if (fabsf(vReal[i]) > maxSample2) maxSample2 = fabsf(vReal[i]);
 	        }
 	    }
     }
