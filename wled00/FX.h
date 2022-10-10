@@ -841,12 +841,12 @@ class WS2812FX {
       resetSegments(),
       makeAutoSegments(bool forceReset = false),
       fixInvalidSegments(),
-      setPixelColor(uint16_t n, uint8_t r, uint8_t g, uint8_t b, uint8_t w = 0),
+      setPixelColor(int n, uint8_t r, uint8_t g, uint8_t b, uint8_t w = 0),
       show(void),
 			setTargetFps(uint8_t fps),
       deserializeMap(uint8_t n=0);
 
-    inline void setPixelColor(uint16_t n, uint32_t c) {setPixelColor(n, byte(c>>16), byte(c>>8), byte(c), byte(c>>24));}
+    inline void setPixelColor(int n, uint32_t c) {setPixelColor(n, byte(c>>16), byte(c>>8), byte(c), byte(c>>24));}
 
     bool
       gammaCorrectBri = false,
