@@ -1012,7 +1012,7 @@ uint16_t WS2812FX::mode_running_random(void) {
 
   uint8_t z = it % zoneSize;
   bool nzone = (!z && it != SEGENV.aux1);
-  for (uint16_t i=SEGLEN-1; i > 0; i--) {
+  for (int i=SEGLEN-1; i >= 0; i--) {  // WLEDSR bugfix
     if (nzone || z >= zoneSize) {
       uint8_t lastrand = PRNG16 >> 8;
       int16_t diff = 0;
@@ -1616,7 +1616,7 @@ uint16_t WS2812FX::mode_random_chase(void)
   uint32_t color = SEGENV.step;
   random16_set_seed(SEGENV.aux0);
 
-  for(uint16_t i = SEGLEN -1; i > 0; i--) {
+  for (int i=SEGLEN-1; i >= 0; i--) {  // WLEDSR bugfix
     uint8_t r = random8(6) != 0 ? (color >> 16 & 0xFF) : random8();
     uint8_t g = random8(6) != 0 ? (color >> 8  & 0xFF) : random8();
     uint8_t b = random8(6) != 0 ? (color       & 0xFF) : random8();
@@ -2717,12 +2717,12 @@ uint16_t WS2812FX::sinelon_base(bool dual, bool rainbow=false) {
   }
   if (SEGENV.aux0 != pos) {
     if (SEGENV.aux0 < pos) {
-      for (uint16_t i = SEGENV.aux0; i < pos ; i++) {
+      for (int i = SEGENV.aux0; i < pos ; i++) { // WLEDSR bugfix
         setPixelColor(i, color1);
         if (dual) setPixelColor(SEGLEN-1-i, color2);
       }
     } else {
-      for (uint16_t i = SEGENV.aux0; i > pos ; i--) {
+      for (int i = SEGENV.aux0; i > pos ; i--) {  // WLEDSR bugfix
         setPixelColor(i, color1);
         if (dual) setPixelColor(SEGLEN-1-i, color2);
       }
@@ -4784,7 +4784,7 @@ for (int j=0; j < SEGMENT.width; j++) {
 uint16_t WS2812FX::mode_2DFrizzles(void) {                 // By: Stepko https://editor.soulmatelights.com/gallery/640-color-frizzles , Modified by: Andrew Tuline
 
   fadeToBlackBy(leds, 16);
-  for (byte i = 8; i > 0; i--) {
+  for (int i = 8; i > 0; i--) {  // WLEDSR bugfix
     leds[XY(beatsin8(SEGMENT.speed/8 + i, 0, SEGMENT.width - 1), beatsin8(SEGMENT.intensity/8 - i, 0, SEGMENT.height - 1))] += ColorFromPalette(currentPalette, beatsin8(12, 0, 255), 255, LINEARBLEND);
   }
   blur2d(leds, 16);
