@@ -6743,12 +6743,26 @@ uint16_t WS2812FX::mode_3DRipples(void) {
 
   fill(CRGB::Black);
 
-  for (int z=0; z<8; z++) {
-      for (int x=0; x<8; x++) {
-          float d = distance(3.5, 3.5, 0, x, z, 0)/9.899495*8;
-          uint16_t height = floor(4.0+sinf(d/ripple_interval + SEGENV.call/((256.0-SEGMENT.speed)/20.0))*4.0); //between 0 and 8
+  //workaround to get width, height and depth
+  uint16_t mW = strip.matrixWidth;
+  uint16_t mH = 1;
+  uint16_t mD = 1;
+  //balance dimensions
+  while (mW > mH) {
+    if (mH < mD)
+      mH ++;
+    else
+      mD ++;
+    mW =  strip.matrixWidth / mH / mD;
+  }
 
-          setPixelColor(x + height * 8 + z * 8 * 8, color_from_palette(SEGENV.call, true, PALETTE_SOLID_WRAP, 0));
+
+  for (int z=0; z<mD; z++) {
+      for (int x=0; x<mW; x++) {
+          float d = distance(3.5, 3.5, 0, x, z, 0)/9.899495*mH;
+          uint16_t height = floor(mH/2.0+sinf(d/ripple_interval + SEGENV.call/((256.0-SEGMENT.speed)/20.0))*mH/2.0); //between 0 and 8
+
+          setPixelColor(x + height * mW + z * mW * mH, color_from_palette(SEGENV.call, true, PALETTE_SOLID_WRAP, 0));
       }
   }
 
@@ -6763,19 +6777,32 @@ uint16_t WS2812FX::mode_3DSphereMove(void) {
 
   uint32_t interval = SEGENV.call/((256.0-SEGMENT.speed)/20.0);
 
+  //workaround to get width, height and depth
+  uint16_t mW = strip.matrixWidth;
+  uint16_t mH = 1;
+  uint16_t mD = 1;
+  //balance dimensions
+  while (mW > mH) {
+    if (mH < mD)
+      mH ++;
+    else
+      mD ++;
+    mW =  strip.matrixWidth / mH / mD;
+  }
+
   origin_x = 3.5+sinf(interval)*2.5;
   origin_y = 3.5+cosf(interval)*2.5;
   origin_z = 3.5+cosf(interval)*2.0;
 
   diameter = 2.0+sinf(interval/3.0);
 
-  for (int x=0; x<8; x++) {
-      for (int y=0; y<8; y++) {
-          for (int z=0; z<8; z++) {
+  for (int x=0; x<mW; x++) {
+      for (int y=0; y<mH; y++) {
+          for (int z=0; z<mD; z++) {
               d = distance(x, y, z, origin_x, origin_y, origin_z);
 
               if (d>diameter && d<diameter+1) {
-                  setPixelColor(x + y*8 + z*8*8, color_from_palette(SEGENV.call, true, PALETTE_SOLID_WRAP, 0));
+                  setPixelColor(x + y*mW + z*mW*mH, color_from_palette(SEGENV.call, true, PALETTE_SOLID_WRAP, 0));
               }
           }
       }

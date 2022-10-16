@@ -149,6 +149,7 @@ bool sendLiveLedsWs(uint32_t wsClient)
 
   if (strip.stripOrMatrixPanel == 2) { //3D
     uint16_t matrixWidth = strip.matrixWidth;
+    //workaround to get width, height and depth
     //balance dimensions
     while (matrixWidth > buffer[4]) { //width > heigth
       if (buffer[4] < buffer[5])
