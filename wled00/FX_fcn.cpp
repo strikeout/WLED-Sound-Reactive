@@ -768,7 +768,6 @@ void WS2812FX::set2DSegment(uint8_t n) {
 //WLEDSR, for strips we need ledCountx1 dimension
 void WS2812FX::setStripOrPanelWidthAndHeight() {
   if (stripOrMatrixPanel != 1) { //strip or 3D cube
-    Serial.println("setStripOrPanelWidthAndHeight");
     // ledCount was removed, replaced by strip.getLengthTotal()
     matrixWidth = strip.getLengthTotal();
     matrixHeight = 1;
@@ -809,7 +808,6 @@ void WS2812FX::setStripOrPanelWidthAndHeight() {
     // panelTranspose = 0; //
 
   }
-  // Serial.printf("setStripOrPanelWidthAndHeight %d %d %d", strip.stripOrMatrixPanel, strip.matrixWidth, strip.matrixHeight);Serial.println();
 }
 
 bool WS2812FX::hasCCTBus(void) {

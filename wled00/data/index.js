@@ -1792,6 +1792,7 @@ function makeP(i,pl) {
 	var content = "";
 	if (pl) {
 		var rep = plJson[i].repeat ? plJson[i].repeat : 0;
+    //WLEDSR: change qltxt to maxlength=3 (from 2, for HB effects)
 		content = `<div class="first c">Playlist Entries</div>
 <div id="ple${i}"></div>
 <label class="check revchkl">
@@ -1826,7 +1827,7 @@ function makeP(i,pl) {
 </label>`;
 
 	return `<input type="text" class="ptxt noslide" id="p${i}txt" autocomplete="off" maxlength=32 value="${(i>0)?pName(i):""}" placeholder="Enter name..."/><br>
-<div class="c">Quick load label: <input type="text" class="qltxt noslide" maxlength=2 value="${qlName(i)}" id="p${i}ql" autocomplete="off"/></div>
+<div class="c">Quick load label: <input type="text" class="qltxt noslide" maxlength=3 value="${qlName(i)}" id="p${i}ql" autocomplete="off"/></div>
 <div class="h">(leave empty for no Quick load button)</div>
 <div ${pl&&i==0?"style='display:none'":""}>
 	<label class="check revchkl">
