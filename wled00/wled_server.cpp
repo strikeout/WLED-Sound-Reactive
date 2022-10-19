@@ -212,6 +212,7 @@ void initServer()
           udpSyncConnected = false;
           fftUdp.stop();
         }
+        WLED::instance().disableWatchdog();
         #ifdef ESP8266
         Update.runAsync(true);
         #endif
@@ -223,6 +224,7 @@ void initServer()
           DEBUG_PRINTLN(F("Update Success"));
         } else {
           DEBUG_PRINTLN(F("Update Failed"));
+          WLED::instance().enableWatchdog();
         }
       }
     });
