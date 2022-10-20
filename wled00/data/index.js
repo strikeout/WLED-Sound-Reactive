@@ -589,7 +589,7 @@ function populateInfo(i)
 	}
 
 	var vcn = "Kuuhaku";
-	if (i.ver.startsWith("0.13.")) vcn = "Toki-SR";
+	if (i.ver.startsWith("0.13.")) vcn = "Toki+SR";
 	if (i.cn) vcn = i.cn;
 
 	cn += `v${i.ver} "${vcn}"<br><br><table class="infot">
