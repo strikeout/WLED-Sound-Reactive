@@ -6024,7 +6024,7 @@ uint16_t WS2812FX::mode_ripplepeak(void) {                // * Ripple peak. By A
         ripples[i].pos = random16(SEGLEN);
 
         #ifdef ESP32
-          ripples[i].color = (int)(log10(FFT_MajorPeak)*128);
+          ripples[i].color = (int)(log10f(FFT_MajorPeak)*128);
         #else
           ripples[i].color = random8();
         #endif
@@ -6218,7 +6218,7 @@ uint16_t WS2812FX::mode_freqmatrix(void) {                // Freqmatrix. By Andr
     CRGB color = 0;
     CHSV c;
 
-    if (FFT_MajorPeak > 5120) FFT_MajorPeak = 0;
+    if (FFT_MajorPeak > 5120) FFT_MajorPeak = 1.0f;
       // MajorPeak holds the freq. value which is most abundant in the last sample.
       // With our sampling rate of 10240Hz we have a usable freq range from roughtly 80Hz to 10240/2 Hz
       // we will treat everything with less than 65Hz as 0
@@ -6327,7 +6327,7 @@ uint16_t WS2812FX::mode_freqwave(void) {                  // Freqwave. By Andrea
     CRGB color = 0;
     CHSV c;
 
-    if (FFT_MajorPeak > 5120) FFT_MajorPeak = 0;
+    if (FFT_MajorPeak > 5120) FFT_MajorPeak = 1.0f;
       // MajorPeak holds the freq. value which is most abundant in the last sample.
       // With our sampling rate of 10240Hz we have a usable freq range from roughtly 80Hz to 10240/2 Hz
       // we will treat everything with less than 65Hz as 0
@@ -6338,6 +6338,7 @@ uint16_t WS2812FX::mode_freqwave(void) {                  // Freqwave. By Andrea
       int upperLimit = 20 * SEGMENT.custom2;
       int lowerLimit = 2 * SEGMENT.custom1;
       int i =  lowerLimit!=upperLimit?map(FFT_MajorPeak, lowerLimit, upperLimit, 0, 255):FFT_MajorPeak;
+      if (i<0) i = 0;
       uint16_t b = 255.0 * intensity;
       if (b > 255) b=255;
       c = CHSV(i, 240, (uint8_t)b);
@@ -6385,7 +6386,8 @@ uint16_t WS2812FX::mode_gravfreq(void) {                  // Gravfreq. By Andrew
 
   for (int i=0; i<tempsamp; i++) {
 
-    uint8_t index = (log10((int)FFT_MajorPeak) - (3.71-1.78)) * 255;
+    int index = (log10f(FFT_MajorPeak) - (3.71-1.78)) * 255;
+    if (index <0) index = 0;
 
     setPixelColor(i+SEGLEN/2, color_from_palette(index, false, PALETTE_SOLID_WRAP, 0));
     setPixelColor(SEGLEN/2-i-1, color_from_palette(index, false, PALETTE_SOLID_WRAP, 0));
@@ -6438,7 +6440,7 @@ uint16_t WS2812FX::mode_rocktaves(void) {                 // Rocktaves. Same not
 
   fadeToBlackBy(leds, 64);                          // Just in case something doesn't get faded.
 
-  double frTemp = FFT_MajorPeak;
+  float frTemp = FFT_MajorPeak;
   uint8_t octCount = 0;                                   // Octave counter.
   uint8_t volTemp = 0;
 
@@ -6491,7 +6493,8 @@ uint16_t WS2812FX::mode_waterfall(void) {                   // Waterfall. By: An
     if (soundAgc) my_magnitude *= multAgc;
     if (sampleAvg < 1 ) my_magnitude = 0.001;             // noise gate closed - mute
 
-    uint8_t pixCol = (log10((int)FFT_MajorPeak) - 2.26) * 177;  // log10 frequency range is from 2.26 to 3.7. Let's scale accordingly.
+    int pixCol = (log10f(FFT_MajorPeak) - 2.26) * 177;  // log10 frequency range is from 2.26 to 3.7. Let's scale accordingly.
+    if (pixCol < 0) pixCol=0;
 
     if (samplePeak) {
       leds[segmentToLogical(SEGLEN-1)] = CHSV(92,92,92);

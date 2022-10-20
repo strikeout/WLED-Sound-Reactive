@@ -60,6 +60,7 @@ constexpr int SAMPLE_RATE = 10240;            // Base sample rate in Hz - standa
 //Use userVar0 and userVar1 (API calls &U0=,&U1=, uint16_t)
 
 #define UDP_SYNC_HEADER "00001"
+#define UDP_SYNC_HEADER_V2 "00002"
 
 uint8_t maxVol = 10;                            // Reasonable value for constant volume for 'peak detector', as it won't always trigger
 uint8_t binNum = 8;                             // Used to select the bin for FFT based beat detection.
@@ -164,6 +165,7 @@ static int linearNoise[16] = { 34, 28, 26, 25, 20, 12, 9, 6, 4, 4, 3, 2, 2, 2, 2
 static float fftResultPink[16] = {1.70,1.71,1.73,1.78,1.68,1.56,1.55,1.63,1.79,1.62,1.80,2.06,2.47,3.35,6.83,9.55};
 
 
+// default "V1" SR 0.13.x audiosync struct - 83 Bytes
 struct audioSyncPacket {
   char header[6] = UDP_SYNC_HEADER;
   uint8_t myVals[32];     //  32 Bytes
@@ -176,10 +178,30 @@ struct audioSyncPacket {
   double FFT_MajorPeak;   //  08 Bytes
 };
 
+// new "V2" AC 0.14.0 audiosync struct - 40 Bytes
+struct audioSyncPacket_v2 {
+      char    header[6] = UDP_SYNC_HEADER_V2; // 06 bytes
+      float   sampleRaw;      //  04 Bytes  - either "sampleRaw" or "rawSampleAgc" depending on soundAgc setting
+      float   sampleSmth;     //  04 Bytes  - either "sampleAvg" or "sampleAgc" depending on soundAgc setting
+      uint8_t samplePeak;     //  01 Bytes  - 0 no peak; >=1 peak detected. In future, this will also provide peak Magnitude
+      uint8_t reserved1;      //  01 Bytes  - reserved for future extensions like loudness
+      uint8_t fftResult[16];  //  16 Bytes  - FFT results
+      float  FFT_Magnitude;   //  04 Bytes
+      float  FFT_MajorPeak;   //  04 Bytes
+};
+
 double mapf(double x, double in_min, double in_max, double out_min, double out_max);
 
 bool isValidUdpSyncVersion(char header[6]) {
   if (strncmp(header, UDP_SYNC_HEADER, 5) == 0) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool isValidUdpSyncVersion2(char header[6]) {
+  if (strncmp(header, UDP_SYNC_HEADER_V2, 5) == 0) {
     return true;
   } else {
     return false;
@@ -450,6 +472,56 @@ void transmitAudioData() {
 } // transmitAudioData()
 
 
+static void extract_v2_packet(int packetSize, uint8_t *fftBuff)
+{
+  // extract v2 packet - assuming a valid packet, as this check was checked alreaedy done in userloop()
+    static audioSyncPacket_v2 receivedPacket;
+    memcpy(&receivedPacket, fftBuff, MIN(sizeof(receivedPacket), packetSize));  // don't copy more that what fits into audioSyncPacket
+    receivedPacket.header[5] = '\0';                                            // ensure string termination
+
+    // update samples for effects
+    float my_volumeSmth   = receivedPacket.sampleSmth;
+    float my_volumeRaw    = receivedPacket.sampleRaw;
+    if (my_volumeSmth < 0) my_volumeSmth = 0.0f;
+    if (my_volumeRaw < 0) my_volumeRaw = 0;
+    // update internal samples
+    sampleRaw    = my_volumeRaw;
+    sampleAvg    = my_volumeSmth;
+    rawSampleAgc = my_volumeRaw;
+    sampleAgc    = my_volumeSmth;
+    multAgc      = 1.0f;      
+
+    // auto-reset sample peak. Need to do it here, because getSample() is not running
+    uint16_t MinShowDelay = strip.getMinShowDelay();
+    if (millis() - timeOfPeak > MinShowDelay) {   // Auto-reset of samplePeak after a complete frame has passed.
+      samplePeak = 0;
+      udpSamplePeak = 0;
+    }
+    if (userVar1 == 0) samplePeak = 0;
+    // Only change samplePeak IF it's currently false.
+    // If it's true already, then the animation still needs to respond.
+    if (!samplePeak) {
+      samplePeak = receivedPacket.samplePeak;
+      if (samplePeak) timeOfPeak = millis();
+      udpSamplePeak = samplePeak;
+      userVar1 = samplePeak;
+    }
+    //These values are only available on the ESP32
+    for (int i = 0; i < 16; i++) fftResult[i] = receivedPacket.fftResult[i];
+    FFT_Magnitude = fabsf(receivedPacket.FFT_Magnitude);
+    FFT_MajorPeak = constrain(receivedPacket.FFT_MajorPeak, 1.0f, 5120.0f); // restrict value to range expected by effects
+
+	  // fake myVals
+    static unsigned int myvals_index = 0;
+    myVals[myvals_index] = receivedPacket.sampleRaw;
+    myvals_index = (myvals_index +1) % 32;
+    myVals[myvals_index] = receivedPacket.sampleSmth;
+    myvals_index = (myvals_index +1) % 32;
+	  myVals[random8() % 32] = receivedPacket.sampleSmth;
+	  myVals[random8() % 32] = receivedPacket.fftResult[2];
+	  myVals[random8() % 32] = receivedPacket.fftResult[7];
+	  myVals[random8() % 32] = receivedPacket.fftResult[12];
+}
 
 
 // Create FFT object
@@ -528,7 +600,9 @@ void FFTcode( void * parameter) {
     // There could be interesting data at bins 0 to 2, but there are too many artifacts.
     //
 
-    FFT.majorPeak(FFT_MajorPeak, FFT_Magnitude);            // let the effects know which freq was most dominant
+    FFT.majorPeak(FFT_MajorPeak, FFT_Magnitude);             // let the effects know which freq was most dominant
+    FFT_MajorPeak = constrain(FFT_MajorPeak, 1.0f, 5120.0f); // restrict value to range expected by effects
+    FFT_Magnitude = fabsf(FFT_Magnitude);
 
     for (int i = 0; i < samplesFFT; i++) {                     // Values for bins 0 and 1 are WAY too large. Might as well start at 3.
       float t = 0.0;
