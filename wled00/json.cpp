@@ -566,6 +566,9 @@ int getSignalQuality(int rssi)
     return quality;
 }
 
+extern char audioStatusInfo[6][24];   // WLEDSR
+extern void usermod_updateInfo(void); // WLEDSR
+
 void serializeInfo(JsonObject root)
 {
   root[F("ver")] = versionString;
@@ -675,7 +678,15 @@ void serializeInfo(JsonObject root)
   root[F("freeheap")] = ESP.getFreeHeap();
   
   // begin WLEDSR
-  // usermod_updateInfo();   // small hack -> ask usermod to update its status. Result will be in userModRows[5][24] (global char array)
+  usermod_updateInfo();   // small hack -> request status from soundreactive. Result are on audioStatusInfo.
+  if (strlen(audioStatusInfo[0]) >0 ) {
+    root[F("audioType")]   = audioStatusInfo[0];
+    root[F("audioStatus")] = audioStatusInfo[1];
+    if (strlen(audioStatusInfo[2]) >0 ) root[F("audioGain")] = audioStatusInfo[2];
+    root[F("ssyncMode")]   = audioStatusInfo[3];
+    root[F("ssyncStatus")] = audioStatusInfo[4];
+    root[F("audioProcess")]= audioStatusInfo[5];
+  }
   
   root[F("totalheap")] = ESP.getHeapSize(); //WLEDSR
   root[F("minfreeheap")] = ESP.getMinFreeHeap();

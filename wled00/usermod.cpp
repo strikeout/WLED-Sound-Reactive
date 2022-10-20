@@ -14,6 +14,12 @@
  * Not 100% sure this was done right. There is probably a better way to handle this...
  */
 
+// These variables are feeding the "Info" Page
+static unsigned long last_UDPTime = 0;    // time of last valid UDP sound sync datapacket
+static float maxSample5sec = 0.0f;        // max sample (after AGC) in last 5 seconds 
+static unsigned long sampleMaxTimer = 0;  // last time maxSample5sec was reset
+#define CYCLE_SAMPLEMAX 2500              // time window for merasuring
+
 // This gets called once at boot. Do all initialization that doesn't depend on network here
 void userSetup() {
   disableSoundProcessing = true; // just to be safe
@@ -207,6 +213,15 @@ void userLoop() {
 
   }
 
+  // Info Page: keep max sample from last 5 seconds
+  if ((millis() -  sampleMaxTimer) > CYCLE_SAMPLEMAX) {
+    sampleMaxTimer = millis();
+    maxSample5sec = (0.15 * maxSample5sec) + 0.85 *((soundAgc) ? sampleAgc : sampleAvg); // reset, and start with some smoothing
+    if (sampleAvg < 1) maxSample5sec = 0; // noise gate 
+  } else {
+      if ((sampleAvg >= 1)) maxSample5sec = fmaxf(maxSample5sec, (soundAgc) ? rawSampleAgc : sampleRaw); // follow maximum volume
+  }
+
   // limit dynamics (experimental)
   limitSampleDynamics();
 
@@ -235,6 +250,7 @@ void userLoop() {
           receivedPacket.header[5] = '\0';                                            // ensure string termination
           // VERIFY THAT THIS IS A COMPATIBLE PACKET
           if (isValidUdpSyncVersion(receivedPacket.header)) {
+            last_UDPTime = millis();                                                  // tell Info page that we are "receiving"
             for (int i = 0; i < 32; i++ ){
               myVals[i] = receivedPacket.myVals[i];
             }
@@ -273,3 +289,74 @@ void userLoop() {
     }
   }
 } // userLoop()
+
+
+// Provide Info for Web UI Info page
+char audioStatusInfo[6][24] = {{'\0'}, {'\0'}, {'\0'}, {'\0'}, {'\0'}, {'\0'}};
+void usermod_updateInfo(void) {
+
+  // Audio Source
+  strcpy(audioStatusInfo[0], "- none");
+  strcpy(audioStatusInfo[0], " -");
+  if (audioSyncEnabled & 0x02) {                    // UDP sound sync - receive mode
+    strcpy(audioStatusInfo[0], "UDP sound sync");
+    if (udpSyncConnected) {
+      if ((millis() - last_UDPTime) < 2500)
+        strcpy(audioStatusInfo[1], " - receiving");
+      else
+        strcpy(audioStatusInfo[1], " - idle");
+    } else {
+        strcpy(audioStatusInfo[1], " - no connection");
+    }
+  } else {                                          // Analog or I2S digital input
+    if (audioSource && (audioSource->isInitialized())) { 
+      // audio source sucessfully configured
+      if ((dmType == 0) && (audioPin > 0)) strcpy(audioStatusInfo[0], "ADC analog");
+      if ((dmType > 0) && (i2ssdPin > 0)) strcpy(audioStatusInfo[0], "I2S digital");
+      if (maxSample5sec > 1.0) {
+        float my_usage = 100.0f * (maxSample5sec / 255.0f);
+        snprintf(audioStatusInfo[1], 23, " - peak %3d%%", int(my_usage));
+      } else {
+        strcpy(audioStatusInfo[1], " - quiet");
+      }
+    } else {                                        // error during audio source setup
+      strcpy(audioStatusInfo[0], "not initialized");
+      strcpy(audioStatusInfo[1], " - check GPIO config");
+    }
+  }
+  
+  // AGC or manual Gain
+  if (audioSource && audioSource->isInitialized() && (disableSoundProcessing == false) && !(audioSyncEnabled & 0x02)) {
+    if (soundAgc==0) {
+      float myGain = ((float)sampleGain/40.0f * (float)inputLevel/128.0f) + 1.0f/16.0f;     // non-AGC gain from presets
+      snprintf(audioStatusInfo[2], 23, "%5.2f", roundf(myGain*100.0f) / 100.0f);
+    } else {
+      snprintf(audioStatusInfo[2], 23, "%5.2f", roundf(multAgc*100.0f) / 100.0f);           // AGC gain
+    }
+  } else strcpy(audioStatusInfo[2], "");                                                    // nothing
+
+  // UDP Sound Sync status
+  strcpy(audioStatusInfo[3], "");
+  strcpy(audioStatusInfo[4], "");
+  if (audioSyncEnabled > 0) {
+    if (audioSyncEnabled & 0x01) strcpy(audioStatusInfo[3], "send mode");
+    else { 
+      if (audioSyncEnabled & 0x02) strcpy(audioStatusInfo[3], "receive mode");
+      else strcpy(audioStatusInfo[3], "");
+    }
+  } else strcpy(audioStatusInfo[3], "off");
+  if (audioSyncEnabled && !udpSyncConnected) strcpy(audioStatusInfo[4], " <i>(unconnected)</i>");
+
+  // Sound processing (FFT and input filters)
+  if (audioSource && (disableSoundProcessing == false)) {
+    strcpy(audioStatusInfo[5], "running");
+  } else {
+    strcpy(audioStatusInfo[5], "suspended");
+  }
+
+  // make sure all strings are terminated properly
+  audioStatusInfo[0][23] = '\0'; audioStatusInfo[1][23] = '\0';
+  audioStatusInfo[2][23] = '\0'; 
+  audioStatusInfo[3][23] = '\0'; audioStatusInfo[4][23] = '\0';
+  audioStatusInfo[5][23] = '\0'; 
+}

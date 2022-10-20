@@ -593,10 +593,11 @@ function populateInfo(i)
 	if (i.cn) vcn = i.cn;
 
 	cn += `v${i.ver} "${vcn}"<br><br><table class="infot">
-	${inforow("Build",i.vid)}
+	${inforow("SR Build",i.vid)}
   <!-- WLEDSR begin-->
   ${inforow("Audio Source",i.audioType,i.audioStatus)}
-  ${i.soundAgc>0?inforow("AGC Gain",i.audioGain,"x"):inforow("Manual Gain",i.audioGain,"x")}
+  ${i.audioGain?(i.soundAgc>0?inforow("AGC Gain",i.audioGain,"x"):inforow("Manual Gain",i.audioGain,"x")):""}
+  ${i.audioProcess?inforow("Sound Processing",i.audioProcess,""):""}
   ${inforow("UDP Sound Sync",i.ssyncMode,i.ssyncStatus)}
 	${urows}
   <tr><td colspan=2><hr style="height:1px;border-width:0;color:gray;background-color:gray"></td></tr>
