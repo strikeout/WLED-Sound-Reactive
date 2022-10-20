@@ -12,6 +12,7 @@
   </style>
 </head>
 <body>
+  <!-- WLEDSR from 0.14  + adjusted -->
   <canvas id="liveviewCanvas">LiveView</canvas> <!-- conditional if 2D? -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>  <!-- conditional load if 3D? -->
   <script>
@@ -38,16 +39,20 @@
           c.width  = window.innerWidth * 0.98; //remove scroll bars
     			c.height = window.innerHeight * 0.98; //remove scroll bars
           ctx = c.getContext('2d');
-          pPL = Math.min(c.width / mW, c.height / mH);
-          lOf = Math.floor((c.width - pPL*mW)/2); 
+          pPL = Math.min(c.width / mW, (c.height-10) / mH); //pixels per led  (width of circle)
+          lOf = Math.floor((c.width - pPL*mW)/2); //left offset (to center matrix)
         }
-        for (i = 6; i < leds.length; i+=3) {
-          let index = (i-6)/3;
+        ctx.clearRect(0, 0, c.width, c.height);
+        for (i = 8; i < leds.length; i+=3) {
+          let index = (i-8)/3;
           ctx.fillStyle = `rgb(${leds[i]},${leds[i+1]},${leds[i+2]})`;
           ctx.beginPath();
           ctx.arc(index%mW*pPL+pPL*0.5+lOf, Math.floor(index/mW)*pPL+pPL*0.5, pPL*0.4, 0, 2 * Math.PI);
           ctx.fill();
         }
+        ctx.fillStyle = `rgb(255,255,255)`;
+        if (leds[6] != 0) ctx.fillText("preset " + leds[6].toString(), lOf, mH*pPL+10);
+        if (leds[7] != 255) ctx.fillText("playlist " + leds[7].toString(), lOf + 70, mH*pPL+10);
       }
       else if (leds[2] == 2) { //3D
         if (!renderer) { //init 3D

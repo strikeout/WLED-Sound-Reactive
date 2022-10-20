@@ -146,6 +146,8 @@ bool sendLiveLedsWs(uint32_t wsClient)
   buffer[3] = strip.matrixWidth; //WLEDSR: send width and height
   buffer[4] = strip.matrixHeight; //WLEDSR: send width and height
   buffer[5] = 1; //WLEDSR 
+  buffer[6] = currentPreset;
+  buffer[7] = currentPlaylist;
 
   if (strip.stripOrMatrixPanel == 2) { //3D
     uint16_t matrixWidth = strip.matrixWidth;
@@ -161,7 +163,7 @@ bool sendLiveLedsWs(uint32_t wsClient)
     buffer[3] = matrixWidth;
   }
 
-  uint16_t pos = 6;
+  uint16_t pos = 8;
   for (uint16_t i= 0; pos < bufSize - 2; i += n)
   {
     uint32_t c = strip.getPixelColor(i);
