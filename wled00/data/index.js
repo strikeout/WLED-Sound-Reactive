@@ -572,6 +572,7 @@ function populateInfo(i)
 	var cn="";
 	var heap = i.freeheap/1000;
 	heap = heap.toFixed(1);
+	var theap = (i.totalheap>0)?i.totalheap/1000:-1; theap = theap.toFixed(1); //WLEDSR - total heap is not available on 8266
 	var pwr = i.leds.pwr;
 	var pwru = "Not calculated";
 	if (pwr > 1000) {pwr /= 1000; pwr = pwr.toFixed((pwr > 10) ? 0 : 1); pwru = pwr + " A";}
@@ -592,17 +593,34 @@ function populateInfo(i)
 	if (i.cn) vcn = i.cn;
 
 	cn += `v${i.ver} "${vcn}"<br><br><table class="infot">
-	${urows}
 	${inforow("Build",i.vid)}
+  <!-- WLEDSR begin-->
+  ${inforow("Audio Source",i.audioType,i.audioStatus)}
+  ${i.soundAgc>0?inforow("AGC Gain",i.audioGain,"x"):inforow("Manual Gain",i.audioGain,"x")}
+  ${inforow("UDP Sound Sync",i.ssyncMode,i.ssyncStatus)}
+	${urows}
+  <tr><td colspan=2><hr style="height:1px;border-width:0;color:gray;background-color:gray"></td></tr>
+  <!-- WLEDSR end-->  
 	${inforow("Signal strength",i.wifi.signal +"% ("+ i.wifi.rssi, " dBm)")}
 	${inforow("Uptime",getRuntimeStr(i.uptime))}
-	${inforow("Free heap",heap," kB")}
 		${inforow("Estimated current",pwru)}
 		${inforow("Frames / second",i.leds.fps)}
-	${inforow("MAC address",i.mac)}
+    <tr><td colspan=2><hr style="height:1px;border-width:0;color:gray;background-color:gray"></td></tr>
+    ${inforow("MAC address",i.mac)}
 	${inforow("Filesystem",i.fs.u + "/" + i.fs.t + " kB (" +Math.round(i.fs.u*100/i.fs.t) + "%)")}
 	${inforow("Environment",i.arch + " " + i.core + " (" + i.lwip + ")")}
-	</table>`;
+  <!-- WLEDSR begin-->
+  ${theap>0?inforow("Total heap",theap," kB"):""}
+  ${theap>0?inforow("Used heap",((i.totalheap-i.freeheap)/1000).toFixed(1)," kB"):inforow("Free heap",heap," kB")}
+  ${i.minfreeheap?inforow("Max heap used",((i.totalheap-i.minfreeheap)/1000).toFixed(1)," kB"):""}
+  ${i.tpram?inforow("Total PSRAM",(i.tpram/1024).toFixed(1)," kB"):""}
+  ${i.psram?((i.tpram-i.psram)>16383?inforow("Used PSRAM",((i.tpram-i.psram)/1024).toFixed(1)," kB"):inforow("Used PSRAM",(i.tpram-i.psram)," B")):""}
+  ${i.psusedram?((i.tpram-i.psusedram)>16383?inforow("Max PSRAM used",((i.tpram-i.psusedram)/1024).toFixed(1)," kB"):inforow("Max PSRAM used",(i.tpram-i.psusedram)," B")):""}
+  <tr><td colspan=2><hr style="height:1px;border-width:0;color:SeaGreen;background-color:SeaGreen"></td></tr>
+  ${i.e32model?inforow(i.e32model,i.e32cores +" core(s)"," "+i.e32speed+" Mhz"):""}
+  ${i.e32flash?inforow("Flash "+i.e32flash+"MB"+" mode "+i.e32flashmode+i.e32flashtext,i.e32flashspeed," Mhz"):""}
+  <!-- WLEDSR end-->  
+  </table><br>`;
 	d.getElementById('kv').innerHTML = cn;
 }
 

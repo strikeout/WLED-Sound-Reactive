@@ -2,6 +2,8 @@
 
 #include "palettes.h"
 
+#include <Esp.h>
+
 /*
  * JSON API (De)serialization
  */
@@ -671,9 +673,40 @@ void serializeInfo(JsonObject root)
   #endif
 
   root[F("freeheap")] = ESP.getFreeHeap();
-  #if defined(ARDUINO_ARCH_ESP32) && defined(WLED_USE_PSRAM)
-  if (psramFound()) root[F("psram")] = ESP.getFreePsram();
+  
+  // begin WLEDSR
+  // usermod_updateInfo();   // small hack -> ask usermod to update its status. Result will be in userModRows[5][24] (global char array)
+  
+  root[F("totalheap")] = ESP.getHeapSize(); //WLEDSR
+  root[F("minfreeheap")] = ESP.getMinFreeHeap();
+  #if defined(ARDUINO_ARCH_ESP32) && defined(WLED_USE_PSRAM) && defined(BOARD_HAS_PSRAM)
+  if (psramFound()) {
+    root[F("psram")] = ESP.getFreePsram();
+    root[F("tpram")] = ESP.getPsramSize(); //WLEDSR
+    root[F("psusedram")] = ESP.getMinFreePsram();
+  }  
   #endif
+  #ifdef ARDUINO_ARCH_ESP32
+  static char msgbuf[32];
+  snprintf(msgbuf, sizeof(msgbuf)-1, "%s rev.%d", ESP.getChipModel(), ESP.getChipRevision());
+  root[F("e32model")] = msgbuf;
+  root[F("e32cores")] = ESP.getChipCores();
+  root[F("e32speed")] = ESP.getCpuFreqMHz();
+  root[F("e32flash")] = int((ESP.getFlashChipSize()/1024)/1024);
+  root[F("e32flashspeed")] = int(ESP.getFlashChipSpeed()/1000000);
+  root[F("e32flashmode")] = int(ESP.getFlashChipMode());
+  switch (ESP.getFlashChipMode()) {
+    // missing: Octal modes
+    case FM_QIO:  root[F("e32flashtext")] = F(" (QIO)"); break;
+    case FM_QOUT: root[F("e32flashtext")] = F(" (QOUT)");break;
+    case FM_DIO:  root[F("e32flashtext")] = F(" (DIO?)"); break;         // due to bugs in arduino-esp32, this info is not always correct
+    case FM_DOUT: root[F("e32flashtext")] = F(" (DOUT or other)");break; // due to bugs in arduino-esp32, this info is not reliable
+    default: root[F("e32flashtext")] = F(" (other)"); break;
+  }
+  #endif
+
+  // end WLEDSR
+
   root[F("uptime")] = millis()/1000 + rolloverMillis*4294967;
 
   //WLEDSR
