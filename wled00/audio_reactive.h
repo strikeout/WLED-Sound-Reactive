@@ -139,9 +139,8 @@ constexpr uint16_t samplesFFT = 512;            // Samples in an FFT batch - Thi
 unsigned int sampling_period_us;
 unsigned long microseconds;
 
-float FFT_MajorPeak = 0;
-float FFT_Magnitude = 0;
-uint16_t mAvg = 0;
+float FFT_MajorPeak = 1.0f;
+float FFT_Magnitude = 0.0001;
 
 // These are the input and output vectors.  Input vectors receive computed results from FFT.
 static float vReal[samplesFFT];
@@ -210,7 +209,6 @@ bool isValidUdpSyncVersion2(char header[6]) {
 
 /* get current max sample ("published" by the I2S and FFT thread) and perform some sound processing */
 void getSample() {
-  static unsigned long peakTime = 0;
   const int AGC_preset = (soundAgc > 0)? (soundAgc-1): 0; // make sure the _compiler_ knows this value will not change while we are inside the function
 
   #ifdef WLED_DISABLE_SOUND
@@ -245,12 +243,11 @@ void getSample() {
   // keep "peak" sample, but decay value if current sample is below peak
   if ((sampleMax < sampleReal) && (sampleReal > 0.5)) {
       sampleMax = sampleMax + 0.5 * (sampleReal - sampleMax);          // new peak - with some filtering
-      if ((binNum < 2) && (millis() - peakTime > 80)) {              // another simple way to detect samplePeak
+      if (((maxVol < 6) || (binNum < 9)) && (millis() - timeOfPeak > 80)) {              // another simple way to detect samplePeak
         samplePeak = 1;
         timeOfPeak = millis();
         udpSamplePeak = 1;
         userVar1 = samplePeak;
-        peakTime=millis();
       }
   } else {
       if ((multAgc*sampleMax > agcZoneStop[AGC_preset]) && (soundAgc > 0))
@@ -273,14 +270,13 @@ void getSample() {
 
   if (userVar1 == 0) samplePeak = 0;
   // Poor man's beat detection by seeing if sample > Average + some value.
-  if ((maxVol > 0) && (binNum > 1) && (fftBin[binNum] > maxVol) && (millis() - peakTime > 100)) {    // This goes through ALL of the 255 bins - but ignores stupid settings
+  if ((maxVol > 1) && (binNum > 4) && (fftBin[binNum] > maxVol) && (millis() - timeOfPeak > 100)) {    // This goes through ALL of the 255 bins - but ignores stupid settings
   //  if (sample > (sampleAvg + maxVol) && millis() > (peakTime + 200)) {
   // Then we got a peak, else we don't. The peak has to time out on its own in order to support UDP sound sync.
     samplePeak = 1;
     timeOfPeak = millis();
     udpSamplePeak = 1;
     userVar1 = samplePeak;
-    peakTime=millis();
   }
 } // getSample()
 
