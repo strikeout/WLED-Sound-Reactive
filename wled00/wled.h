@@ -11,7 +11,7 @@
 #define VERSION 2210204                // WLEDSR specific version
 #define SR_VERSION_NAME "0.13.3-beta"  // WLEDSR version name --> some files need manual updating: package.json, package-lock.json, improv.cpp
 
-#define AC_VERSION 2208222             // AC WLED base version; last updated by PR CHANGE-> #217 Merge AC-main into SR-dev
+#define AC_VERSION 2208222             // AC WLED base version; last updated by PR #239 -> Merge AC-0.13.3 into dev
 #define AC_VERSION_NAME "0.13.3"       // AC WLED base version name; last change 22.August 2022
 
 //uncomment this if you have a "my_config.h" file you'd like to use
