@@ -685,7 +685,9 @@ void serializeInfo(JsonObject root)
     if (strlen(audioStatusInfo[2]) >0 ) root[F("audioGain")] = audioStatusInfo[2];
     root[F("ssyncMode")]   = audioStatusInfo[3];
     root[F("ssyncStatus")] = audioStatusInfo[4];
+#ifdef WLED_DEBUG
     root[F("audioProcess")]= audioStatusInfo[5];
+#endif
   }
   
   root[F("totalheap")] = ESP.getHeapSize(); //WLEDSR
