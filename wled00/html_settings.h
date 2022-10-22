@@ -367,7 +367,7 @@ required><h3>Alexa Voice Assistant</h3>Emulate Alexa device: <input
 type="checkbox" name="AL"><br>Alexa invocation name: <input type="text" 
 name="AI" maxlength="32"><h3>Blynk</h3><b>
 Blynk, MQTT and Hue sync all connect to external hosts!<br>
-This may impact the responsiveness of the ESP8266.</b><br>
+This may impact the responsiveness of the ESP microcontroller.</b><br>
 For best results, only use one of these services at a time.<br>
 (alternatively, connect a second ESP to them and use the UDP sync)<br><br>Host: 
 <input type="text" name="BH" maxlength="32"> Port: <input name="BP" 
