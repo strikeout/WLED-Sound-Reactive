@@ -566,7 +566,7 @@ int getSignalQuality(int rssi)
     return quality;
 }
 
-extern char audioStatusInfo[6][24];   // WLEDSR
+extern char audioStatusInfo[7][24];   // WLEDSR
 extern void usermod_updateInfo(void); // WLEDSR
 
 void serializeInfo(JsonObject root)
@@ -688,6 +688,7 @@ void serializeInfo(JsonObject root)
 #ifdef WLED_DEBUG
     root[F("audioProcess")]= audioStatusInfo[5];
 #endif
+    if (strlen(audioStatusInfo[6]) >0 ) root[F("audioWarning")] = audioStatusInfo[6];
   }
   
   root[F("totalheap")] = ESP.getHeapSize(); //WLEDSR

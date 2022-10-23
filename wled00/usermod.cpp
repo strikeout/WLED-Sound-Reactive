@@ -130,7 +130,7 @@ void userLoop() {
   if ((!disableSoundProcessing) && (!(audioSyncEnabled & (1 << 1)))) { // Only run the sampling code IF we're not in realtime mode and not in audio Receive mode
     #ifdef WLED_DEBUG
     // compain when audio userloop has been delayed for long. Currently we need userloop running between 500 and 1500 times per second. 
-    if (userloopDelay > 23) {    // should not happen. Expect lagging in SR effects if you see this mesage !!!
+    if ((userloopDelay > 50) || ((dmType != 0) && userloopDelay > 23)) {    // should not happen. Expect lagging in SR effects if you see this mesage !!!
       DEBUG_PRINTF("[AS userLoop] hickup detected -> was inactive for last %d millis!\n", int(millis() - lastUMRun));
     }
     #endif
@@ -301,12 +301,12 @@ void userLoop() {
 
 
 // Provide Info for Web UI Info page
-char audioStatusInfo[6][24] = {{'\0'}, {'\0'}, {'\0'}, {'\0'}, {'\0'}, {'\0'}};
+char audioStatusInfo[7][24] = {{'\0'}, {'\0'}, {'\0'}, {'\0'}, {'\0'}, {'\0'}, {'\0'}};
 void usermod_updateInfo(void) {
 
   // Audio Source
   strcpy(audioStatusInfo[0], "- none");
-  strcpy(audioStatusInfo[0], " -");
+  strcpy(audioStatusInfo[1], " -");
   if (audioSyncEnabled & 0x02) {                    // UDP sound sync - receive mode
     strcpy(audioStatusInfo[0], "UDP sound sync");
     if (udpSyncConnected) {
@@ -368,9 +368,22 @@ void usermod_updateInfo(void) {
     strcpy(audioStatusInfo[5], "suspended");
   }
 
+  bool foundPot = false;
+  if ((dmType == 0) && (audioPin > 0)) { // ADC analog input - warn if Potentimeter is configured
+    for (int b=0; b<WLED_MAX_BUTTONS; b++) {
+      if ((btnPin[b] >= 0) 
+          && (buttonType[b] == BTN_TYPE_ANALOG || buttonType[b] == BTN_TYPE_ANALOG_INVERTED) 
+          && (digitalPinToAnalogChannel(btnPin[b]) >= 0) && (digitalPinToAnalogChannel(btnPin[b]) < 9)) // found ADC1(channel 0...8) analog input
+        foundPot = true;
+    }
+  }
+  if (foundPot) strcpy(audioStatusInfo[6], "disable analog button");
+  else  strcpy(audioStatusInfo[6], "");
+
   // make sure all strings are terminated properly
   audioStatusInfo[0][23] = '\0'; audioStatusInfo[1][23] = '\0';
   audioStatusInfo[2][23] = '\0'; 
   audioStatusInfo[3][23] = '\0'; audioStatusInfo[4][23] = '\0';
   audioStatusInfo[5][23] = '\0'; 
+  audioStatusInfo[6][23] = '\0'; 
 }

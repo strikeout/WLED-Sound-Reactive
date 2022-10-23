@@ -369,6 +369,13 @@ function inforow(key, val, unit = "")
   return `<tr><td class="keytd">${key}</td><td class="valtd">${val}${unit}</td></tr>`;
 }
 
+// WLEDSR begin
+function inforow1(key)
+{
+  return `<tr><td colspan=2 class="valtd">${key}</td></tr>`;
+}
+// WLEDSR end
+
 function getLowestUnusedP()
 {
 	var l = 1;
@@ -596,6 +603,7 @@ function populateInfo(i)
 	${inforow("SR Build",i.vid)}
   <!-- WLEDSR begin-->
   ${inforow("Audio Source",i.audioType,i.audioStatus)}
+  ${i.audioWarning?inforow1("<em>Please "+i.audioWarning+"(s) !</em>"):""}
   ${i.audioGain?(i.soundAgc>0?inforow("AGC Gain",i.audioGain,"x"):inforow("Manual Gain",i.audioGain,"x")):""}
   ${i.audioProcess?inforow("Sound Processing",i.audioProcess,""):""}
   ${inforow("UDP Sound Sync",i.ssyncMode,i.ssyncStatus)}
