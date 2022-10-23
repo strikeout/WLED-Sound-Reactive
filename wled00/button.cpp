@@ -145,7 +145,10 @@ void handleAnalog(uint8_t b)
   #ifdef ESP8266
   rawReading = analogRead(A0) << 2;   // convert 10bit read to 12bit
   #else
-  rawReading = analogRead(btnPin[b]); // collect at full 12bit resolution
+  if (digitalPinToAnalogChannel(btnPin[b]) >= 0)  // WLEDSR bugfix: check if GPIO is an ADC pin
+    rawReading = analogRead(btnPin[b]); // collect at full 12bit resolution
+  else 
+    rawReading = 0;
   #endif
   yield();                            // keep WiFi task running - analog read may take several millis on ESP8266
 
