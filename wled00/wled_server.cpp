@@ -24,14 +24,22 @@ void handleUpload(AsyncWebServerRequest *request, const String& filename, size_t
     request->_tempFile = WLED_FS.open(filename, "w");
     DEBUG_PRINT("Uploading ");
     DEBUG_PRINTLN(filename);
-    if (filename == "/presets.json") presetsModifiedTime = toki.second();
+    if (filename.equals("/presets.json")) presetsModifiedTime = toki.second();    // WLEDSR
   }
   if (len) {
     request->_tempFile.write(data,len);
   }
   if(final){
     request->_tempFile.close();
-    request->send(200, "text/plain", F("File Uploaded!"));
+    if (filename.equalsIgnoreCase("/cfg.json")) { // WLEDSR bugfix from 0.14.0: reboot after uploading cfg.json
+      request->send(200, "text/plain", F("Configuration restored successfully.\nRebooting..."));
+      doReboot = true;
+    } else {
+      if (filename.equals("/presets.json")) {  // WLEDSR
+        request->send(200, "text/plain", F("Presets File Uploaded!"));
+      } else
+        request->send(200, "text/plain", F("File Uploaded!"));
+    }
   }
 }
 
