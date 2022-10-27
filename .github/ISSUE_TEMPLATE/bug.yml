@@ -36,16 +36,18 @@ body:
       label: Install Method
       description: How did you install WLED?
       options:
+        - From SoundReactive Release Page https://github.com/atuline/WLED/releases
+        - From https://wled-install.github.io/
         - Binary from WLED.me
-        - Self-Compiled
+        - Self-Compiled or other
     validations:
       required: true
   - type: input
     id: version
     attributes:
-      label: What version of WLED?
-      description: You can find this in by going to Config -> Security & Updates -> Scroll to Bottom. Copy and paste the entire line after "Server message"
-      placeholder: "e.g. SR WLED 0.13.2 (build 2207281)"
+      label: What version of Soundreactive WLED?
+      description: You can find this in the Info Page, or by going to Config -> Security & Updates -> Scroll to Bottom. Copy and paste the entire line after "Server message"
+      placeholder: "e.g. SR WLED 0.13.3 (build 2210311)"
     validations:
       required: true
   - type: dropdown
@@ -54,7 +56,6 @@ body:
       label: Which microcontroller/board are you seeing the problem on?
       multiple: true
       options:
-        - ESP8266
         - ESP32
         - Other
     validations:

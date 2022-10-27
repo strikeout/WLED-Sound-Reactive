@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an improvement idea for WLED!
+about: Suggest an improvement idea for Soundreactive WLED!
 title: ''
 labels: enhancement
 assignees: ''
