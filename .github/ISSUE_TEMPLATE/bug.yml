@@ -47,7 +47,7 @@ body:
     attributes:
       label: What version of Soundreactive WLED?
       description: You can find this in the Info Page, or by going to Config -> Security & Updates -> Scroll to Bottom. Copy and paste the entire line after "Server message"
-      placeholder: "e.g. SR WLED 0.13.3 (build 2210311)"
+      placeholder: "e.g. SR WLED 0.13.3 (build 2210301)"
     validations:
       required: true
   - type: dropdown
