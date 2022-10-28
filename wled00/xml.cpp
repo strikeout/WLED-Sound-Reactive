@@ -551,10 +551,18 @@ void getSettingsJS(byte subPage, char* dest)
     sappend('c',SET_F("AL"),alexaEnabled);
     sappends('s',SET_F("AI"),alexaInvocationName);
     sappend('c',SET_F("SA"),notifyAlexa);
+    #ifndef WLED_DISABLE_ALEXA
+    oappend(SET_F("hideNoALEXA();"));  //WLEDSR: hide "not compiled in" message
+    #else
+    oappend(SET_F("hideALEXA();"));    //WLEDSR: hide Alexa setting if not compiled in
+    #endif
     sappends('s',SET_F("BK"),(char*)((blynkEnabled)?SET_F("Hidden"):""));
     #ifndef WLED_DISABLE_BLYNK
     sappends('s',SET_F("BH"),blynkHost);
     sappend('v',SET_F("BP"),blynkPort);
+    oappend(SET_F("hideNoBLYNK();"));  //WLEDSR: hide "not compiled in" message
+    #else
+    oappend(SET_F("hideBLYNK();"));    //WLEDSR: hide BLYNK setting if not compiled in
     #endif
     if (!(((audioSyncEnabled)>>(0)) & 1) && !(((audioSyncEnabled)>>(1)) & 1)) {
       // 0 == udp audio sync off
@@ -584,6 +592,9 @@ void getSettingsJS(byte subPage, char* dest)
     sappends('s',"MD",mqttDeviceTopic);
     sappends('s',SET_F("MG"),mqttGroupTopic);
     sappend('c',SET_F("BM"),buttonPublishMqtt);
+    oappend(SET_F("hideNoMQTT();"));  //WLEDSR: hide "not compiled in" message
+    #else
+    oappend(SET_F("hideMQTT();"));    //WLEDSR: hide MQTT setting if not compiled in
     #endif
 
     #ifndef WLED_DISABLE_HUESYNC
@@ -611,6 +622,9 @@ void getSettingsJS(byte subPage, char* dest)
     }
 
     sappends('m',SET_F("(\"sip\")[0]"),hueErrorString);
+    oappend(SET_F("hideNoHUE();"));  //WLEDSR: hide "not compiled in" message
+    #else
+    oappend(SET_F("hideHUE();"));    //WLEDSR: hide Hue Sync setting if not compiled in
     #endif
     sappend('v',SET_F("BD"),serialBaud);
   }
