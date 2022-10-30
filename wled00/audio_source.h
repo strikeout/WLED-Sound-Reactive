@@ -104,7 +104,7 @@ public:
        Read num_samples from the microphone, and store them in the provided
        buffer
     */
-    virtual void getSamples(double *buffer, uint16_t num_samples) = 0;
+    virtual void getSamples(float *buffer, uint16_t num_samples) = 0;
 
     /* Get an up-to-date sample without DC offset */
     virtual int getSampleWithoutDCOffset() = 0;
@@ -208,7 +208,7 @@ public:
         }
     }
 
-    virtual void getSamples(double *buffer, uint16_t num_samples) {
+    virtual void getSamples(float *buffer, uint16_t num_samples) {
         if(_initialized) {
             esp_err_t err;
             size_t bytes_read = 0;        /* Counter variable to check if we actually got enough data */
@@ -251,17 +251,17 @@ public:
                 if (_shift != 0)
                     newSamples[i] >>= 16;
 #endif
-                double currSample = 0.0;
+                float currSample = 0.0;
                 if(_shift > 0)
-                  currSample = (double) (newSamples[i] >> _shift);
+                  currSample = (float) (newSamples[i] >> _shift);
                 else {
                   if(_shift < 0)
-                    currSample = (double) (newSamples[i] << (- _shift)); // need to "pump up" 12bit ADC to full 16bit as delivered by other digital mics
+                    currSample = (float) (newSamples[i] << (- _shift)); // need to "pump up" 12bit ADC to full 16bit as delivered by other digital mics
                   else
 #ifdef I2S_SAMPLE_DOWNSCALE_TO_16BIT
-                    currSample = (double) newSamples[i] / 65536.0;        // _shift == 0 -> use the chance to keep lower 16bits
+                    currSample = (float) newSamples[i] / 65536.0f;        // _shift == 0 -> use the chance to keep lower 16bits
 #else
-                    currSample = (double) newSamples[i];
+                    currSample = (float) newSamples[i];
 #endif
                 }
                 buffer[i] = currSample;
@@ -473,6 +473,8 @@ public:
             return;
         }
 
+       //adc1_config_width(ADC_WIDTH_BIT_12);   // ensure that ADC1 runs at 12bit resolution - should not be needed, because i2s_set_adc_mode does that anyway
+
         // Enable I2S mode of ADC
         err = i2s_set_adc_mode(ADC_UNIT_1, adc1_channel_t(channel));
         if (err != ESP_OK) {
@@ -480,6 +482,10 @@ public:
             return;
 
         }
+
+        // see example in https://github.com/espressif/arduino-esp32/blob/master/libraries/ESP32/examples/I2S/HiFreq_ADC/HiFreq_ADC.ino
+        adc1_config_channel_atten(adc1_channel_t(channel), ADC_ATTEN_DB_11);   // configure ADC input amplification
+
 #if defined(I2S_GRAB_ADC1_COMPLETELY)
         // according to docs from espressif, the ADC needs to be started explicitly
         // fingers crossed
@@ -489,7 +495,7 @@ public:
             //return;
         }
 #else
-        err = i2s_adc_disable(I2S_NUM_0);
+        //err = i2s_adc_disable(I2S_NUM_0); // seems that disable without previous enable causes a crash/bootloop on some boards
 		//err = i2s_stop(I2S_NUM_0);
         if (err != ESP_OK) {
             Serial.printf("Failed to initially disable i2s adc: %d\n", err);
@@ -498,7 +504,7 @@ public:
         _initialized = true;
     }
 
-    void getSamples(double *buffer, uint16_t num_samples) {
+    void getSamples(float *buffer, uint16_t num_samples) {
 
     /* Enable ADC. This has to be enabled and disabled directly before and
     after sampling, otherwise Wifi dies and analogRead() hangs

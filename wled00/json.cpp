@@ -2,6 +2,8 @@
 
 #include "palettes.h"
 
+#include <Esp.h>
+
 /*
  * JSON API (De)serialization
  */
@@ -564,6 +566,9 @@ int getSignalQuality(int rssi)
     return quality;
 }
 
+extern char audioStatusInfo[7][24];   // WLEDSR
+extern void usermod_updateInfo(void); // WLEDSR
+
 void serializeInfo(JsonObject root)
 {
   root[F("ver")] = versionString;
@@ -587,6 +592,9 @@ void serializeInfo(JsonObject root)
     totalLC |= lc;
     lcarr.add(lc);
   }
+
+  //WLEDSR
+  leds[F("somp")] = strip.stripOrMatrixPanel;
 
   leds["lc"] = totalLC;
 
@@ -668,9 +676,51 @@ void serializeInfo(JsonObject root)
   #endif
 
   root[F("freeheap")] = ESP.getFreeHeap();
-  #if defined(ARDUINO_ARCH_ESP32) && defined(WLED_USE_PSRAM)
-  if (psramFound()) root[F("psram")] = ESP.getFreePsram();
+  
+  // begin WLEDSR
+  usermod_updateInfo();   // small hack -> request status from soundreactive. Result are on audioStatusInfo.
+  if (strlen(audioStatusInfo[0]) >0 ) {
+    root[F("audioType")]   = audioStatusInfo[0];
+    root[F("audioStatus")] = audioStatusInfo[1];
+    if (strlen(audioStatusInfo[2]) >0 ) root[F("audioGain")] = audioStatusInfo[2];
+    root[F("ssyncMode")]   = audioStatusInfo[3];
+    root[F("ssyncStatus")] = audioStatusInfo[4];
+#ifdef WLED_DEBUG
+    root[F("audioProcess")]= audioStatusInfo[5];
+#endif
+    if (strlen(audioStatusInfo[6]) >0 ) root[F("audioWarning")] = audioStatusInfo[6];
+  }
+  
+  root[F("totalheap")] = ESP.getHeapSize(); //WLEDSR
+  root[F("minfreeheap")] = ESP.getMinFreeHeap();
+  #if defined(ARDUINO_ARCH_ESP32) && defined(WLED_USE_PSRAM) && defined(BOARD_HAS_PSRAM)
+  if (psramFound()) {
+    root[F("psram")] = ESP.getFreePsram();
+    root[F("tpram")] = ESP.getPsramSize(); //WLEDSR
+    root[F("psusedram")] = ESP.getMinFreePsram();
+  }  
   #endif
+  #ifdef ARDUINO_ARCH_ESP32
+  static char msgbuf[32];
+  snprintf(msgbuf, sizeof(msgbuf)-1, "%s rev.%d", ESP.getChipModel(), ESP.getChipRevision());
+  root[F("e32model")] = msgbuf;
+  root[F("e32cores")] = ESP.getChipCores();
+  root[F("e32speed")] = ESP.getCpuFreqMHz();
+  root[F("e32flash")] = int((ESP.getFlashChipSize()/1024)/1024);
+  root[F("e32flashspeed")] = int(ESP.getFlashChipSpeed()/1000000);
+  root[F("e32flashmode")] = int(ESP.getFlashChipMode());
+  switch (ESP.getFlashChipMode()) {
+    // missing: Octal modes
+    case FM_QIO:  root[F("e32flashtext")] = F(" (QIO)"); break;
+    case FM_QOUT: root[F("e32flashtext")] = F(" (QOUT)");break;
+    case FM_DIO:  root[F("e32flashtext")] = F(" (DIO?)"); break;         // due to bugs in arduino-esp32, this info is not always correct
+    case FM_DOUT: root[F("e32flashtext")] = F(" (DOUT or other)");break; // due to bugs in arduino-esp32, this info is not reliable
+    default: root[F("e32flashtext")] = F(" (other)"); break;
+  }
+  #endif
+
+  // end WLEDSR
+
   root[F("uptime")] = millis()/1000 + rolloverMillis*4294967;
 
   //WLEDSR

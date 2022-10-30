@@ -276,6 +276,44 @@ void WLED::loop()
   loops++;
 #endif        // WLED_DEBUG
   toki.resetTick();
+
+#if WLED_WATCHDOG_TIMEOUT > 0
+  // we finished our mainloop, reset the watchdog timer
+  #ifdef ARDUINO_ARCH_ESP32
+    esp_task_wdt_reset();
+  #else
+    ESP.wdtFeed();
+  #endif
+#endif
+}
+
+void WLED::enableWatchdog() {
+#if WLED_WATCHDOG_TIMEOUT > 0
+#ifdef ARDUINO_ARCH_ESP32
+  esp_err_t watchdog = esp_task_wdt_init(WLED_WATCHDOG_TIMEOUT, true);
+  DEBUG_PRINT(F("Watchdog enabled: "));
+  if (watchdog == ESP_OK) {
+    DEBUG_PRINTLN(F("OK"));
+  } else {
+    DEBUG_PRINTLN(watchdog);
+    return;
+  }
+  esp_task_wdt_add(NULL);
+#else
+  ESP.wdtEnable(WLED_WATCHDOG_TIMEOUT * 1000);
+#endif
+#endif
+}
+
+void WLED::disableWatchdog() {
+#if WLED_WATCHDOG_TIMEOUT > 0
+DEBUG_PRINTLN(F("Watchdog: disabled"));
+#ifdef ARDUINO_ARCH_ESP32
+  esp_task_wdt_delete(NULL);
+#else
+  ESP.wdtDisable();
+#endif
+#endif
 }
 
 void WLED::setup()
@@ -295,19 +333,55 @@ void WLED::setup()
 #ifdef ARDUINO_ARCH_ESP32
   DEBUG_PRINT(F("esp32 "));
   DEBUG_PRINTLN(ESP.getSdkVersion());
+
+  // WLEDSR begin
+  #if defined(ESP_ARDUINO_VERSION)
+    //DEBUG_PRINTF(F("arduino-esp32  0x%06x\n"), ESP_ARDUINO_VERSION);
+    DEBUG_PRINTF("arduino-esp32 v%d.%d.%d\n", int(ESP_ARDUINO_VERSION_MAJOR), int(ESP_ARDUINO_VERSION_MINOR), int(ESP_ARDUINO_VERSION_PATCH));  // availeable since v2.0.0
+  #else
+    DEBUG_PRINTLN(F("arduino-esp32 v1.0.x\n"));  // we can't say in more detail.
+  #endif
+  DEBUG_PRINT(F("CPU:   ")); DEBUG_PRINT(ESP.getChipModel());
+  DEBUG_PRINT(F(" rev.")); DEBUG_PRINT(ESP.getChipRevision());
+  DEBUG_PRINT(F(", ")); DEBUG_PRINT(ESP.getChipCores()); DEBUG_PRINT(F(" core(s)"));
+  DEBUG_PRINT(F(", ")); DEBUG_PRINT(ESP.getCpuFreqMHz()); DEBUG_PRINTLN(F("MHz."));
+  DEBUG_PRINT(F("FLASH: ")); DEBUG_PRINT((ESP.getFlashChipSize()/1024)/1024);
+  DEBUG_PRINT(F("MB, Mode ")); DEBUG_PRINT(ESP.getFlashChipMode());
+  #ifdef WLED_DEBUG
+  switch (ESP.getFlashChipMode()) {
+    // missing: Octal modes
+    case FM_QIO:  DEBUG_PRINT(F(" (QIO)")); break;
+    case FM_QOUT: DEBUG_PRINT(F(" (QOUT)"));break;
+    case FM_DIO:  DEBUG_PRINT(F(" (DIO?)")); break;
+    case FM_DOUT: DEBUG_PRINT(F(" (DOUT?)"));break;
+    default: break;
+  }
+  #endif 
+  DEBUG_PRINT(F(", ")); DEBUG_PRINT(int(ESP.getFlashChipSpeed()/1000000)); DEBUG_PRINTLN(F("MHz")); 
+  // WLEDSR end
 #else
   DEBUG_PRINT(F("esp8266 "));
   DEBUG_PRINTLN(ESP.getCoreVersion());
 #endif
+  DEBUG_PRINTLN("");
   DEBUG_PRINT(F("heap "));
   DEBUG_PRINTLN(ESP.getFreeHeap());
+
+  enableWatchdog();
 
   #if defined(ARDUINO_ARCH_ESP32) && defined(WLED_USE_PSRAM)
   if (psramFound()) {
     // GPIO16/GPIO17 reserved for SPI RAM
     managed_pin_type pins[2] = { {16, true}, {17, true} };
     pinManager.allocateMultiplePins(pins, 2, PinOwner::SPI_RAM);
+    DEBUG_PRINT(F("Total PSRAM: "));    DEBUG_PRINT(ESP.getPsramSize()/1024); DEBUG_PRINTLN("kB");
+    DEBUG_PRINT(F("Free PSRAM:  "));    DEBUG_PRINT(ESP.getFreePsram()/1024); DEBUG_PRINTLN("kB");
+  } else
+    DEBUG_PRINTLN(F("No PSRAM"));
   }
+  #endif
+  #if defined(ARDUINO_ARCH_ESP32) && defined(BOARD_HAS_PSRAM) && !defined(WLED_USE_PSRAM)
+      DEBUG_PRINTLN(F("PSRAM availeable but not used."));
   #endif
 
   //DEBUG_PRINT(F("LEDs inited. heap usage ~"));
@@ -401,7 +475,12 @@ void WLED::setup()
 #ifdef ESP8266
       wifi_set_sleep_type(NONE_SLEEP_T);
 #endif
+      WLED::instance().disableWatchdog();
       DEBUG_PRINTLN(F("Start ArduinoOTA"));
+    });
+    ArduinoOTA.onError([](ota_error_t error) {
+      // reenable watchdog on failed update
+      WLED::instance().enableWatchdog();
     });
     if (strlen(cmDNS) > 0)
       ArduinoOTA.setHostname(cmDNS);

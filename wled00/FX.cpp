@@ -1012,7 +1012,7 @@ uint16_t WS2812FX::mode_running_random(void) {
 
   uint8_t z = it % zoneSize;
   bool nzone = (!z && it != SEGENV.aux1);
-  for (uint16_t i=SEGLEN-1; i > 0; i--) {
+  for (int i=SEGLEN-1; i >= 0; i--) {  // WLEDSR bugfix
     if (nzone || z >= zoneSize) {
       uint8_t lastrand = PRNG16 >> 8;
       int16_t diff = 0;
@@ -1616,7 +1616,7 @@ uint16_t WS2812FX::mode_random_chase(void)
   uint32_t color = SEGENV.step;
   random16_set_seed(SEGENV.aux0);
 
-  for(uint16_t i = SEGLEN -1; i > 0; i--) {
+  for (int i=SEGLEN-1; i >= 0; i--) {  // WLEDSR bugfix
     uint8_t r = random8(6) != 0 ? (color >> 16 & 0xFF) : random8();
     uint8_t g = random8(6) != 0 ? (color >> 8  & 0xFF) : random8();
     uint8_t b = random8(6) != 0 ? (color       & 0xFF) : random8();
@@ -2717,12 +2717,12 @@ uint16_t WS2812FX::sinelon_base(bool dual, bool rainbow=false) {
   }
   if (SEGENV.aux0 != pos) {
     if (SEGENV.aux0 < pos) {
-      for (uint16_t i = SEGENV.aux0; i < pos ; i++) {
+      for (int i = SEGENV.aux0; i < pos ; i++) { // WLEDSR bugfix
         setPixelColor(i, color1);
         if (dual) setPixelColor(SEGLEN-1-i, color2);
       }
     } else {
-      for (uint16_t i = SEGENV.aux0; i > pos ; i--) {
+      for (int i = SEGENV.aux0; i > pos ; i--) {  // WLEDSR bugfix
         setPixelColor(i, color1);
         if (dual) setPixelColor(SEGLEN-1-i, color2);
       }
@@ -4281,9 +4281,9 @@ extern float sampleReal;			                 // "sample" as float, to provide bit
 extern float multAgc;                          // sampleReal * multAgc = sampleAgc. Our multiplier
 
 // FFT based variables
-extern double FFT_MajorPeak;
-extern double FFT_Magnitude;
-extern double fftBin[];                         // raw FFT data
+extern float FFT_MajorPeak;
+extern float FFT_Magnitude;
+extern float fftBin[];                         // raw FFT data
 extern int fftResult[];                         // summary of bins array. 16 summary bins.
 extern float fftAvg[];
 
@@ -4784,7 +4784,7 @@ for (int j=0; j < SEGMENT.width; j++) {
 uint16_t WS2812FX::mode_2DFrizzles(void) {                 // By: Stepko https://editor.soulmatelights.com/gallery/640-color-frizzles , Modified by: Andrew Tuline
 
   fadeToBlackBy(leds, 16);
-  for (byte i = 8; i > 0; i--) {
+  for (int i = 8; i > 0; i--) {  // WLEDSR bugfix
     leds[XY(beatsin8(SEGMENT.speed/8 + i, 0, SEGMENT.width - 1), beatsin8(SEGMENT.intensity/8 - i, 0, SEGMENT.height - 1))] += ColorFromPalette(currentPalette, beatsin8(12, 0, 255), 255, LINEARBLEND);
   }
   blur2d(leds, 16);
@@ -5674,7 +5674,7 @@ uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andre
   float tmpSound = multAgc;                                                         // AGC gain
   if (soundAgc == 0) {
     if ((sampleAvg> 1.0) && (sampleReal > 0.05))
-      tmpSound = (float)sample / sampleReal;                                        // current non-AGC gain
+      tmpSound = (float)sampleRaw / sampleReal;                                     // current non-AGC gain
     else
       tmpSound = ((float)sampleGain/40.0 * (float)inputLevel/128.0) + 1.0/16.0;     // non-AGC gain from presets
   }
@@ -6024,7 +6024,7 @@ uint16_t WS2812FX::mode_ripplepeak(void) {                // * Ripple peak. By A
         ripples[i].pos = random16(SEGLEN);
 
         #ifdef ESP32
-          ripples[i].color = (int)(log10(FFT_MajorPeak)*128);
+          ripples[i].color = (int)(log10f(FFT_MajorPeak)*128);
         #else
           ripples[i].color = random8();
         #endif
@@ -6218,7 +6218,7 @@ uint16_t WS2812FX::mode_freqmatrix(void) {                // Freqmatrix. By Andr
     CRGB color = 0;
     CHSV c;
 
-    if (FFT_MajorPeak > 5120) FFT_MajorPeak = 0;
+    if (FFT_MajorPeak > 5120) FFT_MajorPeak = 1.0f;
       // MajorPeak holds the freq. value which is most abundant in the last sample.
       // With our sampling rate of 10240Hz we have a usable freq range from roughtly 80Hz to 10240/2 Hz
       // we will treat everything with less than 65Hz as 0
@@ -6327,7 +6327,7 @@ uint16_t WS2812FX::mode_freqwave(void) {                  // Freqwave. By Andrea
     CRGB color = 0;
     CHSV c;
 
-    if (FFT_MajorPeak > 5120) FFT_MajorPeak = 0;
+    if (FFT_MajorPeak > 5120) FFT_MajorPeak = 1.0f;
       // MajorPeak holds the freq. value which is most abundant in the last sample.
       // With our sampling rate of 10240Hz we have a usable freq range from roughtly 80Hz to 10240/2 Hz
       // we will treat everything with less than 65Hz as 0
@@ -6338,6 +6338,7 @@ uint16_t WS2812FX::mode_freqwave(void) {                  // Freqwave. By Andrea
       int upperLimit = 20 * SEGMENT.custom2;
       int lowerLimit = 2 * SEGMENT.custom1;
       int i =  lowerLimit!=upperLimit?map(FFT_MajorPeak, lowerLimit, upperLimit, 0, 255):FFT_MajorPeak;
+      if (i<0) i = 0;
       uint16_t b = 255.0 * intensity;
       if (b > 255) b=255;
       c = CHSV(i, 240, (uint8_t)b);
@@ -6385,7 +6386,8 @@ uint16_t WS2812FX::mode_gravfreq(void) {                  // Gravfreq. By Andrew
 
   for (int i=0; i<tempsamp; i++) {
 
-    uint8_t index = (log10((int)FFT_MajorPeak) - (3.71-1.78)) * 255;
+    int index = (log10f(FFT_MajorPeak) - (3.71-1.78)) * 255;
+    if (index <0) index = 0;
 
     setPixelColor(i+SEGLEN/2, color_from_palette(index, false, PALETTE_SOLID_WRAP, 0));
     setPixelColor(SEGLEN/2-i-1, color_from_palette(index, false, PALETTE_SOLID_WRAP, 0));
@@ -6438,7 +6440,7 @@ uint16_t WS2812FX::mode_rocktaves(void) {                 // Rocktaves. Same not
 
   fadeToBlackBy(leds, 64);                          // Just in case something doesn't get faded.
 
-  double frTemp = FFT_MajorPeak;
+  float frTemp = FFT_MajorPeak;
   uint8_t octCount = 0;                                   // Octave counter.
   uint8_t volTemp = 0;
 
@@ -6491,7 +6493,8 @@ uint16_t WS2812FX::mode_waterfall(void) {                   // Waterfall. By: An
     if (soundAgc) my_magnitude *= multAgc;
     if (sampleAvg < 1 ) my_magnitude = 0.001;             // noise gate closed - mute
 
-    uint8_t pixCol = (log10((int)FFT_MajorPeak) - 2.26) * 177;  // log10 frequency range is from 2.26 to 3.7. Let's scale accordingly.
+    int pixCol = (log10f(FFT_MajorPeak) - 2.26) * 177;  // log10 frequency range is from 2.26 to 3.7. Let's scale accordingly.
+    if (pixCol < 0) pixCol=0;
 
     if (samplePeak) {
       leds[segmentToLogical(SEGLEN-1)] = CHSV(92,92,92);
@@ -6730,3 +6733,83 @@ uint16_t WS2812FX::mode_2DAkemi(void) {
 
   return FRAMETIME;
 } // mode_2DAkemi
+
+
+// 3D !!!!!!!!!!
+
+float distance(uint16_t x1, uint16_t y1, uint16_t z1, uint16_t x2, uint16_t y2, uint16_t z2) {
+    return sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) + (z1-z2)*(z1-z2));
+}
+
+uint16_t WS2812FX::mode_3DRipples(void) {
+  float ripple_interval = 1.3 * (SEGMENT.intensity/128.0);
+
+  fill(CRGB::Black);
+
+  //workaround to get width, height and depth
+  uint16_t mW = strip.matrixWidth;
+  uint16_t mH = 1;
+  uint16_t mD = 1;
+  //balance dimensions
+  while (mW > mH) {
+    if (mH < mD)
+      mH ++;
+    else
+      mD ++;
+    mW =  strip.matrixWidth / mH / mD;
+  }
+
+
+  for (int z=0; z<mD; z++) {
+      for (int x=0; x<mW; x++) {
+          float d = distance(3.5, 3.5, 0, x, z, 0)/9.899495*mH;
+          uint16_t height = floor(mH/2.0+sinf(d/ripple_interval + SEGENV.call/((256.0-SEGMENT.speed)/20.0))*mH/2.0); //between 0 and 8
+
+          setPixelColor(x + height * mW + z * mW * mH, color_from_palette(SEGENV.call, true, PALETTE_SOLID_WRAP, 0));
+      }
+  }
+
+  return FRAMETIME;
+} // mode_3DRipples
+
+uint16_t WS2812FX::mode_3DSphereMove(void) {
+  uint16_t origin_x, origin_y, origin_z, d;
+  float diameter;
+
+  fill(CRGB::Black);
+
+  uint32_t interval = SEGENV.call/((256.0-SEGMENT.speed)/20.0);
+
+  //workaround to get width, height and depth
+  uint16_t mW = strip.matrixWidth;
+  uint16_t mH = 1;
+  uint16_t mD = 1;
+  //balance dimensions
+  while (mW > mH) {
+    if (mH < mD)
+      mH ++;
+    else
+      mD ++;
+    mW =  strip.matrixWidth / mH / mD;
+  }
+
+  origin_x = 3.5+sinf(interval)*2.5;
+  origin_y = 3.5+cosf(interval)*2.5;
+  origin_z = 3.5+cosf(interval)*2.0;
+
+  diameter = 2.0+sinf(interval/3.0);
+
+  for (int x=0; x<mW; x++) {
+      for (int y=0; y<mH; y++) {
+          for (int z=0; z<mD; z++) {
+              d = distance(x, y, z, origin_x, origin_y, origin_z);
+
+              if (d>diameter && d<diameter+1) {
+                  setPixelColor(x + y*mW + z*mW*mH, color_from_palette(SEGENV.call, true, PALETTE_SOLID_WRAP, 0));
+              }
+          }
+      }
+  }
+
+  return FRAMETIME;
+} // mode_3DSphereMove
