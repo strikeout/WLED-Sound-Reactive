@@ -210,7 +210,7 @@ uint16_t IRAM_ATTR WS2812FX::segmentToLogical(uint16_t i) { // ewowi20210703: wi
 
   /* reverse just an individual segment */
   int16_t logicalIndex = iGroup;
-  if (IS_REVERSE && stripOrMatrixPanel == 0) { // in case of 1D
+  if (IS_REVERSE && stripOrMatrixPanel != 1) { // in case of 1D or 3D
     if (IS_MIRROR) {
       logicalIndex = (SEGMENT.length() -1) / 2 - iGroup;  // only need to index half the pixels
     } else {
@@ -253,9 +253,13 @@ uint16_t IRAM_ATTR WS2812FX::segmentToLogical(uint16_t i) { // ewowi20210703: wi
   return logicalIndex;
 }
 
-void IRAM_ATTR WS2812FX::setPixelColor(uint16_t i, byte r, byte g, byte b, byte w)
+void IRAM_ATTR WS2812FX::setPixelColor(int i, byte r, byte g, byte b, byte w)
 {
   uint8_t segIdx;
+
+  //if ((i<0) || (i>=SEGMENT.virtualLength())) return;  // if pixel would fall out of segment just exit - some effects, like bouncing balls, get negative values resulting at i =  maxint - something
+  // softhack007: full check disabled, as it seems to cause problems with DDP
+  if (i<0) return;  // some effects, like bouncing balls, produce negative values
 
   if (SEGLEN) { // SEGLEN!=0 -> from segment/FX
     //color_blend(getpixel, col, _bri_t); (pseudocode for future blending of segments)
@@ -308,7 +312,7 @@ void IRAM_ATTR WS2812FX::setPixelColor(uint16_t i, byte r, byte g, byte b, byte 
     }
   } else {
     if (i < customMappingSize) i = customMappingTable[i];
-    busses.setPixelColor(i, RGBW32(r, g, b, w));
+    // busses.setPixelColor(i, RGBW32(r, g, b, w));
     busses.setPixelColor(logicalToPhysical(i), RGBW32(r, g, b, w)); // ewowi20210624: logicalToPhysical: Maps logical led index to physical led index.
   }
 }
@@ -765,7 +769,7 @@ void WS2812FX::set2DSegment(uint8_t n) {
 
 //WLEDSR, for strips we need ledCountx1 dimension
 void WS2812FX::setStripOrPanelWidthAndHeight() {
-  if (stripOrMatrixPanel == 0) { //strip
+  if (stripOrMatrixPanel != 1) { //strip or 3D cube
     // ledCount was removed, replaced by strip.getLengthTotal()
     matrixWidth = strip.getLengthTotal();
     matrixHeight = 1;
@@ -806,7 +810,6 @@ void WS2812FX::setStripOrPanelWidthAndHeight() {
     // panelTranspose = 0; //
 
   }
-  // Serial.printf("setStripOrPanelWidthAndHeight %d %d %d", strip.stripOrMatrixPanel, strip.matrixWidth, strip.matrixHeight);Serial.println();
 }
 
 bool WS2812FX::hasCCTBus(void) {

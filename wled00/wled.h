@@ -3,16 +3,16 @@
 /*
    Main sketch, global variable declarations
    @title WLED project sketch
-   @version 0.13.2-a0
+   @version 0.13.3
    @author Christian Schwinne
  */
 
 // version code in format yymmddb (b = daily build)
-#define VERSION 2207301             // WLEDSR specific version
-#define SR_VERSION_NAME "0.13.2"    // WLEDSR version name --> some files need manual updating: package.json, package-lock.json, improv.cpp
+#define VERSION 2210301                // WLEDSR specific version
+#define SR_VERSION_NAME "0.13.3"       // WLEDSR version name --> some files need manual updating: package.json, package-lock.json, improv.cpp
 
-#define AC_VERSION 2207021             // AC WLED base version; last updated by PR #217 Merge AC-main into SR-dev
-#define AC_VERSION_NAME "0.13.2-a0"    // AC WLED base version name; last change 02.July 2022
+#define AC_VERSION 2208222             // AC WLED base version; last updated by PR #239 -> Merge AC-0.13.3 into dev
+#define AC_VERSION_NAME "0.13.3"       // AC WLED base version name; last change 22.August 2022
 
 //uncomment this if you have a "my_config.h" file you'd like to use
 //#define WLED_USE_MY_CONFIG
@@ -58,6 +58,12 @@
 // filesystem specific debugging
 //#define WLED_DEBUG_FS
 
+#ifndef WLED_WATCHDOG_TIMEOUT
+  // 3 seconds should be enough to detect a lockup
+  // define WLED_WATCHDOG_TIMEOUT=0 to disable watchdog, default
+  #define WLED_WATCHDOG_TIMEOUT 0
+#endif
+
 //optionally disable brownout detector on ESP32.
 //This is generally a terrible idea, but improves boot success on boards with a 3.3v regulator + cap setup that can't provide 400mA peaks
 //#define WLED_DISABLE_BROWNOUT_DET
@@ -87,6 +93,7 @@
   #else
     #include <LittleFS.h>
   #endif
+  #include "esp_task_wdt.h"
 #endif
 
 #include "src/dependencies/network/Network.h"
@@ -234,7 +241,7 @@ using PSRAMDynamicJsonDocument = BasicJsonDocument<PSRAM_Allocator>;
 
 // Global Variable definitions
 WLED_GLOBAL char versionString[] _INIT(TOSTRING(WLED_VERSION));
-#define WLED_CODENAME "Toki"
+#define WLED_CODENAME "Toki+SR"
 
 // AP and OTA default passwords (for maximum security change them!)
 WLED_GLOBAL char apPass[65]  _INIT(DEFAULT_AP_PASS);
@@ -769,5 +776,7 @@ public:
   void initConnection();
   void initInterfaces();
   void handleStatusLED();
+  void enableWatchdog();
+  void disableWatchdog();
 };
 #endif        // WLED_H

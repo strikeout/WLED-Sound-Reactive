@@ -212,6 +212,11 @@ class FourLineDisplayUsermod : public Usermod {
         isHW = (ioPin[0]==HW_PIN_SCL && ioPin[1]==HW_PIN_SDA);
         PinManagerPinType pins[2] = { { ioPin[0], true }, { ioPin[1], true } };
         if (ioPin[0]==HW_PIN_SCL && ioPin[1]==HW_PIN_SDA) po = PinOwner::HW_I2C;  // allow multiple allocations of HW I2C bus pins
+#ifdef ARDUINO_ARCH_ESP32
+        isHW = true;  // WLEDSR - always use hardware I2C in ESP32
+        po = PinOwner::HW_I2C;
+#endif
+        if ((ioPin[0] < 0) || (ioPin[1] <0)) { type=NONE; return; } // WLEDSR bugfix: avoid crash due to invalid PINS
         if (!pinManager.allocateMultiplePins(pins, 2, po)) { type=NONE; return; }
       }
 

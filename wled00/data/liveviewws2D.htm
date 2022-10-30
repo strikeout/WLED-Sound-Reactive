@@ -12,102 +12,127 @@
   </style>
 </head>
 <body>
-  <canvas id="liveviewCanvas">
-    LiveView
-  </canvas>
+  <!-- WLEDSR from 0.14  + adjusted -->
+  <canvas id="liveviewCanvas">LiveView</canvas> <!-- conditional if 2D? -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>  <!-- conditional load if 3D? -->
   <script>
-    var canvas = document.getElementById('liveviewCanvas');
-    canvas.width  = window.innerWidth * 0.98; //remove scroll bars
-    canvas.height = window.innerHeight * 0.98; //remove scroll bars
-    var leds = "";
-    var matrixWidth = 0;
-    var pixelsPerLed = 0;
-    // Check for canvas support
-    if (canvas.getContext) {
-      // Access the rendering context
-      var ctx = canvas.getContext('2d');
+    //2D vars
+    var c = document.getElementById('liveviewCanvas');
+    var ctx = null;
+    var pPL = 0; //pixelsPerLed
+    var lOf = 0; //?
+    var mW = 0; //width
+    var mH = 0; //height
 
-      //In case of pixels
+    //3D vars
+    var renderer = null;
+    var scene = null;
+    var camera = null;
+    var mD = 0; //depth
 
-      // // ImageData object
-      // var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      // // One-dimensional array containing the data in the RGBA order
-      // var data = imageData.data;
-
-      // function drawLedPixels(x, y, r, g, b, a) { //old
-      //   // console.log(x, y, r, g, b, a);
-      //   for (right = 0; right < pixelsPerLed; right++) {
-      //     for (down = 0; down < pixelsPerLed; down++) {
-      //       ff = (x * pixelsPerLed + right + (y * pixelsPerLed + down) * matrixWidth * pixelsPerLed) * 4;
-      //       // if (x==15 && y==15)
-      //       //   console.log("ff=" + x + " * " + pixelsPerLed + " +" + right + " + (" + y + " * " + pixelsPerLed + " +" + down + ") * " + matrixWidth + ") * 4 = " + ff, data.length); //(5*10+1 + (12*10+1) * 16) * 4 = (51 + 121*16) * 4
-      //       data[ff + 0] = r;
-      //       data[ff + 1] = g;
-      //       data[ff + 2] = b;
-      //       data[ff + 3] = a;
-      //     }
-      //   }
-      // }
-
-      function drawLedCircles(x, y, r, g, b, a) {
-        ctx.fillStyle = `rgb(${r},${g},${b})`;
-        ctx.beginPath();
-        ctx.arc(x*pixelsPerLed+pixelsPerLed/2, y*pixelsPerLed+pixelsPerLed/2, pixelsPerLed/2, 0, 2 * Math.PI);
-        ctx.fill();
-      }
-
-      function paintLeds() {
-        // data represents the Uint8ClampedArray containing the data
-        // in the RGBA order [r0, g0, b0, a0, r1, g1, b1, a1, ..., rn, gn, bn, an]
-
-        for (i = 4; i < leds.length; i+=3) {
-          let ff = (i-4)/3;
-          drawLedCircles(ff%matrixWidth, Math.floor(ff/matrixWidth), leds[i], leds[i+1], leds[i+2], 255)
+    function updatePreview(leds) {
+      mW = leds[3];
+      mH = leds[4];
+      mD = leds[5];
+      if (leds[2] == 1) { //2D
+        if (!ctx) { //init 2D
+          c.width  = window.innerWidth * 0.98; //remove scroll bars
+    			c.height = window.innerHeight * 0.98; //remove scroll bars
+          ctx = c.getContext('2d');
+          pPL = Math.min(c.width / mW, (c.height-10) / mH); //pixels per led  (width of circle)
+          lOf = Math.floor((c.width - pPL*mW)/2); //left offset (to center matrix)
         }
-
-        // ctx.putImageData(imageData, 0, 0); //in case of drawLedPixels
-      }
-    }
-
-    function updatePreview(ledsp) {
-      leds = ledsp;
-      matrixWidth = leds[2];
-      matrixHeight = leds[3];
-      pixelsPerLed = Math.min(canvas.width / matrixWidth, canvas.height / matrixHeight);
-      // console.log(canvas.width, matrixWidth, canvas.height, matrixHeight, pixelsPerLed, leds);
-      paintLeds();
-    }
-
-    function getLiveJson(e) {
-      try {
-        if (toString.call(e.data) === '[object ArrayBuffer]') {
-          let leds = new Uint8Array(event.data);
-          if (leds[0] != 76) return; //'L'
-          updatePreview(leds);
+        ctx.clearRect(0, 0, c.width, c.height);
+        for (i = 8; i < leds.length; i+=3) {
+          let index = (i-8)/3;
+          ctx.fillStyle = `rgb(${leds[i]},${leds[i+1]},${leds[i+2]})`;
+          ctx.beginPath();
+          ctx.arc(index%mW*pPL+pPL*0.5+lOf, Math.floor(index/mW)*pPL+pPL*0.5, pPL*0.4, 0, 2 * Math.PI);
+          ctx.fill();
         }
+        ctx.fillStyle = `rgb(255,255,255)`;
+        if (leds[6] != 0) ctx.fillText("preset " + leds[6].toString(), lOf, mH*pPL+10);
+        if (leds[7] != 255) ctx.fillText("playlist " + leds[7].toString(), lOf + 70, mH*pPL+10);
       }
-      catch (err) {
-        console.error("Peek WS error:",err);
-      } 
-    }
+      else if (leds[2] == 2) { //3D
+        if (!renderer) { //init 3D
+          c.width  = 0;
+          c.height = 0;
+          renderer = new THREE.WebGLRenderer({alpha: true });
+          renderer.setClearAlpha(0)
+          renderer.setClearColor( 0x000000, 0 );
+          renderer.setSize( window.innerWidth * 0.98 , window.innerHeight * 0.98 );
+          document.body.appendChild( renderer.domElement );
 
+          camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 500 );
+          // const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 2000 );
+          camera.position.set( 0, 0, 100 );
+          camera.lookAt( 0, 0, 0 );
+
+          scene = new THREE.Scene();
+          scene.background = null; //new THREE.Color( 0xff0000 );
+
+          var d = 5; //distanceLED;
+          var offset_x = -d*(mW-1)/2;
+          var offset_y = -d*(mH-1)/2;
+          var offset_z = -d*(mD-1)/2;
+
+          for (var x = 0; x < mW; x++) {
+              for (var y = 0; y < mH; y++) {
+                  for (var z = 0; z < mD; z++) {
+                      const geometry = new THREE.SphereGeometry( 1, 32, 16 );
+                      const material = new THREE.MeshBasicMaterial();
+                      // material.color = new THREE.Color(`${x/mW}`, `${y/mH}`, `${z/mD}`);
+                      const sphere = new THREE.Mesh( geometry, material );
+                      sphere.position.set(offset_x + d*x, offset_y + d*y, offset_z + d*z);
+                      scene.add( sphere );
+                  }
+              }
+          }
+        } //new
+
+        let firstLed = 6;
+        var i = 1;
+        for (var x = 0; x < mW; x++) {
+            for (var y = 0; y < mH; y++) {
+                for (var z = 0; z < mD; z++) {
+                    if (i < scene.children.length)
+                      scene.children[i].material.color = new THREE.Color(`${leds[i*3 + firstLed]/255}`, `${leds[i*3 + firstLed + 1]/255}`, `${leds[i*3 + firstLed + 2]/255}`);
+                    i++;
+                }
+            }
+        }
+        scene.rotation.x += 0.01;
+        scene.rotation.y += 0.01;
+        renderer.render( scene, camera );
+      } //3D
+    } //updatePreview
+
+    // use parent WS or open new
     var ws;
     try {
       ws = top.window.ws;
     } catch (e) {}
     if (ws && ws.readyState === WebSocket.OPEN) {
-      console.info("Peek uses top WS");
       ws.send("{'lv':true}");
     } else {
-      console.info("Peek WS opening");
       ws = new WebSocket((window.location.protocol == "https:"?"wss":"ws")+"://"+document.location.host+"/ws");
-      ws.onopen = function () {
-        console.info("Peek WS open");
+      ws.onopen = ()=>{
         ws.send("{'lv':true}");
       }
     }
     ws.binaryType = "arraybuffer";
-    ws.addEventListener('message',getLiveJson);
+    ws.addEventListener('message',(e)=>{
+      try {
+        if (toString.call(e.data) === '[object ArrayBuffer]') {
+          let leds = new Uint8Array(event.data);
+          if (leds[0] != 76) return; //'L', set in ws.cpp
+          updatePreview(leds);
+        }
+      } catch (err) {
+        console.error("Peek WS error:",err);
+      } 
+    });
   </script>
 </body>
 </html>

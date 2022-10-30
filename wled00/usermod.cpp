@@ -14,6 +14,13 @@
  * Not 100% sure this was done right. There is probably a better way to handle this...
  */
 
+// These variables are feeding the "Info" Page
+static unsigned long last_UDPTime = 0;    // time of last valid UDP sound sync datapacket
+static float maxSample5sec = 0.0f;        // max sample (after AGC) in last 5 seconds 
+static unsigned long sampleMaxTimer = 0;  // last time maxSample5sec was reset
+static int receivedFormat = 0;            // last received UDP sound sync format - 0=none, 1=v1 (0.13.x), 2=v2 (0.14.x)
+#define CYCLE_SAMPLEMAX 2500              // time window for merasuring
+
 // This gets called once at boot. Do all initialization that doesn't depend on network here
 void userSetup() {
   disableSoundProcessing = true; // just to be safe
@@ -28,7 +35,7 @@ void userSetup() {
       audioSource = new I2SSource(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
       break;
     case 2:
-      Serial.print("AS: ES7243 Microphone - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
+      Serial.println("AS: ES7243 Microphone (right channel only).");
       audioSource = new ES7243(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
       break;
     case 3:
@@ -123,7 +130,7 @@ void userLoop() {
   if ((!disableSoundProcessing) && (!(audioSyncEnabled & (1 << 1)))) { // Only run the sampling code IF we're not in realtime mode and not in audio Receive mode
     #ifdef WLED_DEBUG
     // compain when audio userloop has been delayed for long. Currently we need userloop running between 500 and 1500 times per second. 
-    if (userloopDelay > 23) {    // should not happen. Expect lagging in SR effects if you see this mesage !!!
+    if ((userloopDelay > 50) || ((dmType != 0) && userloopDelay > 23)) {    // should not happen. Expect lagging in SR effects if you see this mesage !!!
       DEBUG_PRINTF("[AS userLoop] hickup detected -> was inactive for last %d millis!\n", int(millis() - lastUMRun));
     }
     #endif
@@ -200,26 +207,37 @@ void userLoop() {
     lastMode = knownMode;
 
 #if defined(MIC_LOGGER) || defined(FFT_SAMPLING_LOG)
-    EVERY_N_MILLIS(25) {
+    static unsigned long last_miclogger_time = 0;
+    if (millis() - last_miclogger_time > 24) {
+      last_miclogger_time = millis();
       logAudio();
     }
 #endif
 
   }
 
+  // Info Page: keep max sample from last 5 seconds
+  if ((millis() -  sampleMaxTimer) > CYCLE_SAMPLEMAX) {
+    sampleMaxTimer = millis();
+    maxSample5sec = (0.15 * maxSample5sec) + 0.85 *((soundAgc) ? sampleAgc : sampleAvg); // reset, and start with some smoothing
+    if (sampleAvg < 1) maxSample5sec = 0; // noise gate 
+  } else {
+      if ((sampleAvg >= 1)) maxSample5sec = fmaxf(maxSample5sec, (soundAgc) ? rawSampleAgc : sampleRaw); // follow maximum volume
+  }
+
   // limit dynamics (experimental)
   limitSampleDynamics();
 
+  // Begin UDP Microphone Sync
   if (audioSyncEnabled & (1 << 0)) {    // Only run the transmit code IF we're in Transmit mode
-    //Serial.println("Transmitting UDP Mic Packet");
-
-      EVERY_N_MILLIS(20) {
+    static unsigned long last_transmit_time = 0;
+    if (millis() - last_transmit_time > 18) {
+        //Serial.println("Transmitting UDP Mic Packet");
+        last_transmit_time = millis();
         transmitAudioData();
       }
-
   }
 
-  // Begin UDP Microphone Sync
   if (audioSyncEnabled & (1 << 1)) {    // Only run the audio listener code if we're in Receive mode
     if (millis()-lastTime > delayMs) {
       lastTime = millis();
@@ -233,43 +251,139 @@ void userLoop() {
           static audioSyncPacket receivedPacket;                                      // softhack007: added "static"
           memcpy(&receivedPacket, fftBuff, MIN(sizeof(receivedPacket), packetSize));  // don't copy more that what fits into audioSyncPacket
           receivedPacket.header[5] = '\0';                                            // ensure string termination
-          // VERIFY THAT THIS IS A COMPATIBLE PACKET
-          if (isValidUdpSyncVersion(receivedPacket.header)) {
-            for (int i = 0; i < 32; i++ ){
-              myVals[i] = receivedPacket.myVals[i];
-            }
-            sampleAgc = receivedPacket.sampleAgc;
-            rawSampleAgc = receivedPacket.sampleAgc;
-            sampleRaw = receivedPacket.sampleRaw;
-            sampleAvg = receivedPacket.sampleAvg;
 
-            // auto-reset sample peak. Need to do it here, because getSample() is not running
-            uint16_t MinShowDelay = strip.getMinShowDelay();
-            if (millis() - timeOfPeak > MinShowDelay) {   // Auto-reset of samplePeak after a complete frame has passed.
+          // VERIFY THAT THIS IS A COMPATIBLE PACKET
+          if (isValidUdpSyncVersion2(receivedPacket.header)) {
+            // decode "V2" packet
+            last_UDPTime = millis();                                                  // tell Info page that we are "receiving"
+            receivedFormat = 2;
+            extract_v2_packet(packetSize, fftBuff);
+          } else {
+
+            if (isValidUdpSyncVersion(receivedPacket.header)) {
+              // decode "V1" packet
+              last_UDPTime = millis();                                                  // tell Info page that we are "receiving"
+              receivedFormat = 1;
+              for (int i = 0; i < 32; i++ ) myVals[i] = receivedPacket.myVals[i];
+              sampleAgc = receivedPacket.sampleAgc;
+              rawSampleAgc = receivedPacket.sampleAgc;
+              sampleRaw = receivedPacket.sampleRaw;
+              sampleAvg = receivedPacket.sampleAvg;
+
+              // auto-reset sample peak. Need to do it here, because getSample() is not running
+              uint16_t MinShowDelay = strip.getMinShowDelay();
+              if (millis() - timeOfPeak > MinShowDelay) {   // Auto-reset of samplePeak after a complete frame has passed.
                 samplePeak = 0;
                 udpSamplePeak = 0;
-            }
-            if (userVar1 == 0) samplePeak = 0;
+              }
+              if (userVar1 == 0) samplePeak = 0;
 
-            // Only change samplePeak IF it's currently false.
-            // If it's true already, then the animation still needs to respond.
-            if (!samplePeak) {
-              samplePeak = receivedPacket.samplePeak;
-              if (samplePeak) timeOfPeak = millis();
-              udpSamplePeak = samplePeak;
-              userVar1 = samplePeak;
+              // Only change samplePeak IF it's currently false.
+              // If it's true already, then the animation still needs to respond.
+              if (!samplePeak) {
+                samplePeak = receivedPacket.samplePeak;
+                if (samplePeak) timeOfPeak = millis();
+                udpSamplePeak = samplePeak;
+                userVar1 = samplePeak;
+              }
+              //These values are only available on the ESP32
+              for (int i = 0; i < 16; i++) fftResult[i] = receivedPacket.fftResult[i];
+              FFT_Magnitude = fabsf(receivedPacket.FFT_Magnitude);
+              FFT_MajorPeak = constrain(receivedPacket.FFT_MajorPeak, 1.0f, 5120.0f); // restrict value to range expected by effects
+              //Serial.println("Finished parsing UDP Sync Packet");
             }
-            //These values are only available on the ESP32
-            for (int i = 0; i < 16; i++) {
-              fftResult[i] = receivedPacket.fftResult[i];
-            }
-
-            FFT_Magnitude = receivedPacket.FFT_Magnitude;
-            FFT_MajorPeak = receivedPacket.FFT_MajorPeak;
-            //Serial.println("Finished parsing UDP Sync Packet");
           }
         }
       }
     }
   }
 } // userLoop()
+
+
+// Provide Info for Web UI Info page
+char audioStatusInfo[7][24] = {{'\0'}, {'\0'}, {'\0'}, {'\0'}, {'\0'}, {'\0'}, {'\0'}};
+void usermod_updateInfo(void) {
+
+  // Audio Source
+  strcpy(audioStatusInfo[0], "- none");
+  strcpy(audioStatusInfo[1], " -");
+  if (audioSyncEnabled & 0x02) {                    // UDP sound sync - receive mode
+    strcpy(audioStatusInfo[0], "UDP sound sync");
+    if (udpSyncConnected) {
+      if ((millis() - last_UDPTime) < 2500)
+        strcpy(audioStatusInfo[1], " - receiving");
+      else
+        strcpy(audioStatusInfo[1], " - idle");
+    } else {
+        strcpy(audioStatusInfo[1], " - no connection");
+    }
+  } else {                                          // Analog or I2S digital input
+    if (audioSource && (audioSource->isInitialized())) { 
+      // audio source sucessfully configured
+      if ((dmType == 0) && (audioPin > 0)) strcpy(audioStatusInfo[0], "ADC analog");
+      if ((dmType > 0) && (i2ssdPin > 0)) strcpy(audioStatusInfo[0], "I2S digital");
+      if (maxSample5sec > 1.0) {
+        float my_usage = 100.0f * (maxSample5sec / 255.0f);
+        snprintf(audioStatusInfo[1], 23, " - peak %3d%%", int(my_usage));
+      } else {
+        strcpy(audioStatusInfo[1], " - quiet");
+      }
+    } else {                                        // error during audio source setup
+      strcpy(audioStatusInfo[0], "not initialized");
+      strcpy(audioStatusInfo[1], " - check GPIO config");
+    }
+  }
+  
+  // AGC or manual Gain
+  if (audioSource && audioSource->isInitialized() && (disableSoundProcessing == false) && !(audioSyncEnabled & 0x02)) {
+    if (soundAgc==0) {
+      float myGain = ((float)sampleGain/40.0f * (float)inputLevel/128.0f) + 1.0f/16.0f;     // non-AGC gain from presets
+      snprintf(audioStatusInfo[2], 23, "%5.2f", roundf(myGain*100.0f) / 100.0f);
+    } else {
+      snprintf(audioStatusInfo[2], 23, "%5.2f", roundf(multAgc*100.0f) / 100.0f);           // AGC gain
+    }
+  } else strcpy(audioStatusInfo[2], "");                                                    // nothing
+
+  // UDP Sound Sync status
+  strcpy(audioStatusInfo[3], "");
+  strcpy(audioStatusInfo[4], "");
+  if (audioSyncEnabled > 0) {
+    if (audioSyncEnabled & 0x01){ 
+      strcpy(audioStatusInfo[3], "send mode");
+      if ((udpSyncConnected) && (disableSoundProcessing == false)) strcpy(audioStatusInfo[4], " (v1)");
+    } else { 
+      if (audioSyncEnabled & 0x02) {
+        strcpy(audioStatusInfo[3], "receive mode");
+        if ((receivedFormat == 1) && udpSyncConnected && ((millis() - last_UDPTime) < 2500)) strcpy(audioStatusInfo[4], " (v1)");
+        if ((receivedFormat == 2) && udpSyncConnected && ((millis() - last_UDPTime) < 2500)) strcpy(audioStatusInfo[4], " (v2)");
+      } else strcpy(audioStatusInfo[3], "");
+    }
+  } else strcpy(audioStatusInfo[3], "off");
+  if (audioSyncEnabled && !udpSyncConnected) strcpy(audioStatusInfo[4], " <i>(unconnected)</i>");
+
+  // Sound processing (FFT and input filters)
+  if (audioSource && (disableSoundProcessing == false)) {
+    strcpy(audioStatusInfo[5], "running");
+  } else {
+    strcpy(audioStatusInfo[5], "suspended");
+  }
+
+  bool foundPot = false;
+  if ((dmType == 0) && (audioPin > 0)) { // ADC analog input - warn if Potentimeter is configured
+    for (int b=0; b<WLED_MAX_BUTTONS; b++) {
+      if ((btnPin[b] >= 0) 
+          && (buttonType[b] == BTN_TYPE_ANALOG || buttonType[b] == BTN_TYPE_ANALOG_INVERTED) 
+          && (digitalPinToAnalogChannel(btnPin[b]) >= 0) && (digitalPinToAnalogChannel(btnPin[b]) < 9)) // found ADC1(channel 0...8) analog input
+        foundPot = true;
+    }
+  }
+  if (foundPot) strcpy(audioStatusInfo[6], "disable analog button");
+  else  strcpy(audioStatusInfo[6], "");
+
+  // make sure all strings are terminated properly
+  audioStatusInfo[0][23] = '\0'; audioStatusInfo[1][23] = '\0';
+  audioStatusInfo[2][23] = '\0'; 
+  audioStatusInfo[3][23] = '\0'; audioStatusInfo[4][23] = '\0';
+  audioStatusInfo[5][23] = '\0'; 
+  audioStatusInfo[6][23] = '\0'; 
+}

@@ -1,8 +1,8 @@
 /*
    @title   Arduino Real Time Interpreter (ARTI)
    @file    arti.h
-   @version 0.3.0
-   @date    20220112
+   @version 0.3.1
+   @date    20220818
    @author  Ewoud Wijma
    @repo    https://github.com/ewoudwijma/ARTI
    @remarks
@@ -682,7 +682,7 @@ class Lexer {
 
       for (JsonPair tokenPair: definitionJson["TOKENS"].as<JsonObject>()) {
         const char * value = tokenPair.value();
-        char currentValue[charLength];
+        char currentValue[charLength+1];
         strncpy(currentValue, this->text + this->pos, charLength);
         currentValue[strlen(value)] = '\0';
         if (strcmp(value, currentValue) == 0 && strlen(value) > longestTokenLength) {
@@ -2451,7 +2451,7 @@ public:
       strcat(logFileName, ".log");
 
       #if ARTI_PLATFORM == ARTI_ARDUINO
-        logFile = LITTLEFS.open(logFileName,"w");
+        logFile = WLED_FS.open(logFileName,"w");
       #else
         logFile = fopen (logFileName,"w");
       #endif
@@ -2464,7 +2464,7 @@ public:
 
     #if ARTI_PLATFORM == ARTI_ARDUINO
       File definitionFile;
-      definitionFile = LITTLEFS.open(definitionName, "r");
+      definitionFile = WLED_FS.open(definitionName, "r");
     #else
       std::fstream definitionFile;
       definitionFile.open(definitionName, std::ios::in);
@@ -2504,9 +2504,9 @@ public:
     JsonObject::iterator objectIterator = definitionJson.begin();
     JsonObject metaData = objectIterator->value();
     const char * version = metaData["version"];
-    if (strcmp(version, "0.3.0") != 0) 
+    if (strcmp(version, "0.3.1") != 0) 
     {
-      ERROR_ARTI("Version of definition.json file (%s) should be 0.3.0.\nPress Download wled.json\n", version);
+      ERROR_ARTI("Version of definition.json file (%s) should be 0.3.1.\nPress Download wled.json\n", version);
       return false;
     }
     const char * startNode = metaData["start"];
@@ -2518,7 +2518,7 @@ public:
 
     #if ARTI_PLATFORM == ARTI_ARDUINO
       File programFile;
-      programFile = LITTLEFS.open(programName, "r");
+      programFile = WLED_FS.open(programName, "r");
     #else
       std::fstream programFile;
       programFile.open(programName, std::ios::in);
@@ -2565,7 +2565,7 @@ public:
     #ifdef ARTI_DEBUG // only read write file if debug is on
       #if ARTI_PLATFORM == ARTI_ARDUINO
         File parseTreeFile;
-        parseTreeFile = LITTLEFS.open(parseTreeName, loadParseTreeFile?"r":"w");
+        parseTreeFile = WLED_FS.open(parseTreeName, loadParseTreeFile?"r":"w");
       #else
         std::fstream parseTreeFile;
         parseTreeFile.open(parseTreeName, loadParseTreeFile?std::ios::in:std::ios::out);
@@ -2712,7 +2712,7 @@ public:
     closeLog();
 
     #if ARTI_PLATFORM == ARTI_ARDUINO
-      LITTLEFS.remove(logFileName); //cleanup the /edit folder a bit
+      WLED_FS.remove(logFileName); //cleanup the /edit folder a bit
     #endif
   }
 }; //ARTI

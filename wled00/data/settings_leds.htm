@@ -309,6 +309,7 @@ ${i+1}:
 <option value="50">WS2801</option>
 <option value="51">APA102</option>
 <option value="52">LPD8806</option>
+<option value="54">LPD6803</option>
 <option value="53">P9813</option>
 <option value="41">PWM White</option>
 <option value="42">PWM CCT</option>
@@ -338,7 +339,7 @@ ${i+1}:
 <span id="p3d${i}"></span><input type="number" name="L3${i}" min="0" max="33" class="xs" onchange="UI()"/>
 <span id="p4d${i}"></span><input type="number" name="L4${i}" min="0" max="33" class="xs" onchange="UI()"/>
 <div id="dig${i}r" style="display:inline"><br><span id="rev${i}">Reversed</span>: <input type="checkbox" name="CV${i}"></div>
-<div id="dig${i}s" style="display:inline"><br>Skip first LEDs: <input type="number" name="SL${i}" min="0" max="255" oninput="UI()"></div>
+<div id="dig${i}s" style="display:inline"><br>Skip first LEDs: <input type="number" name="SL${i}" min="0" max="255" value="0" oninput="UI()"></div>
 <div id="dig${i}f" style="display:inline"><br>Off Refresh: <input id="rf${i}" type="checkbox" name="RF${i}"></div>
 </div>`;
         f.insertAdjacentHTML("beforeend", cn);
@@ -541,6 +542,7 @@ Length: <input type="number" name="XC${i}" id="xc${i}" class="l" min="1" max="65
     <br>Strip or panel: <select id="somp" name="SOMP" onchange="MPDiv()" >
       <option value="0" selected>1D Strip</option>
       <option value="1">2D Matrix panel</option>
+      <option value="2">3D Cube (Experimental)</option>
     </select><br>
     <div id="mpdiv">
     <h3>2D Matrix</h3>

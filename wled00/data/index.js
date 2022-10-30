@@ -15,6 +15,7 @@ var sliderControl = ""; //WLEDSR
 var selectedPal = 0; //WLEDSR Blazoncek default slider values
 var csel = 0; // selected color slot (0-2)
 var currentPreset = -1; prevPS = -1; //WLEDSR Blazoncek default slider values
+var somp = 0;//WLEDSR: stripOrMatrixPanel
 var lastUpdate = 0;
 var segCount = 0, ledCount = 0, lowestUnused = 0, maxSeg = 0, lSeg = 0;
 var pcMode = false, pcModeA = false, lastw = 0;
@@ -368,6 +369,13 @@ function inforow(key, val, unit = "")
   return `<tr><td class="keytd">${key}</td><td class="valtd">${val}${unit}</td></tr>`;
 }
 
+// WLEDSR begin
+function inforow1(key)
+{
+  return `<tr><td colspan=2 class="valtd">${key}</td></tr>`;
+}
+// WLEDSR end
+
 function getLowestUnusedP()
 {
 	var l = 1;
@@ -571,6 +579,7 @@ function populateInfo(i)
 	var cn="";
 	var heap = i.freeheap/1000;
 	heap = heap.toFixed(1);
+	var theap = (i.totalheap>0)?i.totalheap/1000:-1; theap = theap.toFixed(1); //WLEDSR - total heap is not available on 8266
 	var pwr = i.leds.pwr;
 	var pwru = "Not calculated";
 	if (pwr > 1000) {pwr /= 1000; pwr = pwr.toFixed((pwr > 10) ? 0 : 1); pwru = pwr + " A";}
@@ -587,21 +596,40 @@ function populateInfo(i)
 	}
 
 	var vcn = "Kuuhaku";
-	if (i.ver.startsWith("0.13.")) vcn = "Toki-SR";
+	if (i.ver.startsWith("0.13.")) vcn = "Toki+SR";
 	if (i.cn) vcn = i.cn;
 
 	cn += `v${i.ver} "${vcn}"<br><br><table class="infot">
+	${inforow("SR Build",i.vid)}
+  <!-- WLEDSR begin-->
+  ${inforow("Audio Source",i.audioType,i.audioStatus)}
+  ${i.audioWarning?inforow1("<em>Please "+i.audioWarning+"(s) !</em>"):""}
+  ${i.audioGain?(i.soundAgc>0?inforow("AGC Gain",i.audioGain,"x"):inforow("Manual Gain",i.audioGain,"x")):""}
+  ${i.audioProcess?inforow("Sound Processing",i.audioProcess,""):""}
+  ${inforow("UDP Sound Sync",i.ssyncMode,i.ssyncStatus)}
 	${urows}
-	${inforow("Build",i.vid)}
+  <tr><td colspan=2><hr style="height:1px;border-width:0;color:gray;background-color:gray"></td></tr>
+  <!-- WLEDSR end-->  
 	${inforow("Signal strength",i.wifi.signal +"% ("+ i.wifi.rssi, " dBm)")}
 	${inforow("Uptime",getRuntimeStr(i.uptime))}
-	${inforow("Free heap",heap," kB")}
 		${inforow("Estimated current",pwru)}
 		${inforow("Frames / second",i.leds.fps)}
-	${inforow("MAC address",i.mac)}
+    <tr><td colspan=2><hr style="height:1px;border-width:0;color:gray;background-color:gray"></td></tr>
+    ${inforow("MAC address",i.mac)}
 	${inforow("Filesystem",i.fs.u + "/" + i.fs.t + " kB (" +Math.round(i.fs.u*100/i.fs.t) + "%)")}
 	${inforow("Environment",i.arch + " " + i.core + " (" + i.lwip + ")")}
-	</table>`;
+  <!-- WLEDSR begin-->
+  ${theap>0?inforow("Total heap",theap," kB"):""}
+  ${theap>0?inforow("Used heap",((i.totalheap-i.freeheap)/1000).toFixed(1)," kB"):inforow("Free heap",heap," kB")}
+  ${i.minfreeheap?inforow("Max heap used",((i.totalheap-i.minfreeheap)/1000).toFixed(1)," kB"):""}
+  ${i.tpram?inforow("Total PSRAM",(i.tpram/1024).toFixed(1)," kB"):""}
+  ${i.psram?((i.tpram-i.psram)>16383?inforow("Used PSRAM",((i.tpram-i.psram)/1024).toFixed(1)," kB"):inforow("Used PSRAM",(i.tpram-i.psram)," B")):""}
+  ${i.psusedram?((i.tpram-i.psusedram)>16383?inforow("Max PSRAM used",((i.tpram-i.psusedram)/1024).toFixed(1)," kB"):inforow("Max PSRAM used",(i.tpram-i.psusedram)," B")):""}
+  <tr><td colspan=2><hr style="height:1px;border-width:0;color:SeaGreen;background-color:SeaGreen"></td></tr>
+  ${i.e32model?inforow(i.e32model,i.e32cores +" core(s)"," "+i.e32speed+" Mhz"):""}
+  ${i.e32flash?inforow("Flash "+i.e32flash+"MB"+" mode "+i.e32flashmode+i.e32flashtext,i.e32flashspeed," Mhz"):""}
+  <!-- WLEDSR end-->  
+  </table><br>`;
 	d.getElementById('kv').innerHTML = cn;
 }
 
@@ -1556,7 +1584,9 @@ function requestJson(command, rinfo = true) {
 			syncTglRecv = info.str;
 			maxSeg = info.leds.maxseg;
 			pmt = info.fs.pmt;
-
+      //WLEDSR
+      somp = info.leds.somp;
+    
       if (!command && rinfo) setTimeout(loadPresets, 99);
 
 			d.getElementById('buttonNodes').style.display = (info.ndc > 0 && window.innerWidth > 770) ? "block":"none";
@@ -1615,8 +1645,7 @@ function toggleLiveview() {
 	isLv = !isLv;
 
 	var lvID = "liveview";
-  var isM = true; //tbd: check if matrix, now always assumed
-	if (isM) { 
+	if (somp != 0) { //not 1D 
 		lvID = "liveview2D"
 		if (isLv) {
 			var cn = '<iframe id="liveview2D" src="about:blank"></iframe>';
@@ -1790,6 +1819,7 @@ function makeP(i,pl) {
 	var content = "";
 	if (pl) {
 		var rep = plJson[i].repeat ? plJson[i].repeat : 0;
+    //WLEDSR: change qltxt to maxlength=3 (from 2, for HB effects)
 		content = `<div class="first c">Playlist Entries</div>
 <div id="ple${i}"></div>
 <label class="check revchkl">
@@ -1824,7 +1854,7 @@ function makeP(i,pl) {
 </label>`;
 
 	return `<input type="text" class="ptxt noslide" id="p${i}txt" autocomplete="off" maxlength=32 value="${(i>0)?pName(i):""}" placeholder="Enter name..."/><br>
-<div class="c">Quick load label: <input type="text" class="qltxt noslide" maxlength=2 value="${qlName(i)}" id="p${i}ql" autocomplete="off"/></div>
+<div class="c">Quick load label: <input type="text" class="qltxt noslide" maxlength=3 value="${qlName(i)}" id="p${i}ql" autocomplete="off"/></div>
 <div class="h">(leave empty for no Quick load button)</div>
 <div ${pl&&i==0?"style='display:none'":""}>
 	<label class="check revchkl">
