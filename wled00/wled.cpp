@@ -352,11 +352,12 @@ void WLED::setup()
     // missing: Octal modes
     case FM_QIO:  DEBUG_PRINT(F(" (QIO)")); break;
     case FM_QOUT: DEBUG_PRINT(F(" (QOUT)"));break;
-    case FM_DIO:  DEBUG_PRINT(F(" (DIO)")); break;
-    case FM_DOUT: DEBUG_PRINT(F(" (DOUT)"));break;
+    case FM_DIO:  DEBUG_PRINT(F(" (DIO?)")); break;
+    case FM_DOUT: DEBUG_PRINT(F(" (DOUT?)"));break;
     default: break;
   }
   #endif 
+  DEBUG_PRINT(F(", ")); DEBUG_PRINT(int(ESP.getFlashChipSpeed()/1000000)); DEBUG_PRINTLN(F("MHz")); 
   // WLEDSR end
 #else
   DEBUG_PRINT(F("esp8266 "));
