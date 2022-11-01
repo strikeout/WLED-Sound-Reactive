@@ -11,17 +11,20 @@
   </p>
 
 # Development Branch
+
 This is the SR `dev`elopment branch, where we test new features and enhancements. The code may or may not work - it is work in progress.
 
+- For ESP32 devices (8266 no longer supported)
 - *Pull Requests* should be created against this `dev` branch.
 - If you are looking for a stable baseline for your own project, please use the released source code from [`master` branch](https://github.com/atuline/WLED/tree/master)
+
 
 
 # Sound Reactive WLED! 🎵
 
 Welcome to our Sound Reactive fork of WLED. In addition to the features of WLED below, we also support:
 
-- Audio input from several sources including MAX4466, MAX9814, MAX9184, INMP401, INMP441 (for ESP32) and line-in.
+- Audio input from several sources including high quality I2S digital (IMNP441, ICS-43434, SPH0645, etc) inputs, analog devices (MAX4466, MAX9814, MAX9184, INMP401) and line-in.
 - Volume reactive visual effects for ESP32 and ESP8266 devices.
 - Frequency reactive visual effects for ESP32 devices.
 - UDP sound synchronization with transmit for ESP32 and receive for ESP8266 and ESP32 devices.
