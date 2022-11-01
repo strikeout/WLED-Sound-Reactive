@@ -10,7 +10,8 @@
 
   </p>
 
-# Development Branch
+# Super Development Branch
+This is a conflict and I like it.
 This is the SR `dev`elopment branch, where we test new features and enhancements. The code may or may not work - it is work in progress.
 
 - *Pull Requests* should be created against this `dev` branch.
