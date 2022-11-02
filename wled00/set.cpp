@@ -19,7 +19,7 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
 {
 
   //0: menu 1: wifi 2: leds 3: ui 4: sync 5: time 6: sec 7: DMX 8: usermods 9: sound
-  if (subPage <1 || subPage >9) return;
+  if (subPage <1 || subPage >10) return; //WLEDSR: 10 as update also added
 
   //WIFI SETTINGS
   if (subPage == 1)

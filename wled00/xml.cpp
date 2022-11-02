@@ -260,7 +260,7 @@ void getSettingsJS(byte subPage, char* dest)
   obuf = dest;
   olen = 0;
 
-  if (subPage <1 || subPage >9) return;
+  if (subPage <1 || subPage >10) return; //WLEDSR: 10 as update.htm also added
 
   if (subPage == 1)
   {
@@ -751,7 +751,27 @@ void getSettingsJS(byte subPage, char* dest)
     sappend('v',SET_F("DI"),i2ssdPin);
     sappend('v',SET_F("LR"),i2swsPin);
     sappend('v',SET_F("CK"),i2sckPin);
-    }
+  }
+
+  //WLEDSR: add update.htm
+  if (subPage == 10) // update
+  {
+    //WLEDSR: show bin name
+    sappends('m',SET_F("(\"sip\")[0]"),(char*)F("WLED_"));
+    olen -= 2; //delete ";
+    oappend(versionString);
+    oappend(SET_F("_"));
+    oappend(releaseString);
+    oappend(SET_F(".bin"));
+    #ifdef ARDUINO_ARCH_ESP32
+    oappend(SET_F("<br>(ESP32"));
+    #else
+    oappend(SET_F("<br>(ESP8266"));
+    #endif
+    oappend(SET_F(" build "));
+    oappendi(VERSION);
+    oappend(SET_F(")\";"));
+  }
 
   oappend(SET_F("}</script>"));
 }
