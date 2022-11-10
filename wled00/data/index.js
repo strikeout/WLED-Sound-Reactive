@@ -599,8 +599,8 @@ function populateInfo(i)
 	if (i.ver.startsWith("0.13.")) vcn = "Toki+SR";
 	if (i.cn) vcn = i.cn;
 
-	cn += `v${i.ver} "${vcn}"<br><br><table class="infot">
-	${inforow("SR Build",i.vid)}
+	// cn += `v${i.ver} "${vcn}"<br><br><table class="infot">
+  cn += `v${i.ver} &nbsp;<i>"${vcn}"</i><p>(WLEDSR_${i.ver}_${i.rel}.bin)</p><p><em>build ${i.vid}</em></p><table class="infot">
   <!-- WLEDSR begin-->
   ${inforow("Audio Source",i.audioType,i.audioStatus)}
   ${i.audioWarning?inforow1("<em>Please "+i.audioWarning+"(s) !</em>"):""}

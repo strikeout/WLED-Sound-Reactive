@@ -40,10 +40,9 @@ const char PAGE_update[] PROGMEM = R"=====(<!DOCTYPE html><html><head><meta cont
 function B(){window.history.back()}function U(){document.getElementById("uf").style.display="none",document.getElementById("msg").style.display="block"}function GetV() {var d=document;
 %CSS%%SCSS%</head><body onload="GetV()">
 <h2>Sound Reactive WLED Software Update</h2><form method="POST" 
-action="/update" id="uf" enctype="multipart/form-data" onsubmit="U()">
-Installed SR bin: <span class="sip">0.13.3.2-dev</span><br>
-Download the latest binary: <a href="https://github.com/atuline/WLED/releases" 
-target="_blank"><img 
+action="/update" id="uf" enctype="multipart/form-data" onsubmit="U()"><span 
+class="sip">0.13.3.3</span><br>Download the latest binary: <a 
+href="https://github.com/atuline/WLED/releases" target="_blank"><img 
 src="https://img.shields.io/github/release/atuline/WLED.svg?style=flat-square">
 </a><br><input type="file" name="update" required><br><button type="submit">
 Update!</button><br><button type="button" onclick="B()">Back</button></form><div

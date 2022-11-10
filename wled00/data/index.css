@@ -386,7 +386,7 @@ Effect Speed */
 	transform: translateY(100%);
 	transition: transform 0.4s;
 	padding: 8px;
-	font-size: 20px;
+	font-size: 17px;  /* WLEDSR: smaller is better */
 	overflow: auto;
 }
 

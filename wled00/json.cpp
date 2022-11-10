@@ -572,6 +572,7 @@ extern void usermod_updateInfo(void); // WLEDSR
 void serializeInfo(JsonObject root)
 {
   root[F("ver")] = versionString;
+  root[F("rel")] = releaseString; //WLEDSR to add bin name
   root[F("vid")] = VERSION;
   //root[F("cn")] = WLED_CODENAME;
 
