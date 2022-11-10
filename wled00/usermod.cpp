@@ -1,4 +1,8 @@
 #include "wled.h"
+
+static bool serialTxAvaileable = true;   // false means we cannot use Serial.print, as serialTX pin is in use for other purposes (like LEDs)
+constexpr uint8_t hardwareTX = 1;        // just a constant to improve code readability
+
 #include "audio_reactive.h"
 /*
  * This v1 usermod file allows you to add own functionality to WLED more easily
@@ -30,30 +34,46 @@ void userSetup() {
   periph_module_reset(PERIPH_I2S0_MODULE);
 
   delay(100);         // Give that poor microphone some time to setup.
+
+  // check if Serial can be used for printing messages
+  if  (pinManager.isPinAllocated(hardwareTX)) serialTxAvaileable = false; 
+  if ((pinManager.isPinAllocated(hardwareTX)) && (pinManager.getPinOwner(hardwareTX) == PinOwner::DebugOut)) serialTxAvaileable = true;  // TX availeable for debug
+  if ((dmType > 0) && ((i2ssdPin == hardwareTX) || (i2swsPin == hardwareTX) || (i2sckPin == hardwareTX))) serialTxAvaileable = false;    // i2S pin == TX (stupid but possible ...)
+
+  // initialize I2S input
   switch (dmType) {
     case 1:
-      Serial.print("AS: Generic I2S Microphone - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
+      if (serialTxAvaileable) {
+        Serial.print("AS: Generic I2S Microphone - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
+      }
       audioSource = new I2SSource(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
       break;
     case 2:
-      Serial.println("AS: ES7243 Microphone (right channel only).");
+      if (serialTxAvaileable) Serial.println("AS: ES7243 Microphone (right channel only).");
       audioSource = new ES7243(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
       break;
     case 3:
-      Serial.print("AS: SPH0645 Microphone - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
+      if (serialTxAvaileable) {
+        Serial.print("AS: SPH0645 Microphone - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
+      }
       audioSource = new SPH0654(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
       break;
     case 4:
-      Serial.print("AS: Generic I2S Microphone with Master Clock - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
+      if (mclkPin == hardwareTX) serialTxAvaileable = false;
+      if (serialTxAvaileable) {
+        Serial.print("AS: Generic I2S Microphone with Master Clock - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
+      }
       audioSource = new I2SSourceWithMasterClock(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
       break;
     case 5:
-      Serial.print("AS: I2S PDM Microphone - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
+      if (serialTxAvaileable) {
+        Serial.print("AS: I2S PDM Microphone - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
+      }
       audioSource = new I2SPdmSource(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
       break;
     case 0:
     default:
-      Serial.println("AS: Analog Microphone (left channel only).");
+      if (serialTxAvaileable) Serial.println("AS: Analog Microphone (left channel only).");
       audioSource = new I2SAdcSource(SAMPLE_RATE, BLOCK_SIZE, 0, 0x0FFF);
       break;
   }
@@ -63,8 +83,10 @@ void userSetup() {
   audioSource->initialize();
   delay(250);
 
-  if(!audioSource->isInitialized())
-    Serial.println("AS: Failed to initialize sound input driver. Please check input PIN settings.");
+  if(!audioSource->isInitialized()) {
+    if (serialTxAvaileable) 
+      Serial.println("AS: Failed to initialize sound input driver. Please check input PIN settings.");
+  }
 
   sampling_period_us = round(1000000*(1.0/SAMPLE_RATE));
 
