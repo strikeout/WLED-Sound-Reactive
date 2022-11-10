@@ -494,6 +494,10 @@ void getSettingsJS(byte subPage, char* dest)
     sappend('v',SET_F("IR"),irPin);
     sappend('v',SET_F("IT"),irEnabled);
     sappend('c',SET_F("MSO"),!irApplyToAllSelected);
+    #if !defined(WLED_DISABLE_INFRARED)
+    oappend(SET_F("hideNoIR();"));  // WLEDSR: hide "not compiled in" message
+    #endif
+
     // 2D Matrix Settings
     sappend('v',SET_F("SOMP"),strip.stripOrMatrixPanel);
     sappend('v',SET_F("MXW"),strip.matrixWidth);
@@ -542,6 +546,9 @@ void getSettingsJS(byte subPage, char* dest)
     sappend('c',SET_F("ES"),e131SkipOutOfSequence);
     sappend('c',SET_F("EM"),e131Multicast);
     sappend('v',SET_F("EU"),e131Universe);
+#ifdef WLED_ENABLE_DMX
+    oappend(SET_F("hideNoDMX();"));  // WLEDSR: hide "not compiled in" message    
+#endif
     sappend('v',SET_F("DA"),DMXAddress);
     sappend('v',SET_F("DM"),DMXMode);
     sappend('v',SET_F("ET"),realtimeTimeoutMs);
@@ -627,6 +634,13 @@ void getSettingsJS(byte subPage, char* dest)
     oappend(SET_F("hideHUE();"));    //WLEDSR: hide Hue Sync setting if not compiled in
     #endif
     sappend('v',SET_F("BD"),serialBaud);
+
+#if defined(WLED_ENABLE_ADALIGHT)
+    oappend(SET_F("hideNoADA();"));  // WLEDSR: hide "not compiled in" message    
+#endif
+#ifdef WLED_ENABLE_LOXONE
+    oappend(SET_F("hideNoLOX();"));  // WLEDSR: hide "not compiled in" message    
+#endif 
   }
 
   if (subPage == 5)
