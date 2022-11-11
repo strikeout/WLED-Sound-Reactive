@@ -286,6 +286,8 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
   //   i2sckPin = i2sckPin;
   // }
 
+  CJSON(mclkPin, hw_dmic_pins[F("i2smclk")]);
+
   //int hw_status_pin = hw[F("status")]["pin"]; // -1
 
   JsonObject light = doc[F("light")];
@@ -760,6 +762,7 @@ void serializeConfig() {
   hw_dmic_pins[F("i2ssd")] = i2ssdPin;
   hw_dmic_pins[F("i2sws")] = i2swsPin;
   hw_dmic_pins[F("i2sck")] = i2sckPin;
+  hw_dmic_pins[F("i2smclk")] = mclkPin;
 
   JsonObject light = doc.createNestedObject(F("light"));
   light[F("scale-bri")] = briMultiplier;

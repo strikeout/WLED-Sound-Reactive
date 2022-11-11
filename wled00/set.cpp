@@ -578,6 +578,7 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
     if (i2ssdPin>=0 && pinManager.isPinAllocated(i2ssdPin)) pinManager.deallocatePin(i2ssdPin, PinOwner::DigitalMic);
     if (i2swsPin>=0 && pinManager.isPinAllocated(i2swsPin)) pinManager.deallocatePin(i2swsPin, PinOwner::DigitalMic);
     if (i2sckPin>=0 && pinManager.isPinAllocated(i2sckPin)) pinManager.deallocatePin(i2sckPin, PinOwner::DigitalMic);
+    if (mclkPin>=0 && pinManager.isPinAllocated(mclkPin)) pinManager.deallocatePin(mclkPin, PinOwner::DigitalMic);
 
     int t = 0;
     t = request->arg(F("SQ")).toInt();
@@ -604,6 +605,10 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
     // Digital Mic I2S SCK pin
     t = request->arg(F("CK")).toInt();
     if (t >= -1 && t <=39) i2sckPin = t;
+
+    // Digital Mic I2S MCLK pin
+    t = request->arg(F("MCLK")).toInt();
+    if (t >= -1 && t <=3 && t!=2) mclkPin = t;
 
     // Digital mic mode
     uint8_t newDmType = request->arg(F("DMM")).toInt();

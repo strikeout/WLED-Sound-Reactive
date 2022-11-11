@@ -51,11 +51,6 @@
 #define I2S_MIC_CHANNEL_TEXT "left channel only."
 #endif
 
-#ifndef MCLK_PIN
-    int mclkPin = 0;
-#else
-    int mclkPin = MLCK_PIN;
-#endif
 
 #ifndef ES7243_ADDR
     int addr_ES7243 = 0x13;
@@ -322,6 +317,10 @@ public:
     virtual void initialize() {
         // Reserve the master clock pin
         if(!pinManager.allocatePin(mclkPin, true, PinOwner::DigitalMic)) {
+            return;
+        }
+        if ((mclkPin != GPIO_NUM_0) && (mclkPin != GPIO_NUM_1) && (mclkPin != GPIO_NUM_3)) {
+            if (serialTxAvaileable) Serial.printf("Failed to set gpio %d as i2s MCLK pin. Only GPIO0, GPIO1 or GPIO3 are possible on ESP32\n", mclkPin);
             return;
         }
         _routeMclk();

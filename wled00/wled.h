@@ -8,7 +8,7 @@
  */
 
 // version code in format yymmddb (b = daily build)
-#define VERSION 2211102                // WLEDSR specific version
+#define VERSION 2211111                // WLEDSR specific version
 #define SR_VERSION_NAME "0.13.3.3"     // WLEDSR version name --> some files need manual updating: package.json, package-lock.json, improv.cpp
 
 #define AC_VERSION 2208222             // AC WLED base version; last updated by PR #239 -> Merge AC-0.13.3 into dev
@@ -295,6 +295,11 @@ WLED_GLOBAL int8_t i2swsPin _INIT(I2S_WSPIN);
 WLED_GLOBAL int8_t i2sckPin _INIT(14);
 #else
 WLED_GLOBAL int8_t i2sckPin _INIT(I2S_CKPIN);
+#endif
+#ifndef MCLK_PIN
+WLED_GLOBAL int8_t mclkPin  _INIT(0);
+#else
+WLED_GLOBAL int8_t mclkPin _INIT(MLCK_PIN);
 #endif
 
 //WLED_GLOBAL byte presetToApply _INIT(0);
