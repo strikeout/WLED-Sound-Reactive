@@ -299,7 +299,7 @@ WLED_GLOBAL int8_t i2sckPin _INIT(I2S_CKPIN);
 #ifndef MCLK_PIN
 WLED_GLOBAL int8_t mclkPin  _INIT(0);
 #else
-WLED_GLOBAL int8_t mclkPin _INIT(MLCK_PIN);
+WLED_GLOBAL int8_t mclkPin _INIT(MCLK_PIN);
 #endif
 
 //WLED_GLOBAL byte presetToApply _INIT(0);
