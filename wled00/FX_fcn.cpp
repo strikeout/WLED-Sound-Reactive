@@ -464,6 +464,15 @@ void WS2812FX::setMode(uint8_t segid, uint8_t m) {
 
   if (m >= MODE_COUNT) m = MODE_COUNT - 1;
 
+  // WLEDSR: check that mode is valid
+  char lineBuffer[12] = { '\0' };
+  extractModeName(m, JSON_mode_names, lineBuffer, 11);
+  if(strncmp_P("Reserved", lineBuffer, 8) == 0) {
+      DEBUG_PRINTF("setMode: invalid mode %d\n", m);
+      m = FX_MODE_RANDOM_COLOR;
+  }
+  // WLEDSR end
+
   if (_segments[segid].mode != m)
   {
     _segment_runtimes[segid].markForReset();
