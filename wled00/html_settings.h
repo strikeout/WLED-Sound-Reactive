@@ -209,7 +209,8 @@ onclick="H()">?</button></div><button type="button" onclick="B()">Back</button>
 name="GN" type="number" min="0" max="255" required></p><p><a 
 href="https://github.com/atuline/WLED/wiki/Sound-Settings#how-to" 
 target="_blank">How to tune Squelch and Gain</a><br><i>
-Gain=40 means an amplification of 1; 1 is about 1/12, 255 is about 6.5</i> <i>
+Gain=40 means an amplification of 1; 1 is about 1/12, 255 is about 6.5</i>.<br>
+<i>
 To tune, set input level slider to middle/128, start with Squelch=5..10 and Gain=40 and modify according to your setup.
 </i><br></p><p>Automatic Gain Control (AGC): <select name="AGC"><option 
 value="0">Off</option><option value="1">Normal</option><option value="2">Vivid
