@@ -52,7 +52,7 @@ void userSetup() {
       break;
     case 2:
       if (serialTxAvaileable) Serial.println("AS: ES7243 Microphone (right channel only).");
-      audioSource = new ES7243(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
+      audioSource = new ES7243(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF, 1.0f/16.0f);
       break;
     case 3:
       if (serialTxAvaileable) {
@@ -65,14 +65,14 @@ void userSetup() {
       if (serialTxAvaileable) {
         Serial.print("AS: Generic I2S Microphone with Master Clock - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
       }
-      audioSource = new I2SSourceWithMasterClock(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
+      audioSource = new I2SSourceWithMasterClock(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF, 1.0f/24.0f);
       break;
     case 5:
       useBandPassFilter = true;
       if (serialTxAvaileable) {
         Serial.print("AS: I2S PDM Microphone - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
       }
-      audioSource = new I2SPdmSource(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
+      audioSource = new I2SPdmSource(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF, 1.0f/4.0f);
       break;
     case 0:
     default:

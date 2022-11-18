@@ -109,8 +109,11 @@ public:
 
 protected:
     // Private constructor, to make sure it is not callable except from derived classes
-    AudioSource(int sampleRate, int blockSize, int16_t lshift, uint32_t mask) : _sampleRate(sampleRate), _blockSize(blockSize), _sampleNoDCOffset(0), _dcOffset(0.0f), _shift(lshift), _mask(mask), 
-                _initialized(false), _myADCchannel(0x0F), _lastADCsample(0), _broken_samples_counter(0) {};
+    AudioSource(int sampleRate, int blockSize, int16_t lshift, uint32_t mask, float sampleScale) : 
+        _sampleRate(sampleRate), _blockSize(blockSize), _sampleNoDCOffset(0), _dcOffset(0.0f), 
+        _shift(lshift), _mask(mask), _sampleScale(sampleScale), 
+        _initialized(false), _myADCchannel(0x0F), _lastADCsample(0), _broken_samples_counter(0) 
+    {};
 
     int _sampleRate;                /* Microphone sampling rate (from uint16_t to int to suppress warning)*/ 
     int _blockSize;                 /* I2S block size */
@@ -118,6 +121,7 @@ protected:
     float _dcOffset;                /* Rolling average DC offset */
     int16_t _shift;                /* Shift obtained samples to the right (positive) or left(negative) by this amount */
     uint32_t _mask;                 /* Bitmask for sample data after shifting. Bitmask 0X0FFF means that we need to convert 12bit ADC samples from unsigned to signed*/
+    float _sampleScale;             // pre-scaling factor for I2S samples
     bool _initialized;              /* Gets set to true if initialization is successful */
     int8_t _myADCchannel;           /* current ADC channel, in case of analog input. 0x0F if undefined */
     I2S_datatype _lastADCsample;    /* last sample from ADC */
@@ -130,8 +134,8 @@ protected:
 */
 class I2SSource : public AudioSource {
 public:
-    I2SSource(int sampleRate, int blockSize, int16_t lshift, uint32_t mask) :
-        AudioSource(sampleRate, blockSize, lshift, mask) {
+    I2SSource(int sampleRate, int blockSize, int16_t lshift, uint32_t mask, float sampleScale = 1.0f) :
+        AudioSource(sampleRate, blockSize, lshift, mask, sampleScale) {
         _config = {
             .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),
             .sample_rate = _sampleRate,                       // "narrowing conversion" warning can be ignored here - our _sampleRate is never bigger that INT32_MAX
@@ -148,6 +152,9 @@ public:
         };
 
         _pinConfig = {
+            #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0)
+            .mck_io_num = I2S_PIN_NO_CHANGE, // needed, otherwise i2s_set_pin() will fail in IDF >=4.4.x
+            #endif
             .bck_io_num = i2sckPin,
             .ws_io_num = i2swsPin,
             .data_out_num = I2S_PIN_NO_CHANGE,
@@ -170,6 +177,10 @@ public:
             if (!pinManager.allocatePin(i2sckPin, true, PinOwner::DigitalMic))
                 return;
         }
+
+        #if defined(ARDUINO_ARCH_ESP32) && !defined(CONFIG_IDF_TARGET_ESP32S3) && !defined(CONFIG_IDF_TARGET_ESP32S2) && !defined(CONFIG_IDF_TARGET_ESP32C3)
+        if (ESP.getChipRevision() == 0) _config.use_apll = false; // APLL is broken on ESP32 revision 0, so we disable it on rev0 chips
+        #endif
 
         esp_err_t err = i2s_driver_install(I2S_NUM_0, &_config, 0, nullptr);
         if (err != ESP_OK) {
@@ -259,7 +270,8 @@ public:
                     currSample = (float) newSamples[i];
 #endif
                 }
-                buffer[i] = currSample;
+                buffer[i] = currSample;                                   // store sample
+                buffer[i] *= _sampleScale;                                // scale sample
                 _dcOffset = ((_dcOffset * 31) + currSample) / 32;
             }
 
@@ -310,8 +322,8 @@ protected:
 */
 class I2SSourceWithMasterClock : public I2SSource {
 public:
-    I2SSourceWithMasterClock(int sampleRate, int blockSize, int16_t lshift, uint32_t mask) :
-        I2SSource(sampleRate, blockSize, lshift, mask) {
+    I2SSourceWithMasterClock(int sampleRate, int blockSize, int16_t lshift, uint32_t mask, float sampleScale = 1.0f) :
+        I2SSource(sampleRate, blockSize, lshift, mask, sampleScale) {
     };
 
     virtual void initialize() {
@@ -382,8 +394,8 @@ private:
 
 public:
 
-    ES7243(int sampleRate, int blockSize, int16_t lshift, uint32_t mask) :
-        I2SSourceWithMasterClock(sampleRate, blockSize, lshift, mask) {
+    ES7243(int sampleRate, int blockSize, int16_t lshift, uint32_t mask, float sampleScale = 1.0f) :
+        I2SSourceWithMasterClock(sampleRate, blockSize, lshift, mask, sampleScale) {
         _config.channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT;
     };
     void initialize() {
@@ -413,8 +425,8 @@ public:
 */
 class I2SAdcSource : public I2SSource {
 public:
-    I2SAdcSource(int sampleRate, int blockSize, int16_t lshift, uint32_t mask) :
-        I2SSource(sampleRate, blockSize, lshift, mask){
+    I2SAdcSource(int sampleRate, int blockSize, int16_t lshift, uint32_t mask, float sampleScale = 1.0f) :
+        I2SSource(sampleRate, blockSize, lshift, mask, sampleScale){
         _config = {
             .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_ADC_BUILT_IN),
             .sample_rate = _sampleRate,                       // "narrowing conversion" warning can be ignored here - our _sampleRate is never bigger that INT32_MAX
@@ -566,8 +578,8 @@ public:
 class SPH0654 : public I2SSource {
 
 public:
-    SPH0654(int sampleRate, int blockSize, int16_t lshift, uint32_t mask) :
-        I2SSource(sampleRate, blockSize, lshift, mask){}
+    SPH0654(int sampleRate, int blockSize, int16_t lshift, uint32_t mask, float sampleScale = 1.0f) :
+        I2SSource(sampleRate, blockSize, lshift, mask, sampleScale){}
 
     void initialize() {
         I2SSource::initialize();
@@ -585,10 +597,11 @@ public:
 class I2SPdmSource : public I2SSource {
 
 public:
-    I2SPdmSource(int sampleRate, int blockSize, int16_t lshift, uint32_t mask) :
-        I2SSource(sampleRate, blockSize, lshift, mask) {
+    I2SPdmSource(int sampleRate, int blockSize, int16_t lshift, uint32_t mask, float sampleScale = 1.0f) :
+        I2SSource(sampleRate, blockSize, lshift, mask, sampleScale) {
 
         _config.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM); // Change mode to pdm
+        _config.use_apll = 1;
 
         _pinConfig = {
             .bck_io_num = I2S_PIN_NO_CHANGE, // bck is unused in PDM mics
