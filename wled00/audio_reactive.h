@@ -21,6 +21,7 @@
 
 static AudioSource *audioSource;
 static volatile bool disableSoundProcessing = false;      // if true, sound processing (FFT, filters, AGC) will be suspended. "volatile" as its shared between tasks.
+static bool useBandPassFilter = false;                    // if true, enables a bandpass filter 80Hz-8Khz to remove noise. Applies before FFT.
 
 // ALL AUDIO INPUT PINS DEFINED IN wled.h AND CONFIGURABLE VIA UI
 
@@ -565,6 +566,39 @@ void FFTcode( void * parameter) {
 
     // micDataSm = ((micData * 3) + micData)/4;
 
+    // band pass filter - can reduce noise floor by a factor of 50
+    // downside: frequencies below 60Hz will be ignored
+    if (useBandPassFilter) {
+      // low frequency cutoff parameter - see https://dsp.stackexchange.com/questions/40462/exponential-moving-average-cut-off-frequency
+      //constexpr float alpha = 0.062f;   // 100Hz
+      constexpr float alpha = 0.04883f; //  80Hz
+      //constexpr float alpha = 0.03662f; //  60Hz
+      //constexpr float alpha = 0.0225f;  //  40Hz
+      // high frequency cutoff  parameter
+      //constexpr float beta1 = 0.75;    //  5Khz
+      //constexpr float beta1 = 0.82;    //  7Khz
+      constexpr float beta1 = 0.8285;  //  8Khz
+      //constexpr float beta1 = 0.85;    // 10Khz
+
+      constexpr float beta2 = (1.0f - beta1) / 2.0;
+      static float last_vals[2] = { 0.0f }; // FIR high freq cutoff filter
+      static float lowfilt = 0.0f;          // IIR low frequency cutoff filter
+
+      for (int i=0; i < samplesFFT; i++) {
+        // FIR lowpass, to remove high frequency noise
+        float highFilteredSample;
+        if (i < (samplesFFT-1)) highFilteredSample = beta1*vReal[i] + beta2*last_vals[0] + beta2*vReal[i+1];  // smooth out spikes
+        else highFilteredSample = beta1*vReal[i] + beta2*last_vals[0]  + beta2*last_vals[1];                  // spcial handling for last sample in array
+        last_vals[1] = last_vals[0];
+        last_vals[0] = vReal[i];
+        vReal[i] = highFilteredSample;
+        // IIR highpass, to remove low frequency noise
+        lowfilt += alpha * (vReal[i] - lowfilt);
+        vReal[i] = vReal[i] - lowfilt;
+      }  
+    }
+
+    // find highest sample in the batch
     const int halfSamplesFFT = samplesFFT / 2;   // samplesFFT divided by 2
     float maxSample1 = 0.0;                         // max sample from first half of FFT batch
     float maxSample2 = 0.0;                         // max sample from second half of FFT batch
@@ -694,7 +728,7 @@ void logAudio() {
   //Serial.print("micData:");    Serial.print(micData);     Serial.print("\t");
   //Serial.print("micDataSm:");  Serial.print(micDataSm);   Serial.print("\t");
   //Serial.print("micIn:");      Serial.print(micIn);       Serial.print("\t");
-  //Serial.print("micLev:");     Serial.print(micLev);      Serial.print("\t");
+  Serial.print("micLev:");     Serial.print(micLev);      Serial.print("\t");
   //Serial.print("sampleReal:"); Serial.print(sampleReal);  Serial.print("\t");
   //Serial.print("sample:");     Serial.print(sample);      Serial.print("\t");
   //Serial.print("sampleAvg:");  Serial.print(sampleAvg);   Serial.print("\t");
