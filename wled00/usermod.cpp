@@ -52,7 +52,8 @@ void userSetup() {
       break;
     case 2:
       if (serialTxAvaileable) Serial.println("AS: ES7243 Microphone (right channel only).");
-      audioSource = new ES7243(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF, 1.0f/16.0f);
+      // audioSource = new ES7243(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF, 1.0f/16.0f);  // for Line Level
+      audioSource = new ES7243(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);              // for Microphone Level
       break;
     case 3:
       if (serialTxAvaileable) {
