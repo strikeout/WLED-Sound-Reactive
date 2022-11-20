@@ -176,9 +176,10 @@ public:
 
         // i2ssckPin needs special treatment, since it might be unused on PDM mics
         if (i2sckPin != -1) {
-            if (!pinManager.allocatePin(i2sckPin, true, PinOwner::DigitalMic))
+            if (!pinManager.allocatePin(i2sckPin, true, PinOwner::DigitalMic)) {
                 if (serialTxAvaileable) Serial.printf("Failed to allocate I2S GPIO pin: SCK=%d \n", i2sckPin);
                 return;
+            }
         }
 
         #if defined(ARDUINO_ARCH_ESP32) && !defined(CONFIG_IDF_TARGET_ESP32S3) && !defined(CONFIG_IDF_TARGET_ESP32S2) && !defined(CONFIG_IDF_TARGET_ESP32C3)
@@ -228,7 +229,7 @@ public:
 
             // get fresh samples
             err = i2s_read(I2S_NUM_0, (void *)newSamples, sizeof(newSamples), &bytes_read, portMAX_DELAY);
-            if ((err != ESP_OK)){
+            if ((err != ESP_OK)) {
                 if (serialTxAvaileable) Serial.printf("Failed to get samples: %d\n", err);
                 return;
             }
@@ -332,6 +333,7 @@ public:
     virtual void initialize() {
         // Reserve the master clock pin
         if(!pinManager.allocatePin(mclkPin, true, PinOwner::DigitalMic)) {
+            if (serialTxAvaileable) Serial.printf("Failed to allocate I2S GPIO pin: MCLK=%d \n", mclkPin);
             return;
         }
         if ((mclkPin != GPIO_NUM_0) && (mclkPin != GPIO_NUM_1) && (mclkPin != GPIO_NUM_3)) {
@@ -414,6 +416,7 @@ public:
         // Reserve SDA and SCL pins of the I2C interface
         if (!pinManager.allocatePin(pin_ES7243_SDA, true, PinOwner::DigitalMic) ||
             !pinManager.allocatePin(pin_ES7243_SCL, true, PinOwner::DigitalMic)) {
+                if (serialTxAvaileable) Serial.printf("ES7243: failed to allocate i2c GPIO pins: SDA=%d SCL=%d \n", pin_ES7243_SDA, pin_ES7243_SCL);
                 return;
             }
 
@@ -478,6 +481,7 @@ public:
         }
 
         if(!pinManager.allocatePin(audioPin, false, PinOwner::AnalogMic)) {
+            if (serialTxAvaileable) Serial.printf("AS: failed to allocate GPIO pin %d.\n", audioPin);
             return;
         }
         // Determine Analog channel. Only Channels on ADC1 are supported
