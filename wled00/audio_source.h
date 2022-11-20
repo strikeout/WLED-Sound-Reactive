@@ -53,9 +53,9 @@
 
 
 #ifndef ES7243_ADDR
-    int addr_ES7243 = 0x13;
+    static int addr_ES7243 = 0x13;
 #else
-    int addr_ES7243 =  ES7243_ADDR;
+    static int addr_ES7243 =  ES7243_ADDR;
 #endif
 
 #ifndef ES7243_SDAPIN
@@ -65,9 +65,9 @@
 #endif
 
 #ifndef ES7243_SDAPIN
-    int pin_ES7243_SCL = 23;
+    static int pin_ES7243_SCL = 23;
 #else
-    int pin_ES7243_SCL =  ES7243_SCLPIN;
+    static int pin_ES7243_SCL =  ES7243_SCLPIN;
 #endif
 
 /* Interface class
@@ -168,13 +168,16 @@ public:
     virtual void initialize() {
 
         if (!pinManager.allocatePin(i2swsPin, true, PinOwner::DigitalMic) ||
-            !pinManager.allocatePin(i2ssdPin, false, PinOwner::DigitalMic)) {
+            !pinManager.allocatePin(i2ssdPin, false, PinOwner::DigitalMic) ||
+            (i2ssdPin < 0) || (i2swsPin < 0)) {
+                if (serialTxAvaileable) Serial.printf("Failed to set I2S GPIO pins: SD=%d WS=%d \n", i2ssdPin, i2swsPin);
                 return;
         }
 
         // i2ssckPin needs special treatment, since it might be unused on PDM mics
         if (i2sckPin != -1) {
             if (!pinManager.allocatePin(i2sckPin, true, PinOwner::DigitalMic))
+                if (serialTxAvaileable) Serial.printf("Failed to allocate I2S GPIO pin: SCK=%d \n", i2sckPin);
                 return;
         }
 
@@ -335,6 +338,10 @@ public:
             if (serialTxAvaileable) Serial.printf("Failed to set gpio %d as i2s MCLK pin. Only GPIO0, GPIO1 or GPIO3 are possible on ESP32\n", mclkPin);
             return;
         }
+        if (i2sckPin < 0) {
+            if (serialTxAvaileable) Serial.printf("Failed to set gpio %d as i2s SCK pin.\n", i2sckPin);
+            return;
+        }
         _routeMclk();
         I2SSource::initialize();
 
@@ -379,7 +386,8 @@ private:
         Wire.beginTransmission(addr_ES7243);
         Wire.write((uint8_t)reg);
         Wire.write((uint8_t)val);
-        Wire.endTransmission();
+        uint8_t i2cErr = Wire.endTransmission();  // i2cErr == 0 means OK
+        if ((i2cErr != 0) && serialTxAvaileable) Serial.printf("ES7243: I2C write failed with error=%d  (reg 0x%X, val 0x%X).\n", i2cErr, reg, val);
     }
 
     void _es7243InitAdc() {
@@ -399,6 +407,10 @@ public:
         _config.channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT;
     };
     void initialize() {
+        if ((pin_ES7243_SDA < 0) || (pin_ES7243_SCL < 0)) {
+            if (serialTxAvaileable) Serial.printf("ES7243: invalid i2c GPIO pins: SDA=%d SCL=%d \n", pin_ES7243_SDA, pin_ES7243_SCL);
+            return;
+        }
         // Reserve SDA and SCL pins of the I2C interface
         if (!pinManager.allocatePin(pin_ES7243_SDA, true, PinOwner::DigitalMic) ||
             !pinManager.allocatePin(pin_ES7243_SCL, true, PinOwner::DigitalMic)) {
@@ -604,6 +616,9 @@ public:
         _config.use_apll = 1;
 
         _pinConfig = {
+            #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0)
+            .mck_io_num = I2S_PIN_NO_CHANGE, // needed, otherwise i2s_set_pin() will fail in IDF >=4.4.x
+            #endif
             .bck_io_num = I2S_PIN_NO_CHANGE, // bck is unused in PDM mics
             .ws_io_num = i2swsPin, // clk pin for PDM mic
             .data_out_num = I2S_PIN_NO_CHANGE,
