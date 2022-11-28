@@ -77,7 +77,7 @@ void userSetup() {
       break;
     case 0:
     default:
-      //useBandPassFilter = true;
+      useBandPassFilter = true; // usefull as ADC analog is notoriously noisy. Also the filter might reduce signal arterfacts from non-continous sampling
       if (serialTxAvaileable) Serial.println("AS: Analog Microphone (left channel only).");
       audioSource = new I2SAdcSource(SAMPLE_RATE, BLOCK_SIZE, 0, 0x0FFF);
       break;
