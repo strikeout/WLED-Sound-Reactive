@@ -5639,7 +5639,7 @@ uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andre
   segmentSampleAvg *= 0.25; // divide by 4, to compensate for later "sensitivty" upscaling
 
   float mySampleAvg = mapf(segmentSampleAvg*2.0, 0, 64, 0, (SEGLEN-1)); // map to pixels availeable in current segment
-  int tempsamp = constrain(mySampleAvg,0,SEGLEN-1);       // Keep the sample from overflowing.
+  int tempsamp = constrain(mySampleAvg,0,SEGLEN);       // Keep the sample from overflowing.
   uint8_t gravity = 8 - SEGMENT.speed/32;
 
   for (int i=0; i<tempsamp; i++) {
@@ -5648,7 +5648,7 @@ uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andre
   }
 
   if (tempsamp >= gravcen->topLED)
-    gravcen->topLED = tempsamp;
+    gravcen->topLED = MAX(tempsamp-1, 0);
   else if (gravcen->gravityCounter % gravity == 0)
     gravcen->topLED--;
 
@@ -5684,7 +5684,7 @@ uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andre
 
   float segmentSampleAvg = 64.0 * tmpSound * (float)SEGMENT.intensity / 128.0;
   float mySampleAvg = mapf(segmentSampleAvg, 0, 128, 0, (SEGLEN-1)); // map to pixels availeable in current segment
-  int tempsamp = constrain(mySampleAvg,0,SEGLEN-1);                  // Keep the sample from overflowing.
+  int tempsamp = constrain(mySampleAvg,0,SEGLEN);                  // Keep the sample from overflowing.
 
   //tempsamp = SEGLEN - tempsamp;                                      // uncomment to invert direction
   segmentSampleAvg=fmax(64.0 - fmin(segmentSampleAvg,63),8);         // inverted brightness
@@ -6493,15 +6493,17 @@ uint16_t WS2812FX::mode_waterfall(void) {                   // Waterfall. By: An
     if (soundAgc) my_magnitude *= multAgc;
     if (sampleAvg < 1 ) my_magnitude = 0.001;             // noise gate closed - mute
 
-    int pixCol = (log10f(FFT_MajorPeak) - 2.26) * 177;  // log10 frequency range is from 2.26 to 3.7. Let's scale accordingly.
+    int pixCol = (FFT_MajorPeak > 1.0) ? ((log10f(FFT_MajorPeak) - 2.26) * 177) : 0;  // log10 frequency range is from 2.26 to 3.7. Let's scale accordingly.
     if (pixCol < 0) pixCol=0;
 
-    if (samplePeak) {
-      leds[segmentToLogical(SEGLEN-1)] = CHSV(92,92,92);
-    } else {
-      leds[segmentToLogical(SEGLEN-1)] = color_blend(SEGCOLOR(1), color_from_palette(pixCol+SEGMENT.intensity, false, PALETTE_SOLID_WRAP, 0), (int)my_magnitude);
-    }
-      for (int i=0; i<SEGLEN-1; i++) leds[segmentToLogical(i)] = leds[segmentToLogical(i+1)];
+    if (sampleAvg > 1) {
+      if (samplePeak) {
+        leds[segmentToLogical(SEGLEN-1)] = CHSV(92,92,92);
+      } else {
+        leds[segmentToLogical(SEGLEN-1)] = color_blend(SEGCOLOR(1), color_from_palette(pixCol+SEGMENT.intensity, false, PALETTE_SOLID_WRAP, 0), (int)my_magnitude);
+      }
+    } else leds[segmentToLogical(SEGLEN-1)] = SEGCOLOR(1);
+    for (int i=0; i<SEGLEN-1; i++) leds[segmentToLogical(i)] = leds[segmentToLogical(i+1)];
   }
 
   setPixels(leds);

@@ -1413,7 +1413,7 @@ const char JSON_mode_names[] PROGMEM = R"=====([
 " ♪ Pixelwave@!,Sensitivity=64;!,!;!",
 " ♪ Juggles@!,# of balls;,!;!",
 " ♪ Matripix@!,Brightness=64;,!;!",
-" ♪ Gravimeter@Rate of fall,Sensitivity=128;,!;!",
+" ♪ Gravimeter@Rate of fall,Sensitivity=130;,!;!",
 " ♪ Plasmoid@Phase=128,# of pixels=128;,!;!",
 " ♪ Puddles@Fade rate,Puddle size;!,!;!",
 " ♪ Midnoise@Fade rate,Maximum length=128;,!;!",
