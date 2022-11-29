@@ -41,7 +41,7 @@ function B(){window.history.back()}function U(){document.getElementById("uf").st
 %CSS%%SCSS%</head><body onload="GetV()">
 <h2>Sound Reactive WLED Software Update</h2><form method="POST" 
 action="/update" id="uf" enctype="multipart/form-data" onsubmit="U()"><span 
-class="sip">0.13.3.3</span><br>Download the latest binary: <a 
+class="sip">0.13.3.4</span><br>Download the latest release: <a 
 href="https://github.com/atuline/WLED/releases" target="_blank"><img 
 src="https://img.shields.io/github/release/atuline/WLED.svg?style=flat-square">
 </a><br><input type="file" name="update" required><br><button type="submit">
@@ -84,7 +84,7 @@ charset="utf-8"><meta name="theme-color" content="#222222"><title>
 WLED Live Preview</title><style>
 body{margin:0}#canv{background:#000;filter:brightness(175%);width:100%;height:100%;position:absolute}
 </style></head><body><div id="canv"><script>
-function updatePreview(e){var n="linear-gradient(90deg,",t=e.length;for(i=6;i<t;i+=3)n+=`rgb(${e[i]},${e[i+1]},${e[i+2]})`,i<t-3&&(n+=",");n+=")",document.getElementById("canv").style.background=n}function getLiveJson(e){try{if("[object ArrayBuffer]"===toString.call(e.data)){let e=new Uint8Array(event.data);if(76!=e[0])return;updatePreview(e)}}catch(e){console.error("Peek WS error:",e)}}var ws;try{ws=top.window.ws}catch(e){}ws&&ws.readyState===WebSocket.OPEN?(console.info("Peek uses top WS"),ws.send("{'lv':true}")):(console.info("Peek WS opening"),(ws=new WebSocket(("https:"==window.location.protocol?"wss":"ws")+"://"+document.location.host+"/ws")).onopen=function(){console.info("Peek WS open"),ws.send("{'lv':true}")}),ws.binaryType="arraybuffer",ws.addEventListener("message",getLiveJson)
+function updatePreview(e){var n="linear-gradient(90deg,",t=e.length;for(i=8;i<t;i+=3)n+=`rgb(${e[i]},${e[i+1]},${e[i+2]})`,i<t-3&&(n+=",");n+=")",document.getElementById("canv").style.background=n}function getLiveJson(e){try{if("[object ArrayBuffer]"===toString.call(e.data)){let e=new Uint8Array(event.data);if(76!=e[0])return;updatePreview(e)}}catch(e){console.error("Peek WS error:",e)}}var ws;try{ws=top.window.ws}catch(e){}ws&&ws.readyState===WebSocket.OPEN?(console.info("Peek uses top WS"),ws.send("{'lv':true}")):(console.info("Peek WS opening"),(ws=new WebSocket(("https:"==window.location.protocol?"wss":"ws")+"://"+document.location.host+"/ws")).onopen=function(){console.info("Peek WS open"),ws.send("{'lv':true}")}),ws.binaryType="arraybuffer",ws.addEventListener("message",getLiveJson)
 </script></body></html>)=====";
 
 
