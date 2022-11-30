@@ -77,6 +77,8 @@
 #define USERMOD_ID_MY9291                28     //Usermod "usermod_MY9291.h"
 #define USERMOD_ID_SI7021_MQTT_HA        29     //Usermod "usermod_si7021_mqtt_ha.h"
 #define USERMOD_ID_BME280                30     //Usermod "usermod_bme280.h
+//WLEDMM
+#define USERMOD_ID_CUSTOMEFFECTS         31     //Usermod "usermod_v2_customeffects.h"
 
 //Access point behavior
 #define AP_BEHAVIOR_BOOT_NO_CONN          0     //Open AP when no connection after boot
@@ -308,7 +310,7 @@
 #endif
 
 #ifndef ABL_MILLIAMPS_DEFAULT
-  #define ABL_MILLIAMPS_DEFAULT 850  // auto lower brightness to stay close to milliampere limit
+  #define ABL_MILLIAMPS_DEFAULT 1500  // auto lower brightness to stay close to milliampere limit WLEDSR: 1500 minmal for 1024 leds / 2D
 #else
   #if ABL_MILLIAMPS_DEFAULT < 250  // make sure value is at least 250
    #define ABL_MILLIAMPS_DEFAULT 250

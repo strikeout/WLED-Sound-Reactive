@@ -27,9 +27,6 @@
 #include "FX.h"
 #include "wled.h"
 
-//WLEDSR Custom Effects
-#include "src/dependencies/arti/arti_wled.h"
-
 #define IBN 5100
 #define PALETTE_SOLID_WRAP (paletteBlend == 1 || paletteBlend == 3)
 
@@ -4480,7 +4477,45 @@ void  WS2812FX::nscale8( CRGB* leds, uint8_t scale)
     }
 }
 
+//line function
+void WS2812FX::drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint32_t c) {
+  const uint16_t cols = SEGMENT.width;
+  const uint16_t rows = SEGMENT.height;
+  if (x0 >= cols || x1 >= cols || y0 >= rows || y1 >= rows) return;
+  const int16_t dx = abs(x1-x0), sx = x0<x1 ? 1 : -1;
+  const int16_t dy = abs(y1-y0), sy = y0<y1 ? 1 : -1; 
+  int16_t err = (dx>dy ? dx : -dy)/2, e2;
+  for (;;) {
+    setPixelColor(XY(x0,y0),c);
+    if (x0==x1 && y0==y1) break;
+    e2 = err;
+    if (e2 >-dx) { err -= dy; x0 += sx; }
+    if (e2 < dy) { err += dx; y0 += sy; }
+  }
+}
 
+void WS2812FX::drawArc(uint16_t x0, uint16_t y0, uint16_t radius, uint32_t color, uint32_t fillColor) {
+  // float step = degrees / (2.85f*MAX(radius,1));
+  // for (float rad = 0.0f; rad <= degrees+step/2; rad += step) {
+  //   // may want to try float version as well (with or without antialiasing)
+  //   int x = roundf(sin_t(rad) * radius);
+  //   int y = roundf(cos_t(rad) * radius);
+  //   setPixelColorXY(x+x0, y+y0, c);
+  // }
+  float minradius = radius - .5;
+  float maxradius = radius + .5;
+  for (int x=0; x<SEGMENT.width; x++) for (int y=0; y<SEGMENT.height; y++) {
+
+    int newX = x - x0;
+    int newY = y - y0;
+
+    if (newX*newX + newY*newY >= minradius * minradius && newX*newX + newY*newY <= maxradius * maxradius)
+      setPixelColor(XY(x, y), color);
+    if (fillColor != 0)
+      if (newX*newX + newY*newY < minradius * minradius)
+        setPixelColor(XY(x, y), fillColor);
+  }
+}
 
 uint16_t WS2812FX::XY(uint16_t x, uint16_t y) {                              // ewowi20210703: new XY: segmentToReal: Maps XY in 2D segment to to rotated and mirrored logical index. Works for 1D strips and 2D panels
     return segmentToLogical(x%SEGMENT.width + y%SEGMENT.height * SEGMENT.width);

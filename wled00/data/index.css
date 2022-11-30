@@ -439,8 +439,7 @@ Effect Speed */
 	margin: 8px;
 }
 
-/* WLEDSR Custom Effects: add kceEditor */
-#kv, #kn, #kceEditor {
+#kv, #kn {
 	max-width: 490px;
 	display: inline-block;
 }
@@ -733,14 +732,6 @@ input[type=number], input[type=text] {
 	width: 50px;
 	-webkit-appearance: textfield;
 					appearance: textfield;
-}
-
-/* WLEDSR Custom Effects */
-.ceTextarea {
-	width: 90%;
-	height: 300px;
-	resize: none;
-	white-space: pre;
 }
 
 textarea {

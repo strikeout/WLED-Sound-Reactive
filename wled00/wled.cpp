@@ -536,14 +536,14 @@ void WLED::initAP(bool resetAP)
     strcpy_P(apSSID, PSTR("WLED-AP"));
   if (resetAP)
     strcpy_P(apPass, PSTR(DEFAULT_AP_PASS));
-  DEBUG_PRINT(F("Opening access point "));
-  DEBUG_PRINTLN(apSSID);
+  Serial.print(F("Opening access point "));
+  Serial.println(apSSID);
   WiFi.softAPConfig(IPAddress(4, 3, 2, 1), IPAddress(4, 3, 2, 1), IPAddress(255, 255, 255, 0));
   WiFi.softAP(apSSID, apPass, apChannel, apHide);
 
   if (!apActive) // start captive portal if AP active
   {
-    DEBUG_PRINTLN(F("Init AP interfaces"));
+    Serial.println(F("Init AP interfaces"));
     server.begin();
     if (udpPort > 0 && udpPort != ntpLocalPort) {
       udpConnected = notifierUdp.begin(udpPort);
@@ -677,7 +677,7 @@ void WLED::initConnection()
   lastReconnectAttempt = millis();
 
   if (!WLED_WIFI_CONFIGURED) {
-    DEBUG_PRINT(F("No connection configured. "));
+    Serial.print(F("No connection configured. "));
     if (!apActive)
       initAP();        // instantly go to ap mode
     return;
@@ -685,16 +685,16 @@ void WLED::initConnection()
     if (apBehavior == AP_BEHAVIOR_ALWAYS) {
       initAP();
     } else {
-      DEBUG_PRINTLN(F("Access point disabled."));
+      Serial.println(F("Access point disabled."));
       WiFi.softAPdisconnect(true);
       WiFi.mode(WIFI_STA);
     }
   }
   showWelcomePage = false;
 
-  DEBUG_PRINT(F("Connecting to "));
-  DEBUG_PRINT(clientSSID);
-  DEBUG_PRINTLN("...");
+  Serial.print(F("Connecting to "));
+  Serial.print(clientSSID);
+  Serial.println("...");
 
   // convert the "serverDescription" into a valid DNS hostname (alphanumeric)
   char hostname[25] = "wled-";
@@ -828,7 +828,7 @@ void WLED::handleConnection()
     }
   }
   if (forceReconnect) {
-    DEBUG_PRINTLN(F("Forcing reconnect."));
+    Serial.print(F("Forcing reconnect."));
     initConnection();
     interfacesInited = false;
     forceReconnect = false;
@@ -837,7 +837,7 @@ void WLED::handleConnection()
   }
   if (!Network.isConnected()) {
     if (interfacesInited) {
-      DEBUG_PRINTLN(F("Disconnected!"));
+      Serial.println(F("Disconnected!"));
       interfacesInited = false;
       initConnection();
     }
@@ -854,8 +854,8 @@ void WLED::handleConnection()
       initAP();
   } else if (!interfacesInited) { //newly connected
     DEBUG_PRINTLN("");
-    DEBUG_PRINT(F("Connected! IP address: "));
-    DEBUG_PRINTLN(Network.localIP());
+    Serial.print(F("Connected! IP address: "));
+    Serial.println(Network.localIP());
     if (improvActive) {
       if (improvError == 3) sendImprovStateResponse(0x00, true);
       sendImprovStateResponse(0x04);
@@ -870,7 +870,7 @@ void WLED::handleConnection()
       dnsServer.stop();
       WiFi.softAPdisconnect(true);
       apActive = false;
-      DEBUG_PRINTLN(F("Access point disabled."));
+      Serial.println(F("Access point disabled."));
     }
   }
 }

@@ -80,10 +80,11 @@
 #define MIN_SHOW_DELAY   (_frametime < 16 ? 8 : 15)
 
 #define NUM_COLORS       3 /* number of colors per segment */
-#define SEGMENT          _segments[_segment_index]
-#define SEGCOLOR(x)      _colors_t[x]
-#define SEGENV           _segment_runtimes[_segment_index]
-#define SEGLEN           _virtualSegmentLength
+#define SEGMENT          strip._segments[strip.getCurrSegmentId()]
+#define SEGCOLOR(x)      strip._colors_t[x]
+#define SEGENV           strip._segment_runtimes[strip.getCurrSegmentId()]
+#define SEGPALETTE       strip._currentPalette
+#define SEGLEN           strip._virtualSegmentLength
 #define SEGACT           SEGMENT.stop
 #define SPEED_FORMULA_L  5U + (50U*(255U - SEGMENT.speed))/SEGLEN
 
@@ -321,7 +322,6 @@
 #define FX_MODE_3DRIPPLES              188
 #define FX_MODE_3DSphereMove        189
 
-#define floatNull -32768 //WLEDSR Custom Effects
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //    End of Audio Reactive fork (WLEDSR)                                                                                                //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -790,7 +790,9 @@ class WS2812FX {
       _mode[FX_MODE_WAVESINS]                = &WS2812FX::mode_wavesins;
       _mode[FX_MODE_ROCKTAVES]               = &WS2812FX::mode_rocktaves;
       _mode[FX_MODE_2DAKEMI]                 = &WS2812FX::mode_2DAkemi;
-      _mode[FX_MODE_CUSTOMEFFECT]            = &WS2812FX::mode_customEffect; //WLEDSR Custom Effects
+#ifdef USERMOD_CUSTOMEFFECTS
+      _mode[FX_MODE_CUSTOMEFFECT]            = &WS2812FX::mode_customEffect; //WLEDMM Custom Effects
+#endif      
       _mode[FX_MODE_3DRIPPLES]               = &WS2812FX::mode_3DRipples;
       _mode[FX_MODE_3DSphereMove]         = &WS2812FX::mode_3DSphereMove;
 
@@ -879,6 +881,8 @@ class WS2812FX {
       gamma8(uint8_t),
       gamma8_cal(uint8_t, float),
       get_random_wheel_index(uint8_t);
+
+    inline uint8_t getCurrSegmentId(void) { return _segment_index; }
 
     inline uint8_t sin_gap(uint16_t in) {
       if (in & 0x100) return 0;
@@ -1138,7 +1142,9 @@ class WS2812FX {
       mode_2DDrift(void),
       mode_2DColoredBursts(void),
       mode_2DJulia(void),
-      mode_customEffect(void),     //WLEDSR Custom Effects
+#ifdef USERMOD_CUSTOMEFFECTS
+      mode_customEffect(void),     //WLEDMM Custom Effects
+#endif
       mode_3DRipples(void),
       mode_3DSphereMove(void);
     //  mode_2DPoolnoise(void),
@@ -1154,23 +1160,34 @@ class WS2812FX {
     bool
       _skipFirstMode; //private? not in AC (anymore)
 
-    //WLEDSR Custom Effects
-    float arti_external_function(uint8_t function, float par1 = floatNull, float par2 = floatNull, float par3 = floatNull, float par4 = floatNull, float par5 = floatNull);
-    float arti_get_external_variable(uint8_t variable, float par1 = floatNull, float par2 = floatNull, float par3 = floatNull);
-    void arti_set_external_variable(float value, uint8_t variable, float par1 = floatNull, float par2 = floatNull, float par3 = floatNull);
+    void drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint32_t c);
+    void drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, CRGB c) { drawLine(x0, y0, x1, y1, RGBW32(c.r,c.g,c.b,0)); } // automatic inline
+    void drawArc(uint16_t x0, uint16_t y0, uint16_t radius, uint32_t color, uint32_t fillColor = 0);
+    void drawArc(uint16_t x0, uint16_t y0, uint16_t radius, CRGB color, CRGB fillColor = BLACK) { drawArc(x0, y0, radius, RGBW32(color.r,color.g,color.b,0), RGBW32(fillColor.r,fillColor.g,fillColor.b,0)); } // automatic inline
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //    End of Audio Reactive fork (WLEDSR)                                                                                                //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    CRGBPalette16 currentPalette;
+    uint32_t _colors_t[3];
+    uint16_t _virtualSegmentLength;
+    segment _segments[MAX_NUM_SEGMENTS] = { // SRAM footprint: 27 bytes per element
+      //WLEDSR: add f1,2,3
+      // start, stop, offset, speed, intensity, custom1, custom2, custom3, palette, mode, options, grouping, spacing, opacity (unused), color[], capabilities
+      {0, 7, 0, DEFAULT_SPEED, DEFAULT_INTENSITY, DEFAULT_Custom1, DEFAULT_Custom2, DEFAULT_Custom3, 0, DEFAULT_MODE, NO_OPTIONS, 1, 0, 255, {DEFAULT_COLOR}, 0}
+    };
+    uint8_t _segment_index = 0;
+    friend class Segment;
+    segment_runtime _segment_runtimes[MAX_NUM_SEGMENTS]; // SRAM footprint: 28 bytes per element
+    friend class Segment_runtime;
 
   private:
     uint32_t crgb_to_col(CRGB fastled);
     CRGB col_to_crgb(uint32_t);
-    CRGBPalette16 currentPalette;
     CRGBPalette16 targetPalette;
 
-    uint16_t _length, _virtualSegmentLength;
+    uint16_t _length;
     uint16_t _rand16seed;
     uint8_t _brightness;
     uint16_t _usedSegmentData = 0;
@@ -1226,22 +1243,12 @@ class WS2812FX {
     uint32_t _lastPaletteChange = 0;
     uint32_t _lastShow = 0;
 
-    uint32_t _colors_t[3];
     uint8_t _bri_t;
 
     bool _no_rgb = false;
 
-    uint8_t _segment_index = 0;
     uint8_t _segment_index_palette_last = 99;
     uint8_t _mainSegment;
-
-    segment _segments[MAX_NUM_SEGMENTS] = { // SRAM footprint: 27 bytes per element
-      //WLEDSR: add f1,2,3
-      // start, stop, offset, speed, intensity, custom1, custom2, custom3, palette, mode, options, grouping, spacing, opacity (unused), color[], capabilities
-      {0, 7, 0, DEFAULT_SPEED, DEFAULT_INTENSITY, DEFAULT_Custom1, DEFAULT_Custom2, DEFAULT_Custom3, 0, DEFAULT_MODE, NO_OPTIONS, 1, 0, 255, {DEFAULT_COLOR}, 0}
-    };
-    segment_runtime _segment_runtimes[MAX_NUM_SEGMENTS]; // SRAM footprint: 28 bytes per element
-    friend class Segment_runtime;
 
     ColorTransition transitions[MAX_NUM_TRANSITIONS]; //12 bytes per element
     friend class ColorTransition;
