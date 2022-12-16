@@ -1,6 +1,6 @@
 /*
    @title   Arduino Real Time Interpreter (ARTI)
-   @file    arti_wled_plugin.h
+   @file    arti_wled.h
    @date    20220818
    @author  Ewoud Wijma
    @repo    https://github.com/ewoudwijma/ARTI
@@ -23,6 +23,7 @@
   extern float sampleAvg;
   extern float sampleAgc;
   extern byte soundAgc;
+  extern uint8_t *fftResult;
 #else
   #include "../arti.h"
   #include <string.h>
@@ -58,7 +59,8 @@ enum Externals
   F_custom1Slider,
   F_custom2Slider,
   F_custom3Slider,
-  F_sampleAvg,
+  F_volume,
+  F_fftResult,
 
   F_shift,
   F_circle2D,
@@ -149,6 +151,9 @@ float ARTI::arti_external_function(uint8_t function, float par1, float par2, flo
       case F_segcolor:
         return SEGCOLOR((uint8_t)par1);
 
+      case F_fftResult:
+          return fftResult[(uint8_t)par1%16];
+
       case F_shift: {
         uint32_t saveFirstPixel = strip.getPixelColor(0);
         for (uint16_t i=0; i<SEGLEN-1; i++)
@@ -232,6 +237,9 @@ float ARTI::arti_external_function(uint8_t function, float par1, float par2, flo
         return par1;
 
       case F_segcolor:
+        return par1;
+
+      case F_fftResult:
         return par1;
 
       case F_shift:
@@ -353,7 +361,7 @@ float ARTI::arti_get_external_variable(uint8_t variable, float par1, float par2,
         return SEGMENT.custom2;
       case F_custom3Slider:
         return SEGMENT.custom3;
-      case F_sampleAvg:
+      case F_volume:
         return((soundAgc) ? sampleAgc : sampleAvg);
       case F_hour:
         return ((float)hour(localTime));
@@ -394,8 +402,8 @@ float ARTI::arti_get_external_variable(uint8_t variable, float par1, float par2,
         return F_custom2Slider;
       case F_custom3Slider:
         return F_custom3Slider;
-      case F_sampleAvg:
-        return F_sampleAvg;
+      case F_volume:
+        return F_volume;
 
       case F_hour:
         return F_hour;
@@ -580,7 +588,7 @@ uint16_t WS2812FX::mode_customEffect(void) {
     strcat(programFileName, currentEffect);
     strcat(programFileName, ".wled");
 
-    succesful = arti->setup("/wledv032.json", programFileName);
+    succesful = arti->setup("/wledv033.json", programFileName);
 
     if (!succesful)
       ERROR_ARTI("Setup not succesful\n");
