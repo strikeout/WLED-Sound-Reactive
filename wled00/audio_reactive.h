@@ -164,6 +164,12 @@ static int linearNoise[16] = { 34, 28, 26, 25, 20, 12, 9, 6, 4, 4, 3, 2, 2, 2, 2
 // Table of multiplication factors so that we can even out the frequency response.
 static float fftResultPink[16] = {1.70,1.71,1.73,1.78,1.68,1.56,1.55,1.63,1.79,1.62,1.80,2.06,2.47,3.35,6.83,9.55};
 
+// shared vars for debugging
+#ifdef MIC_LOGGER
+static volatile float    micReal_min = 0.0f;             // MicIn data min from last batch of samples
+static volatile float    micReal_avg = 0.0f;             // MicIn data average (from last batch of samples)
+static volatile float    micReal_max = 0.0f;             // MicIn data max from last batch of samples
+#endif
 
 // default "V1" SR 0.13.x audiosync struct - 83 Bytes
 struct audioSyncPacket {
@@ -565,6 +571,20 @@ void FFTcode( void * parameter) {
     //micDataSm = (uint16_t)vReal[samples - 1]; // will do a this a bit later
 
     // micDataSm = ((micData * 3) + micData)/4;
+    #ifdef MIC_LOGGER
+    float datMin = 0.0f;
+    float datMax = 0.0f;
+    double datAvg = 0.0f;
+    for (int i=0; i < samplesFFT; i++) {
+      if (i==0) {
+        datMin = datMax = vReal[i];
+      } else {
+        if (datMin >  vReal[i]) datMin =  vReal[i];
+        if (datMax <  vReal[i]) datMax =  vReal[i];
+      }
+      datAvg +=  vReal[i];
+    }
+    #endif
 
     // band pass filter - can reduce noise floor by a factor of 50
     // downside: frequencies below 60Hz will be ignored
@@ -619,6 +639,11 @@ void FFTcode( void * parameter) {
     // release first sample to volume reactive effects
     micDataSm = (uint16_t)maxSample1;
     micDataReal = maxSample1;
+    #ifdef MIC_LOGGER
+    micReal_min = datMin;
+    micReal_max = datMax;
+    micReal_avg = datAvg / samplesFFT;
+    #endif
 
     FFT.dcRemoval();                                            // remove DC offset
     //FFT.windowing(FFTWindow::Flat_top, FFTDirection::Forward);  // Weigh data using "Flat Top" window - better amplitude accuracy
@@ -723,20 +748,22 @@ void FFTcode( void * parameter) {
 void logAudio() {
 #ifdef MIC_LOGGER
   // Debugging functions for audio input and sound processing. Comment out the values you want to see
-
-  Serial.print("micReal:");    Serial.print(micDataReal);  Serial.print("\t");
+  Serial.print("micMin:");      Serial.print(0.5f * micReal_min);   Serial.print("\t");
+  Serial.print("micMax:");      Serial.print(0.5f * micReal_max);   Serial.print("\t");
+  Serial.print("micReal:");     Serial.print(micDataReal + 256.0f); Serial.print("\t");
   //Serial.print("micData:");    Serial.print(micData);     Serial.print("\t");
   //Serial.print("micDataSm:");  Serial.print(micDataSm);   Serial.print("\t");
   //Serial.print("micIn:");      Serial.print(micIn);       Serial.print("\t");
-  Serial.print("micLev:");     Serial.print(micLev);      Serial.print("\t");
+  //Serial.print("micLev:");     Serial.print(micLev + 256.0f); Serial.print("\t");
   //Serial.print("sampleReal:"); Serial.print(sampleReal);  Serial.print("\t");
   //Serial.print("sample:");     Serial.print(sample);      Serial.print("\t");
   //Serial.print("sampleAvg:");  Serial.print(sampleAvg);   Serial.print("\t");
   //Serial.print("sampleMax:");  Serial.print(sampleMax);   Serial.print("\t");
   //Serial.print("samplePeak:");  Serial.print((samplePeak!=0) ? 128:0);   Serial.print("\t");
   //Serial.print("multAgc:");    Serial.print(multAgc, 4);  Serial.print("\t");
-  Serial.print("sampleAgc:");   Serial.print(sampleAgc);   Serial.print("\t");
+  Serial.print("sampleAgc:");   Serial.print(sampleAgc + 256.0f);   Serial.print("\t");
   Serial.println(" ");
+  Serial.flush();
 
 #endif
 
