@@ -8,7 +8,7 @@
  */
 
 // version code in format yymmddb (b = daily build)
-#define VERSION 2211301                // WLEDSR specific version
+#define VERSION 2212291                // WLEDSR specific version
 #define SR_VERSION_NAME "0.13.3.6"     // WLEDSR version name --> some files need manual updating: package.json, package-lock.json, improv.cpp
 
 #define AC_VERSION 2208222             // AC WLED base version; last updated by PR #239 -> Merge AC-0.13.3 into dev
@@ -80,6 +80,7 @@
   #include <user_interface.h>
   }
 #else // ESP32
+  #include <HardwareSerial.h>  // ensure we have the correct "Serial" on new MCUs (depends on ARDUINO_USB_MODE and ARDUINO_USB_CDC_ON_BOOT)
   #include <WiFi.h>
   #include <ETH.h>
   #include "esp_wifi.h"
@@ -95,6 +96,8 @@
   #endif
   #include "esp_task_wdt.h"
 #endif
+#include <Wire.h>
+#include <SPI.h>
 
 #include "src/dependencies/network/Network.h"
 
