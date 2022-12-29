@@ -41,9 +41,9 @@ static bool useBandPassFilter = false;                    // if true, enables a 
 #endif
 
 // legacy support
-#if defined(SR_DEBUG) && !defined(MIC_LOGGER) && !defined(NO_MIC_LOGGER)
-#define MIC_LOGGER
-#endif
+//#if defined(SR_DEBUG) && !defined(MIC_LOGGER) && !defined(NO_MIC_LOGGER)
+//#define MIC_LOGGER
+//#endif
 
 
 // hackers corner
