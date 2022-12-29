@@ -5687,10 +5687,17 @@ uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andre
   else if (gravcen->gravityCounter % gravity == 0)
     gravcen->topLED--;
 
-  if (gravcen->topLED > 0) {
+  if ((gravcen->topLED > 0) && (gravcen->topLED < SEGLEN-1)) {
     setPixelColor(gravcen->topLED, color_from_palette(millis(), false, PALETTE_SOLID_WRAP, 0));
   }
   gravcen->gravityCounter = (gravcen->gravityCounter + 1) % gravity;
+
+#if 0 // WLEDSR - for peak detection debugging
+  if(samplePeak > 0) setPixelColor(0, GREEN);
+  //if(samplePeak > 0) setPixelColor(1, ORANGE);
+  if(samplePeak > 0) setPixelColor(SEGLEN-1, GREEN);
+  //if(samplePeak > 0) setPixelColor(SEGLEN-2, GREEN);
+#endif
 
   return FRAMETIME;
 } // mode_gravimeter()
