@@ -435,11 +435,14 @@ void limitSampleDynamics(void) {
 // Begin FFT Code //
 ////////////////////
 
-// using latest AruinoFFT lib, because it supportd float and its much faster!
+// using latest AruinoFFT lib, because it supports float and its much faster!
 // lib_deps += https://github.com/kosme/arduinoFFT#develop @ 1.9.2
-#define FFT_SPEED_OVER_PRECISION     // enables use of reciprocals (1/x etc), and an a few other speedups
-#define FFT_SQRT_APPROXIMATION       // enables "quake3" style inverse sqrt
-//#define sqrt(x) sqrtf(x)             // little hack that reduces FFT time by 50% on ESP32 (as alternative to FFT_SQRT_APPROXIMATION)
+
+// The following optimizations seem to be optimal on ESP32 (~1.5ms per FFT run)
+// #define FFT_SPEED_OVER_PRECISION     // enables use of reciprocals (1/x etc), and an a few other speedups - WLEDMM not faster on ESP32
+// #define FFT_SQRT_APPROXIMATION       // enables "quake3" style inverse sqrt                               - WLEDMM slower on ESP32
+#define sqrt(x) sqrtf(x)                // little hack that reduces FFT time by 10-50% on ESP32 (as alternative to FFT_SQRT_APPROXIMATION)
+
 #include "arduinoFFT.h"
 
 void transmitAudioData() {
