@@ -574,11 +574,11 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
   if (subPage == 9)
   {
 
-    if (audioPin>=0 && pinManager.isPinAllocated(audioPin)) pinManager.deallocatePin(audioPin, PinOwner::AnalogMic);
-    if (i2ssdPin>=0 && pinManager.isPinAllocated(i2ssdPin)) pinManager.deallocatePin(i2ssdPin, PinOwner::DigitalMic);
-    if (i2swsPin>=0 && pinManager.isPinAllocated(i2swsPin)) pinManager.deallocatePin(i2swsPin, PinOwner::DigitalMic);
-    if (i2sckPin>=0 && pinManager.isPinAllocated(i2sckPin)) pinManager.deallocatePin(i2sckPin, PinOwner::DigitalMic);
-    if (mclkPin>=0 && pinManager.isPinAllocated(mclkPin)) pinManager.deallocatePin(mclkPin, PinOwner::DigitalMic);
+    if (audioPin>=0 && pinManager.isPinAllocated(audioPin, PinOwner::AnalogMic)) pinManager.deallocatePin(audioPin, PinOwner::AnalogMic);
+    if (i2ssdPin>=0 && pinManager.isPinAllocated(i2ssdPin, PinOwner::DigitalMic)) pinManager.deallocatePin(i2ssdPin, PinOwner::DigitalMic);
+    if (i2swsPin>=0 && pinManager.isPinAllocated(i2swsPin, PinOwner::DigitalMic)) pinManager.deallocatePin(i2swsPin, PinOwner::DigitalMic);
+    if (i2sckPin>=0 && pinManager.isPinAllocated(i2sckPin, PinOwner::DigitalMic)) pinManager.deallocatePin(i2sckPin, PinOwner::DigitalMic);
+    if (mclkPin>=0 && pinManager.isPinAllocated(mclkPin, PinOwner::DigitalMic)) pinManager.deallocatePin(mclkPin, PinOwner::DigitalMic);
 
     int t = 0;
     t = request->arg(F("SQ")).toInt();
