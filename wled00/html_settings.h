@@ -88,9 +88,9 @@ Recommended power supply for brightest white:</i><br><b><span id="psu">?</span>
 name="SOMP" onchange="MPDiv()"><option value="0" selected="selected">1D Strip
 </option><option value="1">2D Matrix panel</option><option value="2">
 3D Cube (Experimental)</option></select><br><div id="mpdiv"><h3>2D Matrix</h3>
-Width <input id="mxw" name="MXW" type="number" min="1" max="1500" 
+Width <input id="mxw" name="MXW" type="number" min="1" max="16384" 
 oninput="UI()"> x Height <input id="mxh" name="MXH" type="number" min="1" 
-max="1500" oninput="UI()"><br><div id="2dwarning" 
+max="16384" oninput="UI()"><br><div id="2dwarning" 
 style="color:orange;display:inline">
 &#9888; width x height should match LED count!<br></div><h3>2D Panels</h3><i>
 A matrix is made of 1 or more identical physical led panels</i><br>
@@ -540,7 +540,7 @@ onclick='uploadFile(d.Sf.data2,"/cfg.json")'><br></div><div style="color:#fa0">
 Incorrect configuration may require a factory reset or re-flashing of your ESP.
 </div>For security reasons, passwords are not backed up.<h3>About</h3><a 
 href="https://github.com/atuline/WLED/" target="_blank">WLED</a>
- SR version 0.13.3.6<br><br><a 
+ SR version 0.13.3.7<br><br><a 
 href="https://github.com/atuline/WLED/wiki/Contributors-and-credits" 
 target="_blank">Contributors, dependencies and special thanks</a><br>
 A huge thank you to everyone who helped me create WLED!<br><br>
