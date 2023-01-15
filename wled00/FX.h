@@ -1237,6 +1237,8 @@ class WS2812FX {
       load_gradient_palette(uint8_t),
       handle_palette(void);
 
+    CRGBPalette16 getAudioPalette(int pal);
+
     uint16_t* customMappingTable = nullptr;
     uint16_t  customMappingSize  = 0;
 
@@ -1489,7 +1491,7 @@ const char JSON_palette_names[] PROGMEM = R"=====([
 "Magenta","Magred","Yelmag","Yelblu","Orange & Teal","Tiamat","April Night","Orangery","C9","Sakura",
 "Aurora","Atlantica","C9 2","C9 New","Temperature","Aurora 2","Retro Clown","Candy","Toxy Reaf","Fairy Reaf",
 "Semi Blue","Pink Candy","Red Reaf","Aqua Flash","Yelblu Hot","Lite Light","Red Flash","Blink Red","Red Shift","Red Tide",
-"Candy2"
+"Candy2","Audio Responsive Ratio","Audio Responsive Hue"
 ])=====";
 
 #endif

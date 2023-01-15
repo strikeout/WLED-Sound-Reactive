@@ -307,3 +307,5 @@ void sappends(char stype, const char* key, char* val);
 void getSettingsJS(byte subPage, char* dest);
 
 #endif
+
+CRGB getCRGBForBand(int x, int pal); //WLEDMM netmindz ar palette
