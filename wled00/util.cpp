@@ -73,7 +73,7 @@ CRGB getCRGBForBand(int x, int pal) {
   CRGB value;
   CHSV hsv;
   if(pal == 71) { // bit hacky to use palette id here, but don't want to litter the code with lots of different methods. TODO: add enum for palette creation type
-    if(x == 0) {
+    if(x == 1) {
       value = CRGB(uint8_t(fftResult[10]/2), uint8_t(fftResult[4]/2), uint8_t(fftResult[0]/2));
     }
     else if(x == 255) {

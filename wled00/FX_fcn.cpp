@@ -1356,27 +1356,32 @@ void WS2812FX::handle_palette(void)
 CRGBPalette16 WS2812FX::getAudioPalette(int pal) {
   // https://forum.makerforums.info/t/hi-is-it-possible-to-define-a-gradient-palette-at-runtime-the-define-gradient-palette-uses-the/63339
 
-  uint8_t xyz[12];  // Needs to be 4 times however many colors are being used.
+  uint8_t xyz[16];  // Needs to be 4 times however many colors are being used.
                     // 3 colors = 12, 4 colors = 16, etc.
 
-  CRGB rgb = getCRGBForBand(0, pal);
-  
   xyz[0] = 0;  // anchor of first color - must be zero
-  xyz[1] = rgb.r;
-  xyz[2] = rgb.g;
-  xyz[3] = rgb.b;
+  xyz[1] = 0;
+  xyz[2] = 0;
+  xyz[3] = 0;
 
-  rgb = getCRGBForBand(4, pal);
-  xyz[4] = 128;
+  CRGB rgb = getCRGBForBand(1, pal);
+  
+  xyz[4] = 1;  // anchor of first color
   xyz[5] = rgb.r;
   xyz[6] = rgb.g;
   xyz[7] = rgb.b;
-  
-  rgb = getCRGBForBand(8, pal);
-  xyz[8] = 255;  // anchor of last color - must be 255
+
+  rgb = getCRGBForBand(4, pal);
+  xyz[8] = 128;
   xyz[9] = rgb.r;
   xyz[10] = rgb.g;
   xyz[11] = rgb.b;
+  
+  rgb = getCRGBForBand(8, pal);
+  xyz[12] = 255;  // anchor of last color - must be 255
+  xyz[13] = rgb.r;
+  xyz[14] = rgb.g;
+  xyz[15] = rgb.b;
 
   return CRGBPalette16(xyz);
 }
