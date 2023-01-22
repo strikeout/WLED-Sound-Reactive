@@ -21,7 +21,7 @@
 
 static AudioSource *audioSource;
 static volatile bool disableSoundProcessing = false;      // if true, sound processing (FFT, filters, AGC) will be suspended. "volatile" as its shared between tasks.
-static bool useBandPassFilter = false;                    // if true, enables a bandpass filter 80Hz-8Khz to remove noise. Applies before FFT.
+static unsigned useInputFilter = 0;                       // if >0 , enables a bandpass filter 80Hz-8Khz to remove noise. Applies before FFT.
 
 // ALL AUDIO INPUT PINS DEFINED IN wled.h AND CONFIGURABLE VIA UI
 
@@ -542,6 +542,83 @@ float fftAdd( int from, int to) {
   return result;
 }
 
+
+// Bandpass filter for PDM microphones
+static void runMicFilter(uint16_t numSamples, float *sampleBuffer) {          // pre-filtering of raw samples (band-pass)
+  // band pass filter - can reduce noise floor by a factor of 50
+  // downside: frequencies below 60Hz will be ignored
+
+  // low frequency cutoff parameter - see https://dsp.stackexchange.com/questions/40462/exponential-moving-average-cut-off-frequency
+  //constexpr float alpha = 0.062f;   // 100Hz
+  constexpr float alpha = 0.04883f; //  80Hz
+  //constexpr float alpha = 0.03662f; //  60Hz
+  //constexpr float alpha = 0.0225f;  //  40Hz
+  // high frequency cutoff  parameter
+  //constexpr float beta1 = 0.75;    //  5Khz
+  //constexpr float beta1 = 0.82;    //  7Khz
+  constexpr float beta1 = 0.8285;  //  8Khz
+  //constexpr float beta1 = 0.85;    // 10Khz
+
+  constexpr float beta2 = (1.0f - beta1) / 2.0;
+  static float last_vals[2] = { 0.0f }; // FIR high freq cutoff filter
+  static float lowfilt = 0.0f;          // IIR low frequency cutoff filter
+
+  for (int i=0; i < numSamples; i++) {
+    // FIR lowpass, to remove high frequency noise
+    float highFilteredSample;
+    if (i < (numSamples-1)) 
+      highFilteredSample = beta1*sampleBuffer[i] + beta2*last_vals[0] + beta2*sampleBuffer[i+1];  // smooth out spikes
+    else 
+      highFilteredSample = beta1*sampleBuffer[i] + beta2*last_vals[0]  + beta2*last_vals[1];      // spcial handling for last sample in array
+    last_vals[1] = last_vals[0];
+    last_vals[0] = sampleBuffer[i];
+    sampleBuffer[i] = highFilteredSample;
+    // IIR highpass, to remove low frequency noise
+    lowfilt += alpha * (sampleBuffer[i] - lowfilt);
+    sampleBuffer[i] = sampleBuffer[i] - lowfilt;
+  }  
+}
+
+// sample smoothing, by using a sliding average FIR highpass filter (first half of MicFilter from above)
+static void runMicSmoothing(uint16_t numSamples, float *sampleBuffer) {
+  constexpr float beta1 = 0.8285;    //  8Khz
+  //constexpr float beta1 = 0.85;    // 10Khz
+  constexpr float beta2 = (1.0f - beta1) / 2.0;  // note to self: better use biquad ?
+  static float last_vals[2] = { 0.0f }; // FIR filter buffer
+
+  for (int i=0; i < numSamples; i++) {
+    float highFilteredSample;
+    if (i < (numSamples-1)) 
+      highFilteredSample = beta1*sampleBuffer[i] + beta2*last_vals[0] + beta2*sampleBuffer[i+1];  // smooth out spikes
+    else 
+      highFilteredSample = beta1*sampleBuffer[i] + beta2*last_vals[0]  + beta2*last_vals[1];      // spcial handling for last sample in array
+    last_vals[1] = last_vals[0];
+    last_vals[0] = sampleBuffer[i];
+    sampleBuffer[i] = highFilteredSample;
+  }  
+}
+
+// High-Pass filter, 6db per octave
+static void runHighFilter6db(const float filter, uint16_t numSamples, float *sampleBuffer) {
+  static float lowfilt = 0.0f;          // IIR low frequency cutoff filter
+  for (int i=0; i < numSamples; i++) {
+    lowfilt += filter * (sampleBuffer[i] - lowfilt); // lowpass
+    sampleBuffer[i] = sampleBuffer[i] - lowfilt;     // lowpass --> highpass
+  }
+}
+
+// High-Pass filter, 12db per octave
+static void runHighFilter12db(const float filter, uint16_t numSamples, float *sampleBuffer) {
+  static float lowfilt1 = 0.0f;          // IIR low frequency cutoff filter - first pass = 6db
+  static float lowfilt2 = 0.0f;          // IIR low frequency cutoff filter - second pass = 12db
+  for (int i=0; i < numSamples; i++) {
+    lowfilt1 += filter * (sampleBuffer[i] - lowfilt1); // first lowpass 6db
+    lowfilt2 += filter * (lowfilt1 - lowfilt2);        // second lowpass +6db
+    sampleBuffer[i] = sampleBuffer[i] - lowfilt2;      // lowpass --> highpass
+  }
+}
+
+
 // FFT main code
 void FFTcode( void * parameter) {
   DEBUG_PRINT("FFT running on core: "); DEBUG_PRINTLN(xPortGetCoreID());
@@ -589,36 +666,24 @@ void FFTcode( void * parameter) {
     }
     #endif
 
-    // band pass filter - can reduce noise floor by a factor of 50
-    // downside: frequencies below 60Hz will be ignored
-    if (useBandPassFilter) {
-      // low frequency cutoff parameter - see https://dsp.stackexchange.com/questions/40462/exponential-moving-average-cut-off-frequency
-      //constexpr float alpha = 0.062f;   // 100Hz
-      constexpr float alpha = 0.04883f; //  80Hz
-      //constexpr float alpha = 0.03662f; //  60Hz
-      //constexpr float alpha = 0.0225f;  //  40Hz
-      // high frequency cutoff  parameter
-      //constexpr float beta1 = 0.75;    //  5Khz
-      //constexpr float beta1 = 0.82;    //  7Khz
-      constexpr float beta1 = 0.8285;  //  8Khz
-      //constexpr float beta1 = 0.85;    // 10Khz
-
-      constexpr float beta2 = (1.0f - beta1) / 2.0;
-      static float last_vals[2] = { 0.0f }; // FIR high freq cutoff filter
-      static float lowfilt = 0.0f;          // IIR low frequency cutoff filter
-
-      for (int i=0; i < samplesFFT; i++) {
-        // FIR lowpass, to remove high frequency noise
-        float highFilteredSample;
-        if (i < (samplesFFT-1)) highFilteredSample = beta1*vReal[i] + beta2*last_vals[0] + beta2*vReal[i+1];  // smooth out spikes
-        else highFilteredSample = beta1*vReal[i] + beta2*last_vals[0]  + beta2*last_vals[1];                  // spcial handling for last sample in array
-        last_vals[1] = last_vals[0];
-        last_vals[0] = vReal[i];
-        vReal[i] = highFilteredSample;
-        // IIR highpass, to remove low frequency noise
-        lowfilt += alpha * (vReal[i] - lowfilt);
-        vReal[i] = vReal[i] - lowfilt;
-      }  
+    // input filters applied before FFT
+    if (useInputFilter > 0) {
+      // filter parameter - we use constexpr as it does not need any RAM (evaluted at compile time)
+      // value = 1 - exp(-2*PI * FFilter / FSample);  // FFilter: filter cutoff frequency; FSample: sampling frequency
+      constexpr float filter30Hz  = 0.01823938f;  // rumbling = 10-25hz
+      constexpr float filter70Hz  = 0.04204211f;  // mains hum = 50-60hz
+      constexpr float filter120Hz = 0.07098564f;  // bad microphones deliver noise below 120Hz
+      constexpr float filter185Hz = 0.10730882f;  // environmental noise is strongest below 180hz: wind, engine noise, ...
+      switch(useInputFilter) {
+        case 1: runMicFilter(samplesFFT, vReal); break;                   // PDM microphone bandpass
+        case 2: runHighFilter12db(filter30Hz, samplesFFT, vReal); break;  // rejects rumbling noise
+        case 3: runHighFilter12db(filter70Hz, samplesFFT, vReal); break;  // rejects rumbling + mains hum
+        case 4: runHighFilter6db(filter120Hz, samplesFFT, vReal); break;  // rejects everything below 110Hz
+        case 5:
+          runMicSmoothing(samplesFFT, vReal);               // reduce high frequency noise and artefacts
+          runHighFilter6db(filter185Hz, samplesFFT, vReal); // reject low frequency noise
+          break;
+      }
     }
 
     // find highest sample in the batch

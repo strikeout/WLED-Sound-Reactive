@@ -40,7 +40,7 @@ void userSetup() {
   if ((pinManager.isPinAllocated(hardwareTX)) && (pinManager.getPinOwner(hardwareTX) == PinOwner::DebugOut)) serialTxAvaileable = true;  // TX availeable for debug
   if ((dmType > 0) && ((i2ssdPin == hardwareTX) || (i2swsPin == hardwareTX) || (i2sckPin == hardwareTX))) serialTxAvaileable = false;    // i2S pin == TX (stupid but possible ...)
 
-  useBandPassFilter = false;
+  useInputFilter = 0;
   // initialize I2S input
   switch (dmType) {
     case 1:
@@ -69,7 +69,7 @@ void userSetup() {
       audioSource = new I2SSourceWithMasterClock(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF, 1.0f/24.0f);
       break;
     case 5:
-      useBandPassFilter = true;
+      useInputFilter = 1;  // 1 = PDM bandpass filter
       if (serialTxAvaileable) {
         Serial.print("AS: I2S PDM Microphone - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
       }
@@ -77,7 +77,7 @@ void userSetup() {
       break;
     case 0:
     default:
-      useBandPassFilter = true; // usefull as ADC analog is notoriously noisy. Also the filter might reduce signal arterfacts from non-continous sampling
+      useInputFilter = 1; // usefull as ADC analog is notoriously noisy. Also the filter might reduce signal arterfacts from non-continous sampling
       if (serialTxAvaileable) Serial.println("AS: Analog Microphone (left channel only).");
       audioSource = new I2SAdcSource(SAMPLE_RATE, BLOCK_SIZE, 0, 0x0FFF);
       break;
