@@ -1371,13 +1371,13 @@ CRGBPalette16 WS2812FX::getAudioPalette(int pal) {
   xyz[6] = rgb.g;
   xyz[7] = rgb.b;
 
-  rgb = getCRGBForBand(4, pal);
+  rgb = getCRGBForBand(128, pal);
   xyz[8] = 128;
   xyz[9] = rgb.r;
   xyz[10] = rgb.g;
   xyz[11] = rgb.b;
   
-  rgb = getCRGBForBand(8, pal);
+  rgb = getCRGBForBand(255, pal);
   xyz[12] = 255;  // anchor of last color - must be 255
   xyz[13] = rgb.r;
   xyz[14] = rgb.g;
