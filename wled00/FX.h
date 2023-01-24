@@ -121,7 +121,7 @@
 #define IS_REVERSE      ((SEGMENT.options & REVERSE     ) == REVERSE     )
 #define IS_SELECTED     ((SEGMENT.options & SELECTED    ) == SELECTED    )
 
-#define MODE_COUNT 190// WLEDSR: First 128 for AC (incl reserved), rest for SR
+#define MODE_COUNT 193 // WLEDSR: First 128 for AC (incl reserved), rest for SR
 
 #define FX_MODE_STATIC                   0
 #define FX_MODE_BLINK                    1
@@ -321,6 +321,11 @@
 #define FX_MODE_CUSTOMEFFECT           187 //WLEDSR Custom Effects
 #define FX_MODE_3DRIPPLES              188
 #define FX_MODE_3DSphereMove        189
+
+// Experimental Audioresponsive modes
+#define FX_MODE_POPCORN_AR             190
+#define FX_MODE_MULTI_COMET_AR         191
+#define FX_MODE_STARBURST_AR           192
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //    End of Audio Reactive fork (WLEDSR)                                                                                                //
@@ -803,6 +808,10 @@ class WS2812FX {
 
      _mode[FX_MODE_2DJULIA]                  = &WS2812FX::mode_2DJulia;
      _mode[FX_MODE_2DGAMEOFLIFE]             = &WS2812FX::mode_2Dgameoflife;
+
+     _mode[FX_MODE_POPCORN_AR]                = &WS2812FX::mode_popcorn_audio;
+     _mode[FX_MODE_MULTI_COMET_AR]            = &WS2812FX::mode_multi_comet_audio;
+     _mode[FX_MODE_STARBURST_AR]              = &WS2812FX::mode_starburst_audio;
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -982,7 +991,9 @@ class WS2812FX {
       mode_tricolor_fade(void),
       mode_lightning(void),
       mode_icu(void),
+      mode_multi_comet_core(bool useAudio),    // WLEDSR
       mode_multi_comet(void),
+      mode_multi_comet_audio(void),            // WLEDSR
       mode_dual_larson_scanner(void),
       mode_random_chase(void),
       mode_oscillate(void),
@@ -1012,13 +1023,17 @@ class WS2812FX {
       mode_spots_fade(void),
       mode_glitter(void),
       mode_candle(void),
+      mode_starburst_core(bool useAudio),  // WLEDSR
       mode_starburst(void),
+      mode_starburst_audio(void),          // WLEDSR
       mode_exploding_fireworks(void),
       mode_bouncing_balls(void),
       mode_sinelon(void),
       mode_sinelon_dual(void),
       mode_sinelon_rainbow(void),
+      mode_popcorn_core(bool useAudio),    // WLEDSR
       mode_popcorn(void),
+      mode_popcorn_audio(void),            // WLEDSR
       mode_drip(void),
       mode_plasma(void),
       mode_percent(void),
@@ -1479,7 +1494,10 @@ const char JSON_mode_names[] PROGMEM = R"=====([
 " ♫ 2D Akemi@Color speed,Dance ☑;Head palette,Arms & Legs,Eyes & Mouth;Face palette",
 " ⚙️ Custom Effect@Speed,Intensity,Custom 1, Custom 2, Custom 3;!;!",
 "3D Ripples@Speed=128,Interval=128;!;!",
-"3D Sphere Move@Speed=128,Interval=128;!;!"
+"3D Sphere Move@Speed=128,Interval=128;!;!",
+" 🎉 audio Popcorn@Gravity=128,Intensity=200;!;!",
+" 🔨 audio Comets@Speed=228,Intensity=240;!;!",
+" 🔨 audio Fw Starburst@Speed=128,Intensity=128;!;!"
 ])=====";
 
 //WLEDSR: second part (not SR specific, but in latest SR, not in AC (Pallettes added in WLEDSR from Retro Clown->END))

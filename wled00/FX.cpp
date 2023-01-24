@@ -30,6 +30,31 @@
 #define IBN 5100
 #define PALETTE_SOLID_WRAP (paletteBlend == 1 || paletteBlend == 3)
 
+// Sound reactive external variables.
+extern int sampleRaw;
+extern float sampleAvg;
+extern bool samplePeak;
+extern uint8_t myVals[32];
+//extern int sampleAgc;
+extern int rawSampleAgc;
+extern float sampleAgc;
+extern uint8_t squelch;
+extern byte soundSquelch;
+extern byte soundAgc;
+extern uint8_t maxVol;
+extern uint8_t binNum;
+
+extern float sampleReal;			                 // "sample" as float, to provide bits that are lost otherwise. Needed for AGC.
+extern float multAgc;                          // sampleReal * multAgc = sampleAgc. Our multiplier
+
+// FFT based variables
+extern float FFT_MajorPeak;
+extern float FFT_Magnitude;
+extern float fftBin[];                         // raw FFT data
+extern int fftResult[];                         // summary of bins array. 16 summary bins.
+extern float fftAvg[];
+
+
 /*
  * No blinking. Just plain old static light.
  */
@@ -1554,8 +1579,8 @@ uint16_t WS2812FX::mode_tricolor_fade(void)
  * Creates random comets
  * Custom mode by Keith Lord: https://github.com/kitesurfer1404/WS2812FX/blob/master/src/custom/MultiComet.h
  */
-#define MAX_COMETS 8
-uint16_t WS2812FX::mode_multi_comet(void)
+#define MAX_COMETS 12 // was 8
+uint16_t WS2812FX::mode_multi_comet_core(bool useAudio)
 {
   uint32_t cycleTime = 10 + (uint32_t)(255 - SEGMENT.speed);
   uint32_t it = now / cycleTime;
@@ -1563,12 +1588,14 @@ uint16_t WS2812FX::mode_multi_comet(void)
   uint16_t* comets = reinterpret_cast<uint16_t*>(SEGENV.data);
 
   if (SEGENV.call == 0) { // do some initializations
-    for(uint8_t i=0; i < MAX_COMETS; i++) comets[i] =  SEGLEN;  // WLEDSR make sure comments are started individually 
+    for(uint8_t i=0; i < MAX_COMETS; i++) comets[i] = SEGLEN;  // WLEDSR make sure comments are started individually
+    SEGENV.aux0 = 0;
   }
 
   if (SEGENV.step == it) return FRAMETIME;
 
-  bool shotOne = false; // WLEDSR to avoid starting several coments at the same time (invisble due to overlap)
+  uint16_t armed = SEGENV.aux0;   // WELDSR allows to delay comet launch
+  bool shotOne = false;           // WLEDSR avoids starting several coments at the same time (invisible due to overlap)
   fade_out(SEGMENT.intensity);
 
   for(uint8_t i=0; i < MAX_COMETS; i++) {
@@ -1583,17 +1610,40 @@ uint16_t WS2812FX::mode_multi_comet(void)
       }
       comets[i]++;
     } else {
-      if(!random(SEGLEN) && !shotOne) {
-        comets[i] = 0;
-        shotOne = true;         // WLEDSR avoid starting several comets at once (as they are invisible)
+      // randomly launch a new comet
+      if (!useAudio) {
+        if(!random(SEGLEN) && !shotOne) {
+          comets[i] = 0;
+          shotOne = true;         // WLEDSR avoid starting several comets at once (as they are invisible)
+        }
+      } else {                    // WLEDSR delay comet "launch" during silence, and wait until next beat
+        if (random(SEGLEN) < 5) armed++;                                                   // new comet loaded and ready
+        if (armed > 2) armed = 2;                                                          // max two armed at once (avoid overlap)
+        if (    (armed > 0) && (shotOne == false) 
+             && (sampleAgc > 1.0) && ((samplePeak == 1) || (int(rawSampleAgc) > 112)) ) {  // delayed lauch - wait until peak, don't launch in silence 
+          comets[i] = 0; // start a new comet!
+          armed--;       // un-arm one
+          shotOne = true;
+        }
       }
     }
   }
 
+  SEGENV.aux0 = armed;            // WLEDSR
   SEGENV.step = it;
   return FRAMETIME;
 }
 
+// normal multi-comet
+uint16_t WS2812FX::mode_multi_comet(void)
+{
+  return(mode_multi_comet_core(false));
+}
+// audioresponsive multi-comet
+uint16_t WS2812FX::mode_multi_comet_audio(void)
+{
+  return(mode_multi_comet_core(true));
+}
 
 /*
  * Creates two Larson scanners moving in opposite directions
@@ -2778,10 +2828,11 @@ typedef struct Spark {
 *  POPCORN
 *  modified from https://github.com/kitesurfer1404/WS2812FX/blob/master/src/custom/Popcorn.h
 */
-uint16_t WS2812FX::mode_popcorn(void) {
+uint16_t WS2812FX::mode_popcorn_core(bool useAudio) {
   //allocate segment data
-  uint16_t maxNumPopcorn = 21; // max 21 on 16 segment ESP8266
-  uint16_t dataSize = sizeof(spark) * maxNumPopcorn;
+  //constexpr uint16_t maxNumPopcorn = 21; // max 21 on 16 segment ESP8266
+  constexpr uint16_t maxNumPopcorn = 29; // WLEDSR - max 29 on 16 segment ESP32
+  constexpr uint16_t dataSize = sizeof(spark) * maxNumPopcorn;
   if (!SEGENV.allocateData(dataSize)) return mode_static(); //allocation failed
 
   Spark* popcorn = reinterpret_cast<Spark*>(SEGENV.data);
@@ -2791,21 +2842,32 @@ uint16_t WS2812FX::mode_popcorn(void) {
 
   bool hasCol2 = SEGCOLOR(2);
   fill(hasCol2 ? BLACK : SEGCOLOR(1));
+  //fade_out(253);
 
-  uint8_t numPopcorn = SEGMENT.intensity*maxNumPopcorn/255;
+  uint8_t numPopcorn = (unsigned)SEGMENT.intensity*(unsigned)maxNumPopcorn/255;
   if (numPopcorn == 0) numPopcorn = 1;
 
   for(uint8_t i = 0; i < numPopcorn; i++) {
     if (popcorn[i].pos >= 0.0f) { // if kernel is active, update its position
       popcorn[i].pos += popcorn[i].vel;
-      popcorn[i].vel += gravity;
+      popcorn[i].vel += gravity;      
     } else { // if kernel is inactive, randomly pop it
-      if (random8() < 2) { // POP!!!
+      bool doPopCorn = false;
+      if (!useAudio) {
+        if (random8() < 2) doPopCorn = true;
+      } else {
+        if (  (sampleAgc > 1.0)                                // WLEDSR - no pops in silence
+           && ((samplePeak == 1) || (int(rawSampleAgc) > 128)) // WLEDSR - try to pop at onsets
+           && (random8() < 4) )                                // WLEDSR - randomize
+          doPopCorn = true;
+      }
+
+      if (doPopCorn) { // POP!!!
         popcorn[i].pos = 0.01f;
 
         uint16_t peakHeight = 128 + random8(128); //0-255
         peakHeight = (peakHeight * (SEGLEN -1)) >> 8;
-        popcorn[i].vel = sqrt(-2.0 * gravity * peakHeight);
+        popcorn[i].vel = sqrtf(-2.0 * gravity * peakHeight);
 
         if (SEGMENT.palette)
         {
@@ -2826,6 +2888,13 @@ uint16_t WS2812FX::mode_popcorn(void) {
   }
 
   return FRAMETIME;
+}
+
+uint16_t WS2812FX::mode_popcorn(void) {
+  return(mode_popcorn_core(false));
+}
+uint16_t WS2812FX::mode_popcorn_audio(void) {
+  return(mode_popcorn_core(true));
 }
 
 
@@ -2940,7 +3009,7 @@ typedef struct particle {
   float    fragment[STARBURST_MAX_FRAG];
 } star;
 
-uint16_t WS2812FX::mode_starburst(void) {
+uint16_t WS2812FX::mode_starburst_core(bool useAudio) {
   uint16_t maxData = FAIR_DATA_PER_SEG; //ESP8266: 256 ESP32: 640
   uint8_t segs = getActiveSegmentsNum();
   if (segs <= (MAX_NUM_SEGMENTS /2)) maxData *= 2; //ESP8266: 512 if <= 8 segs ESP32: 1280 if <= 16 segs
@@ -2963,8 +3032,24 @@ uint16_t WS2812FX::mode_starburst(void) {
 
   for (int j = 0; j < numStars; j++)
   {
-    // speed to adjust chance of a burst, max is nearly always.
-    if (random8((144-(SEGMENT.speed >> 1))) == 0 && stars[j].birth == 0)
+    bool doNewStar = false;
+
+    if (!useAudio) {
+      // speed to adjust chance of a burst, max is nearly always.
+      if (random8((144-(SEGMENT.speed >> 1))) == 0) doNewStar = true;  // original non-audio version
+
+    } else {                                                           // WLEDSR audio responsive version
+      int burstplus = (sampleAgc > 159)? 128:0;                        // high volume -> more stars
+      if (rawSampleAgc <= 56) burstplus = -64;                         // low volume  -> fewer stars
+      int birthrate = (144-(SEGMENT.speed >> 1)) - burstplus;          // original "burstrate formula"
+      birthrate = constrain(birthrate, 0, 144);
+      if (  (sampleAgc > 1.0)                                  // no bursts in silence
+        && ((samplePeak == 1) || (int(rawSampleAgc) > 31))     // try to burst with sound
+        && (random8(birthrate) == 0 ))                         // original random rate
+        doNewStar = true;
+    }
+
+    if ((doNewStar == true) && (stars[j].birth == 0))
     {
       // Pick a random color and location.
       uint16_t startPos = random16(SEGLEN-1);
@@ -3049,6 +3134,14 @@ uint16_t WS2812FX::mode_starburst(void) {
   }
   return FRAMETIME;
 }
+
+uint16_t WS2812FX::mode_starburst(void) {
+  return(mode_starburst_core(false));
+}
+uint16_t WS2812FX::mode_starburst_audio(void) {
+  return(mode_starburst_core(true));
+}
+
 #undef STARBURST_MAX_FRAG
 
 /*
@@ -4268,28 +4361,7 @@ uint16_t WS2812FX::mode_aurora(void) {
 
 
 // Sound reactive external variables.
-extern int sampleRaw;
-extern float sampleAvg;
-extern bool samplePeak;
-extern uint8_t myVals[32];
-//extern int sampleAgc;
-extern int rawSampleAgc;
-extern float sampleAgc;
-extern uint8_t squelch;
-extern byte soundSquelch;
-extern byte soundAgc;
-extern uint8_t maxVol;
-extern uint8_t binNum;
-
-extern float sampleReal;			                 // "sample" as float, to provide bits that are lost otherwise. Needed for AGC.
-extern float multAgc;                          // sampleReal * multAgc = sampleAgc. Our multiplier
-
-// FFT based variables
-extern float FFT_MajorPeak;
-extern float FFT_Magnitude;
-extern float fftBin[];                         // raw FFT data
-extern int fftResult[];                         // summary of bins array. 16 summary bins.
-extern float fftAvg[];
+    /*  softhack007: moved up to make them availeable to "normal" effects, too */
 
 
 ///////////////////////////////////////
