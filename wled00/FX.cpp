@@ -1554,18 +1554,24 @@ uint16_t WS2812FX::mode_tricolor_fade(void)
  * Creates random comets
  * Custom mode by Keith Lord: https://github.com/kitesurfer1404/WS2812FX/blob/master/src/custom/MultiComet.h
  */
+#define MAX_COMETS 8
 uint16_t WS2812FX::mode_multi_comet(void)
 {
   uint32_t cycleTime = 10 + (uint32_t)(255 - SEGMENT.speed);
   uint32_t it = now / cycleTime;
-  if (SEGENV.step == it) return FRAMETIME;
-  if (!SEGENV.allocateData(sizeof(uint16_t) * 8)) return mode_static(); //allocation failed
-
-  fade_out(SEGMENT.intensity);
-
+  if (!SEGENV.allocateData(sizeof(uint16_t) * MAX_COMETS)) return mode_static(); //allocation failed
   uint16_t* comets = reinterpret_cast<uint16_t*>(SEGENV.data);
 
-  for(uint8_t i=0; i < 8; i++) {
+  if (SEGENV.call == 0) { // do some initializations
+    for(uint8_t i=0; i < MAX_COMETS; i++) comets[i] =  SEGLEN;  // WLEDSR make sure comments are started individually 
+  }
+
+  if (SEGENV.step == it) return FRAMETIME;
+
+  bool shotOne = false; // WLEDSR to avoid starting several coments at the same time (invisble due to overlap)
+  fade_out(SEGMENT.intensity);
+
+  for(uint8_t i=0; i < MAX_COMETS; i++) {
     if(comets[i] < SEGLEN) {
       uint16_t index = comets[i];
       if (SEGCOLOR(2) != 0)
@@ -1577,8 +1583,9 @@ uint16_t WS2812FX::mode_multi_comet(void)
       }
       comets[i]++;
     } else {
-      if(!random(SEGLEN)) {
+      if(!random(SEGLEN) && !shotOne) {
         comets[i] = 0;
+        shotOne = true;         // WLEDSR avoid starting several comets at once (as they are invisible)
       }
     }
   }
