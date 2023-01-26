@@ -1853,25 +1853,69 @@ uint16_t WS2812FX::mode_juggle(void){
 }
 
 
-uint16_t WS2812FX::mode_palette()
+uint16_t WS2812FX::mode_palette_core(bool useAudio)
 {
   uint16_t counter = 0;
-  if (SEGMENT.speed != 0)
-  {
-    counter = (now * ((SEGMENT.speed >> 3) +1)) & 0xFFFF;
-    counter = counter >> 8;
-  }
+  uint16_t cooldown = 0;     // WLEDSR
+  bool fadeOut = (useAudio && (sampleAgc < 1));  // WLEDSR - fade away when silence
 
-  bool noWrap = (paletteBlend == 2 || (paletteBlend == 0 && SEGMENT.speed == 0));
-  for (uint16_t i = 0; i < SEGLEN; i++)
-  {
-    uint8_t colorIndex = (i * 255 / SEGLEN) - counter;
+  // WLEDSR
+  if (useAudio) {
+    //binNum = SEGMENT.custom2;                               // Select a bin for peak detection.
+    //maxVol = SEGMENT.custom3/2;                             // Our volume comparator.
+    if(SEGENV.call == 0) {                                  // initialize a few things
+      counter = (now * ((SEGMENT.speed >> 3) +1)) & 0xFFFF;
+      counter = counter >> 8;
+      SEGENV.aux0 = counter;
+      SEGENV.aux1 = 64;
+    }
 
-    if (noWrap) colorIndex = map(colorIndex, 0, 255, 0, 240); //cut off blend at palette "end"
+    counter = SEGENV.aux0;
+    cooldown= SEGENV.aux1;
+    if ((sampleAgc > 1) && ((samplePeak > 1) || (samplePeak > 0 && (SEGMENT.speed < 48 || SEGMENT.speed > 252)))) {
+      // start rotating on beat
+      cooldown = 12 + (SEGMENT.speed >> 2) +1;
+    }
+    // keep rotating after beat
+    if (cooldown > 0) {
+      cooldown--;
+      counter += (SEGMENT.speed >> 2) +4;
+      counter += (cooldown >> 2);
+    }
+    SEGENV.aux0 = counter;
+    SEGENV.aux1 = cooldown;
+    counter = counter >> 5;
+    counter = counter & 0xFF;
+  // WLEDSR end
 
-    setPixelColor(i, color_from_palette(colorIndex, false, true, 255));
+  } else {
+    if (SEGMENT.speed != 0) {
+      counter = (now * ((SEGMENT.speed >> 3) +1)) & 0xFFFF;
+      counter = counter >> 8;
+  } }
+
+  if (fadeOut) fade_out(6);  // WLEDSR: fade away
+  else {
+    bool noWrap = (paletteBlend == 2 || (paletteBlend == 0 && SEGMENT.speed == 0));
+    for (uint16_t i = 0; i < SEGLEN; i++)
+    {
+      uint8_t colorIndex = (i * 255 / SEGLEN) - counter;
+
+      if (noWrap) colorIndex = map(colorIndex, 0, 255, 0, 240); //cut off blend at palette "end"
+
+      setPixelColor(i, color_from_palette(colorIndex, false, true, 255));
+    }
   }
   return FRAMETIME;
+}
+
+uint16_t WS2812FX::mode_palette(void) {
+  // standard version
+  return mode_palette_core(false);
+}
+uint16_t WS2812FX::mode_palette_audio(void) {
+  // audioresponsive version: fades out in silence, rotates at beat
+  return mode_palette_core(true);
 }
 
 

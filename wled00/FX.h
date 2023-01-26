@@ -121,7 +121,7 @@
 #define IS_REVERSE      ((SEGMENT.options & REVERSE     ) == REVERSE     )
 #define IS_SELECTED     ((SEGMENT.options & SELECTED    ) == SELECTED    )
 
-#define MODE_COUNT 193 // WLEDSR: First 128 for AC (incl reserved), rest for SR
+#define MODE_COUNT 194 // WLEDSR: First 128 for AC (incl reserved), rest for SR
 
 #define FX_MODE_STATIC                   0
 #define FX_MODE_BLINK                    1
@@ -326,6 +326,7 @@
 #define FX_MODE_POPCORN_AR             190
 #define FX_MODE_MULTI_COMET_AR         191
 #define FX_MODE_STARBURST_AR           192
+#define FX_MODE_PALETTE_AR             193
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //    End of Audio Reactive fork (WLEDSR)                                                                                                //
@@ -812,6 +813,7 @@ class WS2812FX {
      _mode[FX_MODE_POPCORN_AR]                = &WS2812FX::mode_popcorn_audio;
      _mode[FX_MODE_MULTI_COMET_AR]            = &WS2812FX::mode_multi_comet_audio;
      _mode[FX_MODE_STARBURST_AR]              = &WS2812FX::mode_starburst_audio;
+     _mode[FX_MODE_PALETTE_AR]                = &WS2812FX::mode_palette_audio;
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1001,7 +1003,9 @@ class WS2812FX {
       mode_pride_2015(void),
       mode_bpm(void),
       mode_juggle(void),
+      mode_palette_core(bool useAudio),        // WLEDSR
       mode_palette(void),
+      mode_palette_audio(void),                // WLEDSR
       mode_colorwaves(void),
       mode_fillnoise8(void),
       mode_noise16_1(void),
@@ -1497,7 +1501,8 @@ const char JSON_mode_names[] PROGMEM = R"=====([
 "3D Sphere Move@Speed=128,Interval=128;!;!",
 " 🎉 audio Popcorn@Gravity=128,Intensity=200;!;!",
 " 🔨 audio Comets@Speed=228,Intensity=240;!;!",
-" 🔨 audio Fw Starburst@Speed=128,Intensity=128;!;!"
+" 🔨 audio Fw Starburst@Speed=128,Intensity=128;!;!",
+" 🔨 beat Palette@Speed=164;!;!"
 ])=====";
 
 //WLEDSR: second part (not SR specific, but in latest SR, not in AC (Pallettes added in WLEDSR from Retro Clown->END))
