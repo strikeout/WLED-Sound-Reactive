@@ -291,13 +291,14 @@ void IRAM_ATTR WS2812FX::setPixelColor(int i, byte r, byte g, byte b, byte w)
 
     /* Set all the pixels in the group */
     for (uint16_t j = 0; j < SEGMENT.grouping; j++) {
-      uint16_t indexSet = logicalIndex + (IS_REVERSE ? -j : j);
+      int indexSet = logicalIndex + (IS_REVERSE ? -j : j);
       if (indexSet >= SEGMENT.start && indexSet < SEGMENT.stop) {
         if (IS_MIRROR) { // set the corresponding mirrored pixel
           uint16_t indexMir = SEGMENT.stop - indexSet + SEGMENT.start - 1;
           /* offset/phase */
           indexMir += SEGMENT.offset;
           if (indexMir >= SEGMENT.stop) indexMir -= len;
+          if (indexMir < SEGMENT.start) indexMir += len; // softhack007: wrap around on both sides
 
           if (indexMir >= _segments[segIdx].stop) indexMir -= len;
           if (indexMir < customMappingSize) indexMir = customMappingTable[indexMir];
@@ -305,6 +306,7 @@ void IRAM_ATTR WS2812FX::setPixelColor(int i, byte r, byte g, byte b, byte w)
           busses.setPixelColor(logicalToPhysical(indexMir), col); // ewowi20210624: logicalToPhysical: Maps logical led index to physical led index.
         }
         indexSet += _segments[segIdx].offset; // offset/phase
+        if ((SEGMENT.stop > 0) && (indexSet >= SEGMENT.stop)) indexSet -= len;     // softhack007: wrap around when offset != 0  (stop == 0 means "segment invalid")
 
         if (indexSet < customMappingSize) indexSet = customMappingTable[indexSet]; // This line is also on L292
         busses.setPixelColor(logicalToPhysical(indexSet), col);
