@@ -111,8 +111,8 @@ double sampleMax = 0;                           // Max sample over a few seconds
 
 
 uint8_t myVals[32];                             // Used to store a pile of samples because WLED frame rate and WLED sample rate are not synchronized. Frame rate is too low.
-bool samplePeak = 0;                            // Boolean flag for peak. Responding routine must reset this flag
-bool udpSamplePeak = 0;                         // Boolean flag for peak. Set at the same tiem as samplePeak, but reset by transmitAudioData
+uint8_t samplePeak = 0;                         // Flag for peak. 0 = no peak, 1 = possible peak (often), 2=sure peak (every 1-2seconds)
+uint8_t udpSamplePeak = 0;                      // Set at the same tiem as samplePeak, but reset by transmitAudioData
 constexpr int delayMs = 10;                     // I don't want to sample too often and overload WLED
 static int micIn = 0.0;                         // Current sample starts with negative values and large values, which is why it's 16 bit signed
 int sampleRaw;                                  // Current sample. Must only be updated ONCE!!!
@@ -250,10 +250,11 @@ void getSample() {
   // keep "peak" sample, but decay value if current sample is below peak
   if ((sampleMax < sampleReal) && (sampleReal > 0.5)) {
       sampleMax = sampleMax + 0.5 * (sampleReal - sampleMax);          // new peak - with some filtering
-      if (((maxVol < 6) || (binNum < 9)) && (millis() - timeOfPeak > 80) && (sampleAvg > 1)) {              // another simple way to detect samplePeak
-        samplePeak = 1;
+      //if (((maxVol < 6) || (binNum < 9)) && (millis() - timeOfPeak > 80) && (sampleAvg > 1)) {              // another simple way to detect samplePeak
+      if ((millis() - timeOfPeak > 80) && (sampleAvg > 1)) {                                                  // no iffs-n-butts
+        samplePeak = 2;
         timeOfPeak = millis();
-        udpSamplePeak = 1;
+        udpSamplePeak = 2;
         userVar1 = samplePeak;
       }
   } else {
@@ -280,9 +281,9 @@ void getSample() {
   if ((maxVol > 1) && (binNum > 4) && (fftBin[binNum] > maxVol) && (millis() - timeOfPeak > 100) && (sampleAvg > 1)) {    // This goes through ALL of the 255 bins - but ignores stupid settings
   //  if (sample > (sampleAvg + maxVol) && millis() > (peakTime + 200)) {
   // Then we got a peak, else we don't. The peak has to time out on its own in order to support UDP sound sync.
-    samplePeak = 1;
-    timeOfPeak = millis();
-    udpSamplePeak = 1;
+    samplePeak = max(uint8_t(1), samplePeak);   // ignore this peak if we already have an active "good peak"
+    if (samplePeak == 1) timeOfPeak = millis();
+    udpSamplePeak = max(uint8_t(1), udpSamplePeak);
     userVar1 = samplePeak;
   }
 } // getSample()
@@ -506,9 +507,9 @@ static void extract_v2_packet(int packetSize, uint8_t *fftBuff)
     if (userVar1 == 0) samplePeak = 0;
     // Only change samplePeak IF it's currently false.
     // If it's true already, then the animation still needs to respond.
-    if (!samplePeak) {
+    if (samplePeak == 0) {
       samplePeak = receivedPacket.samplePeak;
-      if (samplePeak) timeOfPeak = millis();
+      if (samplePeak > 0) timeOfPeak = millis();
       udpSamplePeak = samplePeak;
       userVar1 = samplePeak;
     }

@@ -33,7 +33,7 @@
 // Sound reactive external variables.
 extern int sampleRaw;
 extern float sampleAvg;
-extern bool samplePeak;
+extern uint8_t samplePeak;
 extern uint8_t myVals[32];
 //extern int sampleAgc;
 extern int rawSampleAgc;
@@ -1620,7 +1620,7 @@ uint16_t WS2812FX::mode_multi_comet_core(bool useAudio)
         if (random(SEGLEN) < 5) armed++;                                                   // new comet loaded and ready
         if (armed > 2) armed = 2;                                                          // max two armed at once (avoid overlap)
         if (    (armed > 0) && (shotOne == false) 
-             && (sampleAgc > 1.0) && ((samplePeak == 1) || (int(rawSampleAgc) > 112)) ) {  // delayed lauch - wait until peak, don't launch in silence 
+             && (sampleAgc > 1.0) && ((samplePeak > 1) || (int(rawSampleAgc) > 112)) ) {  // delayed lauch - wait until peak, don't launch in silence 
           comets[i] = 0; // start a new comet!
           armed--;       // un-arm one
           shotOne = true;
@@ -2857,7 +2857,7 @@ uint16_t WS2812FX::mode_popcorn_core(bool useAudio) {
         if (random8() < 2) doPopCorn = true;
       } else {
         if (  (sampleAgc > 1.0)                                // WLEDSR - no pops in silence
-           && ((samplePeak == 1) || (int(rawSampleAgc) > 128)) // WLEDSR - try to pop at onsets
+           && ((samplePeak > 0) || (int(rawSampleAgc) > 128)) // WLEDSR - try to pop at onsets
            && (random8() < 4) )                                // WLEDSR - randomize
           doPopCorn = true;
       }
@@ -3044,7 +3044,7 @@ uint16_t WS2812FX::mode_starburst_core(bool useAudio) {
       int birthrate = (144-(SEGMENT.speed >> 1)) - burstplus;          // original "burstrate formula"
       birthrate = constrain(birthrate, 0, 144);
       if (  (sampleAgc > 1.0)                                  // no bursts in silence
-        && ((samplePeak == 1) || (int(rawSampleAgc) > 31))     // try to burst with sound
+        && ((samplePeak > 1) || (int(rawSampleAgc) > 31))     // try to burst with sound
         && (random8(birthrate) == 0 ))                         // original random rate
         doNewStar = true;
     }
@@ -5773,9 +5773,9 @@ uint16_t WS2812FX::mode_gravimeter(void) {                // Gravmeter. By Andre
 
 #if 0 // WLEDSR - for peak detection debugging
   if(samplePeak > 0) setPixelColor(0, GREEN);
-  //if(samplePeak > 0) setPixelColor(1, ORANGE);
+  //if(samplePeak > 1) setPixelColor(1, ORANGE);
   if(samplePeak > 0) setPixelColor(SEGLEN-1, GREEN);
-  //if(samplePeak > 0) setPixelColor(SEGLEN-2, GREEN);
+  //if(samplePeak > 1) setPixelColor(SEGLEN-2, GREEN);
 #endif
 
   return FRAMETIME;
@@ -6057,7 +6057,7 @@ uint16_t WS2812FX::mode_puddlepeak(void) {                // Puddlepeak. By Andr
 
   fade_out(fadeVal);
 
-  if (samplePeak == 1 ) {
+  if (samplePeak > 0 ) {
     size = sampleAgc * SEGMENT.intensity /256 /4 + 1;     // Determine size of the flash based on the volume.
     if (pos+size>= SEGLEN) size=SEGLEN-pos;
   }
@@ -6131,7 +6131,7 @@ uint16_t WS2812FX::mode_ripplepeak(void) {                // * Ripple peak. By A
 
   for (uint16_t i = 0; i < SEGMENT.intensity/16; i++) {   // Limit the number of ripples.
 
-    if (samplePeak) {
+    if (samplePeak >0) {
 
       ripples[i].state = -1;
     }
@@ -6618,7 +6618,7 @@ uint16_t WS2812FX::mode_waterfall(void) {                   // Waterfall. By: An
     if (pixCol < 0) pixCol=0;
 
     if (sampleAvg > 1) {
-      if (samplePeak) {
+      if (samplePeak >0) {
         leds[segmentToLogical(SEGLEN-1)] = CHSV(92,92,92);
       } else {
         leds[segmentToLogical(SEGLEN-1)] = color_blend(SEGCOLOR(1), color_from_palette(pixCol+SEGMENT.intensity, false, PALETTE_SOLID_WRAP, 0), (int)my_magnitude);

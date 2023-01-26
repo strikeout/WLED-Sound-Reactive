@@ -308,9 +308,9 @@ void userLoop() {
 
               // Only change samplePeak IF it's currently false.
               // If it's true already, then the animation still needs to respond.
-              if (!samplePeak) {
+              if (samplePeak==0) {
                 samplePeak = receivedPacket.samplePeak;
-                if (samplePeak) timeOfPeak = millis();
+                if (samplePeak >0) timeOfPeak = millis();
                 udpSamplePeak = samplePeak;
                 userVar1 = samplePeak;
               }
