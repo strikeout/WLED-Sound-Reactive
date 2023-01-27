@@ -196,8 +196,6 @@ struct audioSyncPacket_v2 {
       float  FFT_MajorPeak;   //  04 Bytes
 };
 
-double mapf(double x, double in_min, double in_max, double out_min, double out_max);
-
 bool isValidUdpSyncVersion(char header[6]) {
   if (strncmp(header, UDP_SYNC_HEADER, 5) == 0) {
     return true;

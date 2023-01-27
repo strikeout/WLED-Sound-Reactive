@@ -54,6 +54,9 @@ extern float fftBin[];                         // raw FFT data
 extern int fftResult[];                         // summary of bins array. 16 summary bins.
 extern float fftAvg[];
 
+// Helper function(s) prototypes
+double mapf(double x, double in_min, double in_max, double out_min, double out_max); // for double
+float mapff(float x, float in_min, float in_max, float out_min, float out_max);      // for float
 
 /*
  * No blinking. Just plain old static light.
@@ -1126,7 +1129,7 @@ uint16_t WS2812FX::mode_comet(void) {
 /*
  * Fireworks function.
  */
-uint16_t WS2812FX::mode_fireworks() {
+uint16_t WS2812FX::mode_fireworks_core(bool useAudio) {
   fade_out(0);
   if (SEGENV.call == 0) {
     SEGENV.aux0 = UINT16_MAX;
@@ -1137,19 +1140,57 @@ uint16_t WS2812FX::mode_fireworks() {
   uint32_t sv1 = 0, sv2 = 0;
   if (valid1) sv1 = getPixelColor(SEGENV.aux0);
   if (valid2) sv2 = getPixelColor(SEGENV.aux1);
-  blur(255-SEGMENT.speed);
+
+  // WLEDSR
+  uint8_t blurAmount   = 255 - SEGMENT.speed;   // make parameter explicit
+  uint8_t my_intensity = 129 - (SEGMENT.intensity >> 1);
+  bool addPixels = true;                        // false -> inhibit new pixels in silence
+  int soundColor = -1;                          // -1 = random color; 0..255 = use as palette index
+
+  if (useAudio) {
+    if (FFT_MajorPeak < 100)    { blurAmount = 254;} // big blobs
+    else {
+      if (FFT_MajorPeak > 3200) { blurAmount = 1;}   // small blobs
+      else {                                         // blur + color depends on major frequency
+        float musicIndex = logf(FFT_MajorPeak);            // log scaling of peak freq
+        blurAmount = mapff(musicIndex, 4.60, 8.08, 253, 1);// map to blur range (low freq = more blur)
+        blurAmount = constrain(blurAmount, 1, 253);        // remove possible "overshot" results
+        soundColor = mapff(musicIndex, 4.6, 8.08, 0, 255); // pick color from frequency
+    } }
+    if (sampleAgc <= 1.0) {      // silence -> no new pixels, max blur
+      valid1 = valid2 = false;   // do not copy last pixels
+      addPixels = false;         
+      blurAmount = 128;
+    }
+    my_intensity = 129 - (SEGMENT.speed >> 1); // dirty hack: use "speed" slider value intensity (no idea how to _disable_ the first slider, but show the second one)
+  }
+  // WLEDSR end
+
+  blur(blurAmount);
   if (valid1) setPixelColor(SEGENV.aux0 , sv1);
   if (valid2) setPixelColor(SEGENV.aux1, sv2);
 
-  for(uint16_t i=0; i<MAX(1, SEGLEN/20); i++) {
-    if(random8(129 - (SEGMENT.intensity >> 1)) == 0) {
-      uint16_t index = random(SEGLEN);
-      setPixelColor(index, color_from_palette(random8(), false, false, 0));
-      SEGENV.aux1 = SEGENV.aux0;
-      SEGENV.aux0 = index;
+  if (addPixels) {                                                                             // WLEDSR
+    for(uint16_t i=0; i<MAX(1, SEGLEN/20); i++) {
+      if(random8(my_intensity) == 0) {
+        uint16_t index = random(SEGLEN);
+        if (soundColor < 0)
+          setPixelColor(index, color_from_palette(random8(), false, false, 0));
+        else
+          setPixelColor(index, color_from_palette(soundColor + random8(24), false, false, 0)); // WLEDSR
+        SEGENV.aux1 = SEGENV.aux0;
+        SEGENV.aux0 = index;
+      }
     }
   }
   return FRAMETIME;
+}
+
+uint16_t WS2812FX::mode_fireworks()
+{ return mode_fireworks_core(false);
+}
+uint16_t WS2812FX::mode_fireworks_audio()
+{ return mode_fireworks_core(true);
 }
 
 
@@ -4404,15 +4445,8 @@ uint16_t WS2812FX::mode_aurora(void) {
 
 
 
-// Sound reactive external variables.
+// Sound reactive external variables and helper functions
     /*  softhack007: moved up to make them availeable to "normal" effects, too */
-
-
-///////////////////////////////////////
-// Helper function(s)                //
-///////////////////////////////////////
-
-double mapf(double x, double in_min, double in_max, double out_min, double out_max);
 
 ////////////////////////////
 //       set Pixels       //
@@ -6225,7 +6259,13 @@ uint16_t WS2812FX::mode_ripplepeak(void) {                // * Ripple peak. By A
 //     BEGIN FFT ROUTINES    //
 ///////////////////////////////
 
-double mapf(double x, double in_min, double in_max, double out_min, double out_max){
+double mapf(double x, double in_min, double in_max, double out_min, double out_max){ // for double
+  if (in_max == in_min) return (out_min); // to avoid division by zero
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+float mapff(float x, float in_min, float in_max, float out_min, float out_max){      // for float
+  if (in_max == in_min) return (out_min); // to avoid division by zero
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 

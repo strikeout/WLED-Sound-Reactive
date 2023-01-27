@@ -121,7 +121,7 @@
 #define IS_REVERSE      ((SEGMENT.options & REVERSE     ) == REVERSE     )
 #define IS_SELECTED     ((SEGMENT.options & SELECTED    ) == SELECTED    )
 
-#define MODE_COUNT 194 // WLEDSR: First 128 for AC (incl reserved), rest for SR
+#define MODE_COUNT 195 // WLEDSR: First 128 for AC (incl reserved), rest for SR
 
 #define FX_MODE_STATIC                   0
 #define FX_MODE_BLINK                    1
@@ -327,6 +327,7 @@
 #define FX_MODE_MULTI_COMET_AR         191
 #define FX_MODE_STARBURST_AR           192
 #define FX_MODE_PALETTE_AR             193
+#define FX_MODE_FIREWORKS_AR           194
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //    End of Audio Reactive fork (WLEDSR)                                                                                                //
@@ -814,6 +815,7 @@ class WS2812FX {
      _mode[FX_MODE_MULTI_COMET_AR]            = &WS2812FX::mode_multi_comet_audio;
      _mode[FX_MODE_STARBURST_AR]              = &WS2812FX::mode_starburst_audio;
      _mode[FX_MODE_PALETTE_AR]                = &WS2812FX::mode_palette_audio;
+     _mode[FX_MODE_FIREWORKS_AR]              = &WS2812FX::mode_fireworks_audio;
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -975,7 +977,9 @@ class WS2812FX {
       mode_running_random(void),
       mode_larson_scanner(void),
       mode_comet(void),
+      mode_fireworks_core(bool useAudio),       // WLEDSR
       mode_fireworks(void),
+      mode_fireworks_audio(void),               // WLEDSR
       mode_rain(void),
       mode_tetrix(void),
       mode_halloween(void),
@@ -1502,7 +1506,8 @@ const char JSON_mode_names[] PROGMEM = R"=====([
 " 🎉 audio Popcorn@Gravity=128,Intensity=200;!;!",
 " 🔨 audio Comets@Speed=228,Intensity=240;!;!",
 " 🔨 audio Fw Starburst@Speed=128,Intensity=128;!;!",
-" 🔨 beat Palette@Speed=164;!;!"
+" 🔨 beat Palette@Speed=164;!;!",
+" 🎉 audio Fireworks@Intensity=96;!;!"
 ])=====";
 
 //WLEDSR: second part (not SR specific, but in latest SR, not in AC (Pallettes added in WLEDSR from Retro Clown->END))
