@@ -1157,12 +1157,14 @@ uint16_t WS2812FX::mode_fireworks_core(bool useAudio) {
         blurAmount = constrain(blurAmount, 1, 253);        // remove possible "overshot" results
         soundColor = mapff(musicIndex, 4.6, 8.08, 0, 255); // pick color from frequency
     } }
-    if (sampleAgc <= 1.0) {      // silence -> no new pixels, max blur
+    if (sampleAgc <= 1.0) {      // silence -> no new pixels, just blur
       valid1 = valid2 = false;   // do not copy last pixels
       addPixels = false;         
       blurAmount = 128;
     }
     my_intensity = 129 - (SEGMENT.speed >> 1); // dirty hack: use "speed" slider value intensity (no idea how to _disable_ the first slider, but show the second one)
+    if (samplePeak == 1) my_intensity -= my_intensity / 4;    // inclease intensity at peaks
+    if (samplePeak > 1) my_intensity = my_intensity / 2;      // double intensity at main peaks
   }
   // WLEDSR end
 
