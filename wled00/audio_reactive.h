@@ -63,8 +63,8 @@ constexpr int SAMPLE_RATE = 10240;            // Base sample rate in Hz - standa
 #define UDP_SYNC_HEADER "00001"
 #define UDP_SYNC_HEADER_V2 "00002"
 
-uint8_t maxVol = 10;                            // Reasonable value for constant volume for 'peak detector', as it won't always trigger
-uint8_t binNum = 8;                             // Used to select the bin for FFT based beat detection.
+uint8_t maxVol = 31;                             // (was 10) Reasonable value for constant volume for 'peak detector', as it won't always trigger
+uint8_t binNum = 14;                             // (was 8)  Used to select the bin for FFT based beat detection. 14 = 280Hz
 
 
 // 
