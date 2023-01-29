@@ -612,8 +612,12 @@ static void runHighFilter12db(const float filter, uint16_t numSamples, float *sa
   static float lowfilt2 = 0.0f;          // IIR low frequency cutoff filter - second pass = 12db
   for (int i=0; i < numSamples; i++) {
     lowfilt1 += filter * (sampleBuffer[i] - lowfilt1); // first lowpass 6db
-    lowfilt2 += filter * (lowfilt1 - lowfilt2);        // second lowpass +6db
-    sampleBuffer[i] = sampleBuffer[i] - lowfilt2;      // lowpass --> highpass
+    // lowfilt2 += filter * (lowfilt1 - lowfilt2);     // second lowpass +6db
+    // sampleBuffer[i] = sampleBuffer[i] - lowfilt2;   // lowpass --> highpass
+    // implementation below has better results, compared to the code above
+    float pass1Out = sampleBuffer[i] - lowfilt1;       // output from first stage (lowpass --> highpass)
+    lowfilt2 += filter * (pass1Out - lowfilt2);        // second lowpass +6db
+    sampleBuffer[i] = pass1Out - lowfilt2;             // lowpass --> highpass
   }
 }
 

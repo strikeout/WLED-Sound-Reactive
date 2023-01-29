@@ -44,18 +44,20 @@ void userSetup() {
   // initialize I2S input
   switch (dmType) {
     case 1:
-      //useBandPassFilter = true;
+      useInputFilter = 2; // apply anti-rumble filter
       if (serialTxAvaileable) {
         Serial.print("AS: Generic I2S Microphone - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
       }
       audioSource = new I2SSource(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
       break;
     case 2:
+      useInputFilter = 2; // apply anti-rumble filter
       if (serialTxAvaileable) Serial.println("AS: ES7243 Microphone (right channel only).");
       // audioSource = new ES7243(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF, 1.0f/16.0f);  // for Line Level
       audioSource = new ES7243(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);              // for Microphone Level
       break;
     case 3:
+      useInputFilter = 2; // apply anti-rumble filter
       if (serialTxAvaileable) {
         Serial.print("AS: SPH0645 Microphone - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
       }
