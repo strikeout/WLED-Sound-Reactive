@@ -215,6 +215,8 @@ bool isValidUdpSyncVersion2(char header[6]) {
 /* get current max sample ("published" by the I2S and FFT thread) and perform some sound processing */
 void getSample() {
   const int AGC_preset = (soundAgc > 0)? (soundAgc-1): 0; // make sure the _compiler_ knows this value will not change while we are inside the function
+  static unsigned long lastSoundTime = 0; // for delaying noise gate
+  constexpr long MinTimeSilence = 1600;   // 1600ms "grace time" before closing noise gate - to avoid chattering
 
   #ifdef WLED_DISABLE_SOUND
     micIn = inoise8(millis(), millis());          // Simulated analog read
@@ -225,7 +227,8 @@ void getSample() {
 
   // remove remaining DC offset from sound signal
   micLev = ((micLev * 8191.0) + micDataReal) / 8192.0;                // takes a few seconds to "catch up" with the Mic Input
-  if(micIn < micLev) micLev = ((micLev * 31.0) + micDataReal) / 32.0; // align MicLev to lowest input signal
+  //if(micIn < micLev) micLev = ((micLev * 31.0) + micDataReal) / 32.0; // align MicLev to lowest input signal
+  if(micDataReal < (micLev-1.2)) micLev = ((micLev * 31.0) + micDataReal) / 32.0; // align with lowest input, but allow some "overlap" to stabilize the filter
   micIn -= micLev;                                // Let's center it to 0 now
 
   // Using an exponential filter to smooth out the signal. We'll add controls for this in a future release.
@@ -233,8 +236,13 @@ void getSample() {
   expAdjF = weighting * micInNoDC + ((1.0-weighting) * expAdjF);
   expAdjF = fabsf(expAdjF);                          // Now (!) take the absolute value
 
-  expAdjF = (expAdjF <= soundSquelch) ? 0: expAdjF; // simple noise gate
-  if ((soundSquelch == 0) && (expAdjF < 0.25f)) expAdjF = 0;
+  //expAdjF = (expAdjF <= soundSquelch) ? 0: expAdjF; // super simple noise gate
+  //if ((soundSquelch == 0) && (expAdjF < 0.25f)) expAdjF = 0;
+  if ((expAdjF <= soundSquelch) || ((soundSquelch == 0) && (expAdjF < 0.25f))) {  // noise gate with "closing delay"
+    if ((millis() - lastSoundTime) > MinTimeSilence) expAdjF = 0.0;
+  } else {
+    lastSoundTime = millis();
+  }
 
   tmpSample = expAdjF;
   micIn = abs(micIn);                             // And get the absolute value of each sample

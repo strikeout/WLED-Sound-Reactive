@@ -56,7 +56,7 @@ extern float fftAvg[];
 
 // Helper function(s) prototypes
 double mapf(double x, double in_min, double in_max, double out_min, double out_max); // for double
-float mapff(float x, float in_min, float in_max, float out_min, float out_max);      // for float
+static float mapff(float x, float in_min, float in_max, float out_min, float out_max);      // for float
 
 /*
  * No blinking. Just plain old static light.
@@ -6266,8 +6266,8 @@ double mapf(double x, double in_min, double in_max, double out_min, double out_m
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-float mapff(float x, float in_min, float in_max, float out_min, float out_max){      // for float
-  if (in_max == in_min) return (out_min); // to avoid division by zero
+static float mapff(float x, float in_min, float in_max, float out_min, float out_max){      // for float
+  if (fabs(in_max-in_min) < 0.000001 ) return (out_min); // to avoid division by zero
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
