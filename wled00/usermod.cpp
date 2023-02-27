@@ -64,6 +64,7 @@ void userSetup() {
       audioSource = new SPH0654(SAMPLE_RATE, BLOCK_SIZE, 0, 0xFFFFFFFF);
       break;
     case 4:
+      useInputFilter = 3; // apply 60hz filter against ground loop noise
       if (mclkPin == hardwareTX) serialTxAvaileable = false;
       if (serialTxAvaileable) {
         Serial.print("AS: Generic I2S Microphone with Master Clock - "); Serial.println(I2S_MIC_CHANNEL_TEXT);
