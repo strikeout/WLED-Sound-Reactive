@@ -8,6 +8,9 @@
 #include "soc/rtc_cntl_reg.h"
 #endif
 
+
+uint8_t mac_ap[6];
+
 /*
  * Main WLED class implementation. Mostly initialization and connection logic
  */
@@ -443,9 +446,11 @@ void WLED::beginStrip()
   }
   colorUpdated(CALL_MODE_INIT);
 
-  // init relay pin
-  if (rlyPin>=0)
+  // 初始化继电器引脚
+  if (rlyPin>=0){
     digitalWrite(rlyPin, (rlyMde ? bri : !bri));
+    Serial.println("输出高电平");
+  }
 }
 
 void WLED::initAP(bool resetAP)
@@ -454,7 +459,13 @@ void WLED::initAP(bool resetAP)
     return;
 
   if (!apSSID[0] || resetAP)
-    strcpy_P(apSSID, PSTR("WLED-AP"));
+    WiFi.macAddress(mac_ap);
+    int name_len = snprintf(NULL, 0, "WLED_%02X%02X%02X", mac_ap[3], mac_ap[4], mac_ap[5]);
+    char *AP_value = (char*)malloc(name_len + 1);
+    snprintf(AP_value, name_len + 1, "WLED_%02X%02X%02X",mac_ap[3], mac_ap[4], mac_ap[5]);
+
+    strcpy_P(apSSID, AP_value);
+    //strcpy_P(apSSID, PSTR("WLED-AP"));
   if (resetAP)
     strcpy_P(apPass, PSTR(DEFAULT_AP_PASS));
   DEBUG_PRINT(F("Opening access point "));

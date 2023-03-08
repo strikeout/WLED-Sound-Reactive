@@ -570,7 +570,9 @@ function populateInfo(i)
 {
 	var cn="";
 	var heap = i.freeheap/1000;
+  var flashsize = i.getflash/1000;
 	heap = heap.toFixed(1);
+  flashsize = flashsize.toFixed(1);
 	var pwr = i.leds.pwr;
 	var pwru = "Not calculated";
 	if (pwr > 1000) {pwr /= 1000; pwr = pwr.toFixed((pwr > 10) ? 0 : 1); pwru = pwr + " A";}
@@ -596,6 +598,7 @@ function populateInfo(i)
 	${inforow("Signal strength",i.wifi.signal +"% ("+ i.wifi.rssi, " dBm)")}
 	${inforow("Uptime",getRuntimeStr(i.uptime))}
 	${inforow("Free heap",heap," kB")}
+  ${inforow("Flash Size",flashsize," kB")}
 		${inforow("Estimated current",pwru)}
 		${inforow("Frames / second",i.leds.fps)}
 	${inforow("MAC address",i.mac)}
