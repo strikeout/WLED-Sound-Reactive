@@ -69,10 +69,10 @@ void decBrightness()
 }
 
 // apply preset or fallback to a effect and palette if it doesn't exist
-void presetFallback(uint8_t presetID, uint8_t effectID, uint8_t paletteID)
+void presetFallback(uint8_t presetID, uint8_t effectID, uint8_t paletteID) 
 {
   byte prevError = errorFlag;
-  if (!applyPreset(presetID, CALL_MODE_BUTTON_PRESET)) {
+  if (!applyPreset(presetID, CALL_MODE_BUTTON_PRESET)) { 
     effectCurrent = effectID;
     effectPalette = paletteID;
     errorFlag = prevError; //clear error 12 from non-existent preset
@@ -280,7 +280,7 @@ void decodeIR(uint32_t code)
   if (code > 0xFFFFFF) return; //invalid code
 
   switch (irEnabled) {
-    case 1:
+    case 1: 
       if (code > 0xF80000) decodeIR24OLD(code); // white 24-key remote (old) - it sends 0xFF0000 values
       else                 decodeIR24(code);    // 24-key remote - 0xF70000 to 0xF80000
       break;
@@ -293,6 +293,7 @@ void decodeIR(uint32_t code)
                                        // sets bright plain white
     case 7: decodeIR9(code);    break;
     //case 8: return; // ir.json file, handled above switch statement
+    case 9: decodeIR24MC(code); break;
   }
 
   if (nightlightActive && bri == 0) nightlightActive = false;
@@ -417,9 +418,44 @@ void decodeIR24CT(uint32_t code)
     case IR24_CT_CTPLUS     : changeColor(COLOR_COLDWHITE, strip.getSegment(strip.getMainSegmentId()).cct+1); changeEffect(FX_MODE_STATIC); break;
     case IR24_CT_CTMINUS    : changeColor(COLOR_WARMWHITE, strip.getSegment(strip.getMainSegmentId()).cct-1); changeEffect(FX_MODE_STATIC); break;
     case IR24_CT_MEMORY     : changeColor(COLOR_NEUTRALWHITE,                                           127); changeEffect(FX_MODE_STATIC); break;
+    default: return; 
+  }
+  lastValidCode = code;
+}
+
+////////////////////////////////////////////////Athom IR_24key_music/////////////////////////
+void decodeIR24MC(uint32_t code)
+{
+  switch (code) {
+    case IR24_MC_OFF        : if (bri > 0) briLast = bri; bri = 0; break;
+    case IR24_MC_AUTO       : changeEffect(FX_MODE_FADE);          break;
+    case IR24_MC_ON         : bri = briLast;                       break;
+    case IR24_MC_MODES      : changeEffect(relativeChange(effectCurrent,  1, 0, 118 -1));               break;
+    case IR24_MC_MODE       : changeEffect(relativeChange(effectCurrent, -1, 0, 118 -1));               break;
+    case IR24_MC_BRIGHTER   : incBrightness();                     break;
+    case IR24_MC_DARKER     : decBrightness();                     break;
+    case IR24_MC_QUICK      : changeEffectSpeed( 16);              break;
+    case IR24_MC_SLOW       : changeEffectSpeed(-16);              break;
+    case IR24_MC_RED        : changeColor(COLOR_RED);              break;
+    case IR24_MC_GREEN      : changeColor(COLOR_GREEN);            break;
+    case IR24_MC_BLUE       : changeColor(COLOR_BLUE);             break;
+    case IR24_MC_R1         : changeColor(COLOR_YELLOW);           break;
+    case IR24_MC_G1         : changeColor(COLOR_DoderBlue);        break;
+    case IR24_MC_B1         : changeColor(COLOR_Indigo);           break;
+    case IR24_MC_R2         : changeColor(COLOR_Magenta);          break;
+    case IR24_MC_G2         : changeColor(COLOR_DarkBlue);         break;
+    case IR24_MC_B2         : changeColor(COLOR_Lime);             break;
+    case IR24_MC_R3         : changeColor(COLOR_Orange);           break;
+    case IR24_MC_G3         : changeColor(COLOR_WHITE);            break;
+    case IR24_MC_B3         : changeEffect(FX_MODE_RAINBOW_CYCLE); break;
+    case IR24_MC_MUSIC1     : changeEffect(relativeChange(effectCurrent,  1, 128, MODE_COUNT -1));       break;
+    case IR24_MC_LOCK       : changeEffect(FX_MODE_STATIC);        break;
+    case IR24_MC_MUSIC2     : changeEffect(relativeChange(effectCurrent, -1, 128, MODE_COUNT -1));       break;
     default: return;
   }
   lastValidCode = code;
+  // Serial.printf_P(PSTR("输出: 0x%lX\n"), (unsigned long)code);
+  // Serial.println("测试24音乐");
 }
 
 void decodeIR40(uint32_t code)
@@ -609,18 +645,16 @@ void decodeIR9(uint32_t code)
 
 /*
 This allows users to customize IR actions without the need to edit C code and compile.
-From the https://github.com/Aircoookie/WLED/wiki/Infrared-Control page, download the starter
+From the https://github.com/Aircoookie/WLED/wiki/Infrared-Control page, download the starter 
 ir.json file that corresponds to the number of buttons on your remote.
 Many of the remotes with the same number of buttons emit the same codes, but will have
 different labels or colors. Once you edit the ir.json file, upload it to your controller
 using the /edit page.
-
-Each key should be the hex encoded IR code. The "cmd" property should be the HTTP API
+Each key should be the hex encoded IR code. The "cmd" property should be the HTTP API 
 or JSON API command to execute on button press. If the command contains a relative change (SI=~16),
 it will register as a repeatable command. If the command doesn't contain a "~" but is repeatable, add "rpt" property
 set to true. Other properties are ignored but having labels and positions can assist with editing
 the json file.
-
 Sample:
 {
   "0xFF629D": {"cmd": "T=2", "rpt": true, "label": "Toggle on/off"},  // HTTP command
@@ -630,7 +664,7 @@ Sample:
                "label": "Preset 1, fallback to Saw - Party if not found"},
 }
 */
-void decodeIRJson(uint32_t code)
+void decodeIRJson(uint32_t code) 
 {
   char objKey[10];
   String cmdStr;
@@ -722,10 +756,10 @@ void handleIR()
     if (irEnabled > 0)
     {
       if (irrecv == NULL)
-      {
+      { 
         initIR(); return;
       }
-
+      
       if (irrecv->decode(&results))
       {
         if (results.value != 0) // only print results if anything is received ( != 0 )

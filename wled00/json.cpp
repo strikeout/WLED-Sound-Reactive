@@ -657,6 +657,7 @@ void serializeInfo(JsonObject root)
     root[F("resetReason1")] = (int)rtc_get_reset_reason(1);
   #endif
   root[F("lwip")] = 0; //deprecated
+    root[F("getflash")] = ESP.getFlashChipSize();
   #else
   root[F("arch")] = "esp8266";
   root[F("core")] = ESP.getCoreVersion();

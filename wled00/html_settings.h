@@ -149,8 +149,9 @@ name="IT" onchange="UI()"><option value="0">Remote disabled</option><option
 value="1">24-key RGB</option><option value="2">24-key with CT</option><option 
 value="3">40-key blue</option><option value="4">44-key RGB</option><option 
 value="5">21-key RGB</option><option value="6">6-key black</option><option 
-value="7">9-key red</option><option value="8">JSON remote</option></select><span
- style="cursor:pointer" onclick='off("IR")'>&nbsp;&#215;</span><br>
+value="7">9-key red</option><option value="8">JSON remote</option><option 
+value="9">24-key music</option></select><span style="cursor:pointer" 
+onclick='off("IR")'>&nbsp;&#215;</span><br>
 Apply IR change to main segment only: <input type="checkbox" name="MSO"><br><div
  id="json" style="display:none">JSON file: <input type="file" name="data" 
 accept=".json"> <input type="button" value="Upload" 
