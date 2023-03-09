@@ -118,7 +118,7 @@ void handleE131Packet(e131_packet_t* p, IPAddress clientIP, byte protocol){
       return;  // nothing to do
       break;
 
-    case DMX_MODE_SINGLE_RGB: // RGB only
+    case DMX_MODE_SINGLE_RGB:   // 3 channel: [R,G,B]
       if (uni != e131Universe) return;
       if (availDMXLen < 3) return;
       realtimeLock(realtimeTimeoutMs, mde);
@@ -128,7 +128,7 @@ void handleE131Packet(e131_packet_t* p, IPAddress clientIP, byte protocol){
         setRealtimePixel(i, e131_data[dataOffset+0], e131_data[dataOffset+1], e131_data[dataOffset+2], wChannel);
       break;
 
-    case DMX_MODE_SINGLE_DRGB: // Dimmer + RGB
+    case DMX_MODE_SINGLE_DRGB:  // 4 channel: [Dimmer,R,G,B]
       if (uni != e131Universe) return;
       if (availDMXLen < 4) return;
       realtimeLock(realtimeTimeoutMs, mde);
@@ -143,6 +143,11 @@ void handleE131Packet(e131_packet_t* p, IPAddress clientIP, byte protocol){
         setRealtimePixel(i, e131_data[dataOffset+1], e131_data[dataOffset+2], e131_data[dataOffset+3], wChannel);
       break;
 
+    case DMX_MODE_PRESET:       // 1 channel: WLED Preset number [#]
+      if (uni != e131Universe || availDMXLen < 1) return;
+      applyPreset(e131_data[dataOffset], CALL_MODE_NOTIFICATION);
+      return;
+      break;
     case DMX_MODE_EFFECT: // Length 1: Apply Preset ID, length 11-13: apply effect config
       if (uni != e131Universe) return;
       if (availDMXLen < 11) {
@@ -150,12 +155,12 @@ void handleE131Packet(e131_packet_t* p, IPAddress clientIP, byte protocol){
         applyPreset(e131_data[dataOffset+0], CALL_MODE_NOTIFICATION);
         return;
       }
-      if (DMXOldDimmer != e131_data[dataOffset+0]) {
-        DMXOldDimmer = e131_data[dataOffset+0];
+
+      if (bri != e131_data[dataOffset+0]) {
         bri = e131_data[dataOffset+0];
       }
-      if (e131_data[dataOffset+1] < MODE_COUNT)
-        effectCurrent = e131_data[dataOffset+ 1];
+      if (e131_data[dataOffset+1] < strip.getModeCount())
+      effectCurrent   = e131_data[dataOffset+ 1];
       effectSpeed     = e131_data[dataOffset+ 2];  // flickers
       effectIntensity = e131_data[dataOffset+ 3];
       effectPalette   = e131_data[dataOffset+ 4];
